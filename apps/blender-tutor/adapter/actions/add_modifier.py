@@ -44,8 +44,14 @@ def spec() -> dict:
                 "text": "Select “${label:params.target}” in the 3D viewport or the Outliner",
                 "target": "${params.target}",
             },
-            {"text": "Open the Properties editor and click the blue wrench tab (Modifiers)"},
-            {"text": "Click Add Modifier, pick the category, then choose ${params.type}"},
+            {
+                "text": "Open the Properties editor and click the blue wrench tab (Modifiers)",
+                "target": "blender://ui/properties/tab/MODIFIER",
+            },
+            {
+                "text": "Click Add Modifier, pick the category, then choose ${params.type}",
+                "target": "blender://ui/area/PROPERTIES",
+            },
         ],
     )
 

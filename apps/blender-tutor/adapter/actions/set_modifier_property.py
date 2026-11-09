@@ -30,7 +30,7 @@ def spec() -> dict:
             }
         ],
         [
-            {"text": "In the Modifiers tab, find the “${label:params.target}” panel"},
+            {"text": "In the Modifiers tab, find the “${label:params.target}” panel", "target": "${params.target}"},
             {"text": "Set ${params.property} to ${params.value}"},
         ],
     )

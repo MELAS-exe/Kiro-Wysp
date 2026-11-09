@@ -141,9 +141,9 @@ async def _start_guide(
             }
         ]
     await session.apply_board([{"op": "set_steps", "steps": steps}], validate=False)
-    first_ref = render_ref(steps_src[0].target, params) if steps_src else None
-    if first_ref:
-        await session.highlight_ref(first_ref)
+    tour = [r for r in (render_ref(gs.target, params) for gs in steps_src) if r]
+    if tour:
+        session.start_highlight_tour(tour)
     session.watch = Watch(conn.adapter_id, spec.id, title, params, post, [s["id"] for s in steps])
     session.audit.append("guide_started", action_id=spec.id, params=params)
     session.tm.emit(

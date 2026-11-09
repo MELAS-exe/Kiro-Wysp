@@ -130,7 +130,8 @@ TOOLS: dict[str, tuple[str | None, ToolSpec]] = {
         "highlight",
         ToolSpec(
             "highlight",
-            "Make an element flash inside the application itself.",
+            "Point at something inside the application itself: an entity ref from the observation, or an "
+            "interface element ref listed in the application description.",
             _obj({"ref": {"type": "string"}}, ["ref"]),
         ),
     ),
@@ -332,7 +333,9 @@ class ToolBox:
 
     async def _t_highlight(self, a: dict[str, Any]) -> dict[str, Any]:
         ok = await self.s.highlight_ref(str(a["ref"]))
-        return {"ok": ok} if ok else {"ok": False, "error": "could not highlight that element"}
+        if ok:
+            return {"ok": True}
+        return {"ok": False, "error": self.s.last_highlight_error or "could not highlight that element"}
 
     async def _t_propose_action(self, a: dict[str, Any]) -> dict[str, Any]:
         await self.s.activity("Preparing an action…")

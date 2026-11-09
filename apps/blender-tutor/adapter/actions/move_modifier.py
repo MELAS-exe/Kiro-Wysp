@@ -17,7 +17,10 @@ def spec() -> dict:
         "reversible",
         [{"ref": "${params.target}", "path": "props.index", "op": "eq", "value": "${params.index}"}],
         [
-            {"text": "In the Modifiers tab, drag the grip (⠿) of “${label:params.target}” to position ${params.index}"},
+            {
+                "text": "In the Modifiers tab, drag the grip (⠿) of “${label:params.target}” to position ${params.index}",
+                "target": "${params.target}",
+            },
         ],
     )
 

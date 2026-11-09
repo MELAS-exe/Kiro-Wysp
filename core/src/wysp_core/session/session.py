@@ -75,6 +75,8 @@ class Session:
         self._turn_task: asyncio.Task | None = None
         self._cancel: CancelToken | None = None
         self._refresh_task: asyncio.Task | None = None
+        self._tour_task: asyncio.Task | None = None
+        self.last_highlight_error: str | None = None
 
     # ------------------------------------------------------------------------ wiring
     def start(self) -> None:
@@ -253,15 +255,33 @@ class Session:
         if cue.get("op") == "highlight":
             await self.highlight_ref(target[2:] if target.startswith("n:") else target)
 
+    def start_highlight_tour(self, refs: list[str], dwell_s: float = 3.0) -> None:
+        """Point at each step target in turn (guided steps), replacing any tour still running."""
+        if self._tour_task and not self._tour_task.done():
+            self._tour_task.cancel()
+        self._tour_task = asyncio.create_task(self._highlight_tour(refs, dwell_s), name="wysp-highlight-tour")
+
+    async def _highlight_tour(self, refs: list[str], dwell_s: float) -> None:
+        try:
+            for i, ref in enumerate(dict.fromkeys(refs)):
+                if i:
+                    await asyncio.sleep(dwell_s)
+                await self.highlight_ref(ref, duration_ms=int(dwell_s * 1000))
+        except asyncio.CancelledError:
+            pass
+
     async def highlight_ref(self, ref: str, style: str = "pulse", duration_ms: int = 2500) -> bool:
         conn = self.conn
+        self.last_highlight_error = None
         if conn is None or not conn.manifest.has("highlight"):
+            self.last_highlight_error = "the connected application cannot highlight"
             return False
         try:
             await conn.highlight(ref, style, duration_ms)
             return True
         except WyspError as exc:
             log.debug("highlight failed: %s", exc.message)
+            self.last_highlight_error = exc.message[:200]
             return False
 
     # ---------------------------------------------------------------------------- turns

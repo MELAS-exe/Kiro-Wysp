@@ -20,7 +20,7 @@ def spec() -> dict:
         "reversible",
         [{"ref": "${params.target}", "path": "label", "op": "not_exists"}],
         [
-            {"text": "In the Modifiers tab, find “${label:params.target}”"},
+            {"text": "In the Modifiers tab, find “${label:params.target}”", "target": "${params.target}"},
             {"text": "Click the small arrow in its header and choose Delete (or press Ctrl+X over it)"},
         ],
     )

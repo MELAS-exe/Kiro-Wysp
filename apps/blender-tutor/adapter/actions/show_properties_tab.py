@@ -40,7 +40,12 @@ def spec() -> dict:
         ["tab"],
         "ui_state",
         [],
-        [{"text": "In the Properties editor, click the ${params.tab} tab icon"}],
+        [
+            {
+                "text": "In the Properties editor, click the ${params.tab} tab icon",
+                "target": "blender://ui/properties/tab/${params.tab}",
+            }
+        ],
     )
 
 

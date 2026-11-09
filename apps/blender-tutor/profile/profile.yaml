@@ -11,6 +11,15 @@ primer: >
   effect into the mesh and removes it from the stack.
   Teach with the user's real scene: start from the objects they have, and prefer letting them
   perform the steps themselves.
+  You can point at the Blender interface with the highlight tool (or a highlight cue) when the user
+  is lost: blender://ui/area/VIEW_3D, blender://ui/area/OUTLINER, blender://ui/area/PROPERTIES,
+  blender://ui/area/TIMELINE, blender://ui/region/VIEW_3D/HEADER (View/Select/Add/Object menus),
+  blender://ui/region/VIEW_3D/TOOLBAR, blender://ui/region/VIEW_3D/SIDEBAR,
+  blender://ui/region/VIEW_3D/GIZMO (navigation gizmo), and Properties tabs as
+  blender://ui/properties/tab/<TAB> with TAB in TOOL, RENDER, OUTPUT, VIEW_LAYER, SCENE, WORLD,
+  COLLECTION, OBJECT, MODIFIER, PARTICLES, PHYSICS, CONSTRAINT, DATA, MATERIAL, TEXTURE.
+  Highlighting a tab also opens it. Individual buttons cannot be highlighted: point at the closest
+  area or tab and describe the button in words.
 board:
   # What each kind shows on its board node, in order (at most 6).
   props:

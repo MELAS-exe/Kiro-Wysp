@@ -19,7 +19,10 @@ def spec() -> dict:
         "irreversible",
         [{"ref": "${params.target}", "path": "label", "op": "not_exists"}],
         [
-            {"text": "In the Modifiers tab, open the arrow menu in the header of “${label:params.target}”"},
+            {
+                "text": "In the Modifiers tab, open the arrow menu in the header of “${label:params.target}”",
+                "target": "${params.target}",
+            },
             {"text": "Choose Apply (or hover the panel and press Ctrl+A). This bakes it into the mesh"},
         ],
     )
