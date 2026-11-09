@@ -961,15 +961,11 @@ name = "wysp-adapter-sdk"
 version = "0.1.0"
 source = { editable = "sdk/python" }
 dependencies = [
-    { name = "jsonschema" },
     { name = "websocket-client" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "jsonschema", specifier = ">=4.23" },
-    { name = "websocket-client", specifier = ">=1.8" },
-]
+requires-dist = [{ name = "websocket-client", specifier = ">=1.8" }]
 
 [[package]]
 name = "wysp-contract-tests"
@@ -998,7 +994,9 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "jmespath" },
+    { name = "jsonschema" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1008,7 +1006,9 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "jmespath", specifier = ">=1.0" },
+    { name = "jsonschema", specifier = ">=4.23" },
     { name = "pydantic", specifier = ">=2.9" },
+    { name = "python-dotenv", specifier = ">=1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]

@@ -10,6 +10,9 @@ Placeholders `${params.x}` and `${bindings.x}` are replaced before evaluation:
 * in `path`, ONLY inside single-quoted JMESPath raw literals, where the value is escaped.
 Any other position is rejected, so a parameter value can never inject JMESPath syntax.
 Values containing a backslash or a control character are rejected in `path` literals.
+
+Extension: the function `get(object, 'key')` reads a key known only at run time, for example
+`get(props, '${params.property}')` (JMESPath has no dynamic key lookup of its own).
 """
 
 from __future__ import annotations
@@ -29,6 +32,17 @@ MAX_REGEX_LEN = 200
 MAX_REGEX_SUBJECT = 1000
 
 _adapter: TypeAdapter[Predicate] = TypeAdapter(Predicate)
+
+
+class _WyspFunctions(jmespath.functions.Functions):
+    """Wysp extension of JMESPath: `get(object, 'key')` reads a key that is only known at run time."""
+
+    @jmespath.functions.signature({"types": ["object", "null"]}, {"types": ["string"]})
+    def _func_get(self, obj, key):
+        return None if obj is None else obj.get(key)
+
+
+_OPTIONS = jmespath.Options(custom_functions=_WyspFunctions())
 
 
 class PredicateError(ValueError):
@@ -205,7 +219,7 @@ def _compare(cmp: dict[str, Any], obs_json: dict[str, Any]) -> PredicateOutcome:
             ok = op == "not_exists"
             return PredicateOutcome(ok=ok, path=f"{ref} :: {path}", op=op, actual=None, expected=expected)
     try:
-        actual = jmespath.search(path, target)
+        actual = jmespath.search(path, target, options=_OPTIONS)
     except JMESPathError as exc:
         raise PredicateError(f"invalid JMESPath {path!r}: {exc}") from exc
     return PredicateOutcome(
@@ -234,7 +248,12 @@ def _apply(op: str, actual: Any, expected: Any) -> bool:
         case "gt" | "gte" | "lt" | "lte":
             if not (_is_num(actual) and _is_num(expected)):
                 return False
-            return {"gt": actual > expected, "gte": actual >= expected, "lt": actual < expected, "lte": actual <= expected}[op]
+            return {
+                "gt": actual > expected,
+                "gte": actual >= expected,
+                "lt": actual < expected,
+                "lte": actual <= expected,
+            }[op]
         case "in":
             return isinstance(expected, list) and actual in expected
         case "contains":

@@ -9,7 +9,6 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import TypeAdapter
-
 from wysp_core.contract import Entity, Observation, digest
 from wysp_core.contract.actions import ActionSpec, Predicate
 from wysp_core.contract.export import build_schemas
@@ -64,6 +63,16 @@ def test_substitute_and_evaluate_postcondition():
     assert out.ok
     assert [c.actual for c in out.children] == [1, 3]
     assert not evaluate(pred, blender_obs(2)).ok
+
+
+def test_dynamic_key_lookup_with_get():
+    pred = substitute({"ref": "${params.t}", "path": "get(props, '${params.k}')", "op": "eq", "value": "${params.v}"},
+                      {"t": "blender://object/Candle/modifier/Bevel", "k": "segments", "v": 3})  # fmt: skip
+    assert evaluate(pred, blender_obs(3)).ok
+    assert not evaluate(pred, blender_obs(2)).ok
+    missing = substitute({"ref": "${params.t}", "path": "get(props, '${params.k}')", "op": "not_exists"},
+                         {"t": "blender://object/Candle/modifier/Bevel", "k": "nope"})  # fmt: skip
+    assert evaluate(missing, blender_obs()).ok
 
 
 def test_missing_entity_semantics():

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter
 
-from . import actions, events, manifest, observation, rpc
+from . import actions, events, manifest, observation, rpc, ui
 
 SCHEMA_ID_BASE = "https://wysp.dev/schemas/1"
 
@@ -43,6 +43,7 @@ def _models() -> dict[str, object]:
         "params-undo": events.UndoParams,
         "params-highlight": events.HighlightParams,
         "params-verify": events.VerifyParams,
+        "ui-inbound": ui.inbound_adapter,
     }
 
 
@@ -65,7 +66,9 @@ def write_schemas(out_dir: Path) -> list[Path]:
     schemas = build_schemas()
     for name, schema in schemas.items():
         path = out_dir / f"{name}.schema.json"
-        path.write_text(json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
+        path.write_text(
+            json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
+        )
         written.append(path)
     index = {
         "contract_version": rpc.CONTRACT_VERSION,

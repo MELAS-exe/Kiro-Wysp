@@ -63,7 +63,7 @@ class PredicateOutcome(BaseModel):
 class GuideStep(BaseModel):
     model_config = ConfigDict(extra="forbid")
     text: LocalizedText
-    target: Ref | None = None
+    target: str | None = None  # a ref, or a template such as "${params.target}" rendered by the Core
 
 
 class Guide(BaseModel):

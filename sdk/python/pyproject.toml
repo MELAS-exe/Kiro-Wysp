@@ -5,7 +5,6 @@ description = "Wysp Python adapter SDK (pure Python, embeddable in Blender)"
 requires-python = ">=3.13"
 dependencies = [
     "websocket-client>=1.8",
-    "jsonschema>=4.23",
 ]
 
 [build-system]

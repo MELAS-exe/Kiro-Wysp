@@ -29,9 +29,10 @@ markers = ["live: needs a running Blender or Chrome"]
 addopts = "-m 'not live'"
 
 [tool.ruff]
-line-length = 110
+line-length = 120
 target-version = "py313"
 extend-exclude = ["schemas", "node_modules", "apps/blender-tutor/adapter/wheels"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
