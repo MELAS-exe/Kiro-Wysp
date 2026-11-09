@@ -13,7 +13,8 @@ if TYPE_CHECKING:
     from ..session.session import Session
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
-MAX_FOCUS_ENTITIES = 25
+MAX_FOCUS_ENTITIES = 20
+MAX_ENUM_SHOWN = 8
 
 
 def _compact_schema(schema: dict) -> str:
@@ -23,8 +24,11 @@ def _compact_schema(schema: dict) -> str:
     for name, sub in props.items():
         t = sub.get("type", "any")
         enum = sub.get("enum")
-        desc = f"{name}{'*' if name in required else ''}: {'|'.join(map(str, enum)) if enum else t}"
-        parts.append(desc)
+        if enum and len(enum) > MAX_ENUM_SHOWN:  # keep the prompt small: free LLM tiers have tight token limits
+            shown = "|".join(map(str, enum[:MAX_ENUM_SHOWN])) + f"|…(+{len(enum) - MAX_ENUM_SHOWN} more)"
+        else:
+            shown = "|".join(map(str, enum)) if enum else str(t)
+        parts.append(f"{name}{'*' if name in required else ''}: {shown}")
     return "{" + ", ".join(parts) + "}"
 
 

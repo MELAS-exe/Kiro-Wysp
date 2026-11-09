@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import re
 import uuid
 from typing import TYPE_CHECKING, Any
 
 from ..board import node_id, project
 from ..contract import Observation, Scope, WyspError
-from ..llm import ToolSpec
+from ..llm import ToolCall, ToolSpec
 from . import pipeline
 
 if TYPE_CHECKING:
@@ -210,6 +212,7 @@ class ToolBox:
         return tool_specs(caps)
 
     async def call(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        name = normalize_tool_name(name)
         entry = TOOLS.get(name)
         if entry is None:
             return {"ok": False, "error": f"unknown tool '{name}'"}
@@ -346,3 +349,33 @@ class ToolBox:
         await self.s.broadcast({"type": "clarification", "question": str(a["question"]), "options": options})
         self.turn_ended = True
         return {"ok": True, "status": "waiting_for_answer"}
+
+
+def normalize_tool_name(name: str) -> str:
+    """Models sometimes write `Narrate`, `functions.narrate` or `narrate ` for `narrate`."""
+    return name.strip().split(".")[-1].lower()
+
+
+def recover_tool_call(text: str, known_tools: set[str]) -> ToolCall | None:
+    """Some models (notably gpt-oss) write a tool call as JSON text instead of a real tool call.
+
+    Recognised shapes: the arguments of `narrate` ({"segments": [...]}), or {"name": ..., "arguments": {...}}.
+    Returns None for ordinary prose, so normal answers are never altered.
+    """
+    s = text.strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", s).strip()
+    if not (s.startswith("{") and s.endswith("}")):
+        return None
+    try:
+        data = json.loads(s)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    if isinstance(data.get("segments"), list) and "narrate" in known_tools:
+        return ToolCall(id=uuid.uuid4().hex[:8], name="narrate", arguments=data)
+    name, args = data.get("name"), data.get("arguments")
+    if isinstance(name, str) and normalize_tool_name(name) in known_tools and isinstance(args, dict):
+        return ToolCall(id=uuid.uuid4().hex[:8], name=normalize_tool_name(name), arguments=args)
+    return None

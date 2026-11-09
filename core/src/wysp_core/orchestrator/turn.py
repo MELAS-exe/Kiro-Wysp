@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..llm import CancelToken, LLMError, LLMResult
 from .context import build_system_prompt
-from .tools import ToolBox
+from .tools import ToolBox, recover_tool_call
 
 if TYPE_CHECKING:
     from ..session.session import Session
@@ -45,6 +45,11 @@ class TurnRunner:
                 result = await self._complete(messages, tools)
                 if self.cancel.cancelled:
                     return
+                if result.text and not result.tool_calls:
+                    recovered = recover_tool_call(result.text, {t.name for t in tools})
+                    if recovered is not None:
+                        log.info("recovered a %s call that the model wrote as text", recovered.name)
+                        result = LLMResult(text="", tool_calls=[recovered])
                 log.info(
                     "round: text=%r tools=%s",
                     result.text[:80],

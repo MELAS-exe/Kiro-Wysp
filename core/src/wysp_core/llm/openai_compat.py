@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from dataclasses import dataclass
@@ -45,7 +46,7 @@ class Preset:
 
 # Free tiers, no credit card (checked 9 Nov 2026). Models change often: override with WYSP_LLM_MODEL.
 PRESETS: dict[str, Preset] = {
-    "groq": Preset("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", ("GROQ_API_KEY",)),
+    "groq": Preset("https://api.groq.com/openai/v1", "openai/gpt-oss-120b", ("GROQ_API_KEY",)),
     "openrouter": Preset(
         "https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free", ("OPENROUTER_API_KEY",)
     ),
@@ -143,6 +144,10 @@ class OpenAICompatProvider:
                         log.warning("%s: %s", self.name, last_problem)
                         continue
                     if response.status_code >= 400:
+                        recovered = self._recover_failed_generation(response)
+                        if recovered is not None:
+                            log.info("%s: recovered a tool call from a rejected generation", self.name)
+                            return recovered
                         snippet = redact_text(response.text[:200].replace("\n", " "))
                         raise LLMError(f"{self.name}: HTTP {response.status_code} {snippet}")
                     log.info(
@@ -157,6 +162,30 @@ class OpenAICompatProvider:
             waiter.cancel()
             for task in running:
                 task.cancel()
+
+    @staticmethod
+    def _recover_failed_generation(response: httpx.Response) -> LLMResult | None:
+        """Groq answers HTTP 400 `tool_use_failed` when a model mangles a tool call (wrong case, wrong wrapper)
+        but still returns what it tried to generate. Hand that text back as JSON so the Core can re-read it."""
+        try:
+            error = response.json().get("error", {})
+        except ValueError:
+            return None
+        if error.get("code") != "tool_use_failed":
+            return None
+        raw = str(error.get("failed_generation") or "")
+        start, end = raw.find("{"), raw.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        try:
+            args = json.loads(raw[start : end + 1])
+        except json.JSONDecodeError:
+            return None
+        named = re.search(
+            r"(?:function\s*=\s*|name['\"]?\s*[:=]\s*['\"]?)([A-Za-z_][\w.]*)", raw[:start] + raw[start : start + 60]
+        )
+        payload = {"name": named.group(1), "arguments": args} if named and "arguments" not in args else args
+        return LLMResult(text=json.dumps(payload, ensure_ascii=False))
 
     @staticmethod
     def _retry_after(response: httpx.Response) -> float:

@@ -181,3 +181,26 @@ def test_every_schema_is_valid_draft_2020():
     for name, schema in build_schemas().items():
         jsonschema.Draft202012Validator.check_schema(schema)
         assert schema["$id"].endswith(f"{name}.schema.json")
+
+
+def test_text_written_tool_calls_are_recovered_but_prose_is_not():
+    from wysp_core.orchestrator.tools import recover_tool_call
+
+    known = {"narrate", "show_entities"}
+    call = recover_tool_call('```json\n{"segments": [{"text": "Hello."}]}\n```', known)
+    assert call is not None and call.name == "narrate" and call.arguments["segments"][0]["text"] == "Hello."
+    call = recover_tool_call('{"name": "show_entities", "arguments": {"refs": ["x://a"], "layout": "tree"}}', known)
+    assert call is not None and call.name == "show_entities"
+    assert recover_tool_call("This pumpkin has two modifiers.", known) is None
+    assert recover_tool_call('{"unrelated": 1}', known) is None
+    assert recover_tool_call('{"name": "delete_everything", "arguments": {}}', known) is None  # unknown tool: refused
+
+
+def test_narration_is_stripped_of_markdown_and_split_within_the_limit():
+    from wysp_core.narration import split_text
+
+    raw = "Here is a look:\n\n- **Subdivision Surface** smooths the mesh.\n- `Solidify` gives it thickness. See [the manual](https://x.y)."
+    out = split_text(raw)
+    assert out and all("*" not in c and "`" not in c and "](" not in c for c in out)
+    assert "Subdivision Surface smooths the mesh." in " ".join(out)
+    assert all(len(c) <= 300 for c in split_text("A sentence. " * 80))

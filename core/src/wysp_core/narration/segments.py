@@ -34,9 +34,19 @@ class Segment:
         }
 
 
+def clean_text(text: str) -> str:
+    """Narration is spoken: strip the Markdown that chat models like to add (bold, code, bullets, headings)."""
+    text = re.sub(r"```.*?```", " ", text, flags=re.S)
+    text = re.sub(r"(\*\*|__|`)", "", text)
+    text = re.sub(r"(?m)^\s*(?:[-*•]|\d+[.)])\s+", "", text)
+    text = re.sub(r"(?m)^\s*#+\s*", "", text)
+    text = re.sub(r"\[([^\]]+)\]\((?:[^)]+)\)", r"\1", text)
+    return text
+
+
 def split_text(text: str, limit: int = MAX_SEGMENT_CHARS) -> list[str]:
     """Split on sentence boundaries and pack sentences into chunks of at most `limit` characters."""
-    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\s+", " ", clean_text(text)).strip()
     if not text:
         return []
     sentences = re.split(r"(?<=[.!?…])\s+", text)
