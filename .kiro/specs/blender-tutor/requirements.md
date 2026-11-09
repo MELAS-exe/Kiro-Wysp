@@ -102,3 +102,27 @@ The Blender tutor is the first application built on Wysp. It is a Blender 5.2 LT
 1. THE profile SHALL define the skills `scene_navigation`, `modifier_stack`, `subdivision_surface` and `bevel_modifier`, a glossary of at least 12 concepts with links to the Blender manual, and the lessons L01 scene tour, L02 modifier stack and L03 bevel.
 2. Lesson L03 SHALL include the exercise "give the bevel 3 segments", verified by a predicate on the observation.
 3. THE script `demo/build_scene.py` SHALL generate the "Pumpkin Patch" scene (pumpkin with Subdivision Surface and Solidify, candle without modifiers, lid, ground, light, camera) reproducibly.
+
+### Requirement 9: Interface highlighting
+
+**User Story:** As a learner who is lost in Blender's interface, I want Wysp to show me where to look and click.
+
+#### Acceptance Criteria
+
+1. THE adapter SHALL accept interface refs in `adapter.highlight`: `blender://ui/area/<TYPE>`, `blender://ui/region/VIEW_3D/<HEADER|TOOLBAR|SIDEBAR|GIZMO>` and `blender://ui/properties/tab/<TAB>`.
+2. WHEN an interface ref is highlighted, THE adapter SHALL draw a frame around the target region and a label naming it, and, for a Properties tab, SHALL open that tab and mark it.
+3. IF the target editor is not in the current layout, THEN THE adapter SHALL return `-32012 TARGET_NOT_FOUND` with a message the tutor can relay.
+4. THE profile primer SHALL list the interface refs, and guided steps SHALL carry the ref of the element they refer to.
+5. Highlighting SHALL never change scene data (Properties tab switching is UI state only).
+
+### Requirement 10: Chat and board inside Blender
+
+**User Story:** As a learner, I want to talk to Wysp and see the board without leaving Blender.
+
+#### Acceptance Criteria
+
+1. THE extension SHALL connect to the Core's UI protocol (`/ws/ui`) as an additional Panel, using only UI protocol messages and no tutoring logic.
+2. THE sidebar SHALL show the conversation, permission requests (approval by click only, with the preview for irreversible actions), clarification options and guided steps.
+3. THE board SHALL be shown as a node tree with the same provenance language as the browser Panel; selecting a node SHALL send `board.select`, and every node SHALL offer "Why?".
+4. THE board node tree SHALL NOT be written into the user's .blend file.
+5. THE extension SHALL write its own telemetry (request queue and run times, slow ticks, observation time, warnings) to `~/.wysp/logs/`, with the same record format as the Core's, at a level the user can switch off.

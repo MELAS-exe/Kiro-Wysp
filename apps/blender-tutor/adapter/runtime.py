@@ -8,12 +8,13 @@ request to a QueueDispatcher; `pump()` runs on the main thread, driven by a bpy.
 from __future__ import annotations
 
 import logging
+import time
 
 import bpy
 from wysp_adapter_sdk import AdapterRuntime, QueueDispatcher
 from wysp_adapter_sdk.client import AdapterClient
 
-from . import observe
+from . import observe, telemetry
 from .actions import register_all
 from .events import SceneWatcher
 from .highlight import clear_highlight, highlight_object
@@ -29,7 +30,15 @@ class BlenderAdapter(AdapterRuntime):
         self.watcher = SceneWatcher(self)
 
     def observe(self, scope: dict) -> dict:
-        return observe.build_observation(self.state_version(), scope)
+        started = time.monotonic()
+        obs = observe.build_observation(self.state_version(), scope)
+        telemetry.tm.emit(
+            "observe",
+            duration_ms=round((time.monotonic() - started) * 1000, 1),
+            entities=len(obs["entities"]),
+            truncated=obs["truncated"],
+        )
+        return obs
 
     def handle(self, method: str, params: dict):
         result = super().handle(method, params)
@@ -44,8 +53,12 @@ class BlenderAdapter(AdapterRuntime):
 
     def tick(self) -> None:
         """Main-thread heartbeat: run queued requests, then look for scene changes."""
-        self.dispatcher.pump(0.02)
+        started = time.monotonic()
+        ran = self.dispatcher.pump(0.02)
         self.watcher.poll()
+        elapsed = (time.monotonic() - started) * 1000
+        if elapsed > telemetry.SLOW_TICK_MS:
+            telemetry.tm.emit("slow_tick", duration_ms=round(elapsed, 1), jobs=ran)
 
     def get_context(self) -> dict:
         return observe.build_context(self.state_version())
@@ -62,6 +75,7 @@ class BlenderAdapter(AdapterRuntime):
             dispatcher=self.dispatcher,
             heartbeat_s=heartbeat_s,
             state_version=self.state_version,
+            on_request_done=telemetry.on_request_done,
         )
         self.client = client
         return client

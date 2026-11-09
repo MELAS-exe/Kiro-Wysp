@@ -1,5 +1,6 @@
 // Wire types of the UI protocol (Core <-> Panel). Mirrors core/src/wysp_core/contract/ui.py and board/model.py.
 
+export type LogLevel = "off" | "basic" | "full";
 export type Provenance = "observed" | "inferred" | "illustrative";
 export type Layout = "stack" | "tree" | "graph" | "sequence";
 export type StepStatus = "pending" | "active" | "done" | "failed";
@@ -108,7 +109,17 @@ export interface Evidence {
 }
 
 export type CoreMessage =
-  | { type: "session.state"; session_id: string; lang: string; active_adapter: string | null; llm: string; profile: string | null }
+  | {
+      type: "session.state";
+      session_id: string;
+      lang: string;
+      active_adapter: string | null;
+      llm: string;
+      model?: string | null;
+      profile: string | null;
+      logging?: LogLevel;
+      log_path?: string | null;
+    }
   | { type: "adapters.list"; adapters: AdapterInfo[] }
   | { type: "status"; state: "idle" | "thinking" | "acting" | "speaking" }
   | { type: "activity"; text: string }
@@ -135,7 +146,7 @@ export type PanelMessage =
   | { type: "adapter.activate"; adapter_id: string }
   | { type: "board.snapshot_request" }
   | { type: "undo.last" }
-  | { type: "settings.update"; lang?: string };
+  | { type: "settings.update"; lang?: string; logging?: LogLevel };
 
 /** WebSocket to the Core with automatic reconnection (exponential backoff, 5 s maximum). */
 export class CoreSocket {

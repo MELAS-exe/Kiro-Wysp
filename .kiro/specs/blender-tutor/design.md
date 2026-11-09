@@ -93,6 +93,14 @@ network thread (websocket-client)           main thread (Blender)
 
 **BLD-P5: Debounce.** *For any* burst of depsgraph updates, at most one `event.state_changed` is sent per 250 ms and the last state is always reported. **Validates: Requirement 5.1**
 
+**BLD-P6: Board mirror.** *For any* sequence of board patches the Core accepts, the in-Blender Panel state (`adapter/ui_state.py`) applies them to exactly the Core's board. **Validates: Requirement 10.3**
+
+## In-Blender Panel and interface highlighting
+
+- `ui_client.PanelClient` is a second WebSocket client (UI protocol); a thread queues inbound messages and the add-on timer drains them into `ui_state.UiState` (pure Python, a twin of `panel/src/store.ts`). `ui_panel.py` draws the sidebar and owns the operators; `board_tree.py` rebuilds the `.Wysp Board` node tree when the board version changes (`board_layout.py` gives deterministic stack, sequence and layered layouts). A `save_pre` handler removes the tree.
+- Without voice, `UiState.tick` paces narration at 2.6 words per second, sends `narration.cue` when a cue's word is reached and `narration.progress` at the end.
+- `ui_targets.py` parses interface refs. `highlight.py` adds `POST_PIXEL` draw handlers on the target space's regions: frame plus label for regions, an estimated tab rectangle (40 px times the UI scale, groups separated by 12 px, visible tabs probed by assignment) for Properties tabs. The Core walks through every guided step's target in turn (`Session.start_highlight_tour`).
+
 ## Error Handling
 
 - Exceptions inside handlers are caught per request, partial changes are compensated, and `-32014 EXECUTION_FAILED` is returned with a short message.

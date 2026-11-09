@@ -79,3 +79,23 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
 - [ ] 12. Checkpoint: Blender tutor ready for recording
   - Manual GUI checklist of design.md done on the demo machine
   - Ask the user if questions arise
+
+- [x] 13. Interface highlighting
+  - `adapter/ui_targets.py`, region frames, labels and Properties tab markers in `adapter/highlight.py`; guided steps carry UI refs; primer lists them
+  - Checked with screenshots of a separate Blender instance (`tests/gui_shot.py`); unit tests in `tests/test_ui_targets.py`
+  - _Owner: C_ · _Gate: J2_
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [x] 14. Chat and board inside Blender
+  - `ui_client.py`, `ui_state.py`, `ui_panel.py`, `board_tree.py`, `board_layout.py`; board tree removed before save
+  - _Owner: C (review: B)_ · _Gate: J2_
+  - _Requirements: 10.1, 10.2, 10.3, 10.4_
+
+- [x] 14.1 Write property test for the board mirror
+  - **Property BLD-P6: Board mirror**
+  - **Validates: Requirement 10.3**
+
+- [x] 15. Blender-side telemetry
+  - `adapter/telemetry.py`, SDK `AdapterClient(on_request_done=...)` with queue and run times
+  - _Owner: C_ · _Gate: J2_
+  - _Requirements: 10.5_

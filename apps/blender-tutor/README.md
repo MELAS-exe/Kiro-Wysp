@@ -35,3 +35,47 @@ Every action is declared in `adapter/actions/<id>.py`. The LLM can only *propose
 - Blender's API is only used on the main thread: the network thread only queues requests, a timer pump runs them.
 - Every Wysp change pushes a native undo step, so Ctrl+Z also works.
 - No action runs arbitrary Python: the catalog is closed and declarative.
+
+## Pointing at the interface
+
+`adapter.highlight` also accepts interface refs (see `adapter/ui_targets.py`):
+
+| Ref | What is drawn |
+|---|---|
+| `blender://ui/area/<VIEW_3D\|OUTLINER\|PROPERTIES\|TIMELINE>` | a glowing frame around the editor and a label |
+| `blender://ui/region/VIEW_3D/<HEADER\|TOOLBAR\|SIDEBAR\|GIZMO>` | a frame around that part of the viewport and a label |
+| `blender://ui/properties/tab/<TAB>` | opens the tab, frames the tab column and marks the tab |
+
+Limits: Blender's Python API does not expose button rectangles. Editor and region frames are exact; the tab
+marker and the gizmo box are computed from Blender 5.2's layout (40 px tabs, scaled by the UI scale) and may
+be slightly off with other versions or themes. Single buttons cannot be targeted: Wysp points at the closest
+region and names the button. The top bar and the status bar cannot be drawn on. Guided steps carry these refs,
+so starting a guide walks through each step's target in turn.
+
+## Inside Blender: chat and board
+
+The extension opens a second connection to the Core's UI protocol (`/ws/ui`), so Blender is just another
+Panel: same messages as the browser Panel, no tutoring logic. The **Wysp** sidebar tab shows the conversation,
+permission prompts (always a click; irreversible actions show their preview), clarification choices and guided
+steps. **Open Board** shows the board as a node tree (`.Wysp Board`) in a new window; observed nodes are teal,
+inferred ones say "likely", examples are grey. Clicking a node highlights it in the scene; **Why?** asks Wysp.
+The board tree is a view: it is rebuilt from the Core's board and removed before the file is saved.
+
+Without the browser Panel, narration is paced at reading speed so its cues still fire. Turn off
+"Pace narration in Blender" in the extension preferences when the browser Panel speaks.
+
+## Logs
+
+The extension writes `~/.wysp/logs/blender-<date>-<pid>.jsonl`: per-request main-thread queue wait and run
+time, slow ticks (> 50 ms), observation build time, and `wysp.*` log lines. `uv run wysp logs summary` merges
+it with the Core log of the same period. The level is the extension preference "Blender-side logs" or
+`WYSP_LOG`. Request parameters and typed values are never recorded.
+
+## Developer checks with a window
+
+```powershell
+# Highlight screenshots in a separate Blender (does not touch a running one):
+blender --factory-startup --python-use-system-env apps\blender-tutor\demo\pumpkin.blend --python apps\blender-tutor\tests\gui_shot.py -- OUTDIR blender://ui/properties/tab/MODIFIER
+# Chat + board against a Core on another port (WYSP_HOME keeps its token and logs apart):
+blender --factory-startup --python-use-system-env apps\blender-tutor\demo\pumpkin.blend --python apps\blender-tutor\tests\gui_panel_check.py -- OUTDIR ws://127.0.0.1:8799/ws/adapter TOKEN_FILE "Explain the pumpkin's modifiers"
+```

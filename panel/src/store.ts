@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { applyPatch, emptyBoard } from "./board/applyOps";
 import { CoreSocket, coreUrl } from "./protocol";
-import type { AdapterInfo, Board, CoreMessage, PanelMessage, PermissionRequest, Segment } from "./protocol";
+import type { AdapterInfo, Board, CoreMessage, LogLevel, PanelMessage, PermissionRequest, Segment } from "./protocol";
 
 export type SegState = "queued" | "playing" | "played" | "cancelled";
 
@@ -17,7 +17,10 @@ export interface SessionInfo {
   lang: string;
   active_adapter: string | null;
   llm: string;
+  model: string | null;
   profile: string | null;
+  logging: LogLevel | null;
+  logPath: string | null;
 }
 
 interface PanelState {
@@ -105,7 +108,18 @@ export const useStore = create<PanelState>((set, get) => ({
   handle: (m) => {
     switch (m.type) {
       case "session.state":
-        set({ session: { session_id: m.session_id, lang: m.lang, active_adapter: m.active_adapter, llm: m.llm, profile: m.profile } });
+        set({
+          session: {
+            session_id: m.session_id,
+            lang: m.lang,
+            active_adapter: m.active_adapter,
+            llm: m.llm,
+            model: m.model ?? null,
+            profile: m.profile,
+            logging: m.logging ?? null,
+            logPath: m.log_path ?? null,
+          },
+        });
         break;
       case "adapters.list":
         set({ adapters: m.adapters });

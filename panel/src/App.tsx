@@ -3,6 +3,7 @@ import { BoardView } from "./board/BoardView";
 import { Chat } from "./components/Chat";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { interruptNarration, startNarrationPlayer } from "./narration";
+import type { LogLevel } from "./protocol";
 import { connect, useStore } from "./store";
 import { startListening, stopListening, voiceSupported } from "./voice";
 
@@ -72,7 +73,25 @@ export function App() {
         ) : (
           <span className="muted">No application connected</span>
         )}
-        {session && <span className="muted small" title="language model">LLM: {session.llm}</span>}
+        {session && (
+          <span className="muted small" title="language model">
+            LLM: {session.model ?? session.llm}
+          </span>
+        )}
+        {session?.logging && (
+          <label className="small" title={session.logPath ? `Session log: ${session.logPath}` : "Session telemetry"}>
+            <span className="muted">Logs</span>{" "}
+            <select
+              value={session.logging}
+              onChange={(e) => send({ type: "settings.update", logging: e.target.value as LogLevel })}
+              aria-label="Session logging level"
+            >
+              <option value="off">off</option>
+              <option value="basic">basic (no content)</option>
+              <option value="full">full (with conversation)</option>
+            </select>
+          </label>
+        )}
         <button className="ghost" onClick={() => setMode(mode === "side" ? "full" : "side")} aria-label="Toggle layout">
           {mode === "side" ? "⤢ Full" : "⤡ Side"}
         </button>

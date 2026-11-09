@@ -35,6 +35,7 @@ class AdapterClient:
         heartbeat_s: float = 15.0,
         on_status: Callable[[str], None] | None = None,
         state_version: Callable[[], int] | None = None,
+        on_request_done: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.manifest = manifest
         self.url = url
@@ -44,6 +45,8 @@ class AdapterClient:
         self.heartbeat_s = heartbeat_s
         self._on_status = on_status
         self._state_version = state_version
+        # Called after each request with {method, queue_ms, run_ms, ok, error_code}: host-side telemetry.
+        self.on_request_done = on_request_done
         self._ws: websocket.WebSocket | None = None
         self._send_lock = threading.Lock()
         self._stop = threading.Event()
@@ -189,11 +192,14 @@ class AdapterClient:
         method = msg["method"]
         params = msg.get("params") or {}
         request_id = msg.get("id")
+        timing: dict[str, float] = {"received": time.monotonic()}
 
         def run() -> Any:
+            timing["started"] = time.monotonic()
             return self.handler(method, params)
 
         def done(result: Any, exc: BaseException | None) -> None:
+            self._report(method, timing, exc)
             if request_id is None:
                 return
             if exc is None:
@@ -212,3 +218,21 @@ class AdapterClient:
             )
 
         self.dispatcher.submit(run, done)
+
+    def _report(self, method: str, timing: dict[str, float], exc: BaseException | None) -> None:
+        if self.on_request_done is None:
+            return
+        end = time.monotonic()
+        started = timing.get("started", end)
+        try:
+            self.on_request_done(
+                {
+                    "method": method,
+                    "queue_ms": round((started - timing["received"]) * 1000, 1),
+                    "run_ms": round((end - started) * 1000, 1),
+                    "ok": exc is None,
+                    "error_code": int(exc.code) if isinstance(exc, WyspError) else (None if exc is None else -1),
+                }
+            )
+        except Exception:  # noqa: BLE001 - telemetry must never break request handling
+            pass

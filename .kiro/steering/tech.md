@@ -46,6 +46,7 @@ inclusion: always
 | Regenerate schemas | `uv run python -m wysp_core.contract.export` |
 | Python tests | `uv run pytest` |
 | Live Blender tests | `uv run pytest -m live -o addopts="" apps\blender-tutor\tests` |
+| Session logs | `uv run wysp logs list\|summary\|timeline` (`WYSP_LOG=off\|basic\|full`, default full) |
 | TypeScript tests / typecheck | `npm test -w panel` / `npm run typecheck -w panel` |
 | Contract kit (offline fixture check) | `uv run wysp-contract --tutor blender-tutor --offline` *(online harness: planned)* |
 | Validate a profile | `uv run wysp validate-profile apps/blender-tutor/profile` |
