@@ -1,0 +1,73 @@
+# Wysp
+
+**A skeleton for building AI tutors for software applications.** A Wysp tutor observes the real state of an application, explains its concepts on an interactive visual board, guides the user through actions with permission, and verifies in the application what the user has learned. It works by voice, with a board, and through one adapter per application.
+
+Wysp is our entry for **Kiroween 2026, category Skeleton Crew**. One shared core (Wysp Core) powers two very different tutors:
+
+| Tutor | Folder | Integration level | Demo |
+|---|---|---|---|
+| Blender tutor | `apps/blender-tutor/` | native (Blender 5.2 Python API) | explain an object's modifier stack, add a Bevel with permission, verify it |
+| Web tutor | `apps/web-tutor/` | interface (DOM and accessibility, Chrome MV3 extension) | explain a dashboard filter, guide the creation of a report, verify it |
+
+> **Status (9 Nov 2026): design and planning.** The specs, steering rules, hooks and agents are in `.kiro/`. Code arrives task by task from the specs. Commands below are the planned ones.
+
+## How it works
+
+```
+Blender extension ─┐                         ┌─ Panel (React): board, captions, voice, permissions
+                   ├─ JSON-RPC / WebSocket ─ Wysp Core (Python) ─┤
+Chrome extension ──┘   (adapter contract)    └─ LLM with tool calling, text-to-speech
+```
+
+- **Adapter contract**: `observe`, `get_context`, `get_actions`, `execute`, `undo`, `highlight`, events. Defined once as Pydantic models, exported to JSON Schema and TypeScript.
+- **Trust rules**: every fact is labelled `observed`, `inferred` or `illustrative`; the LLM can only *propose* actions; a permission gate decides; every action is verified afterwards and undone if verification fails.
+- **Contract Test Kit**: the same test suite runs against the mock adapter, the Blender tutor and the web tutor.
+
+The full design (in French) is in [`docs/architecture/wysp-architecture.pdf`](docs/architecture/wysp-architecture.pdf). The normative specs (in English) are in [`.kiro/specs/`](.kiro/specs/).
+
+## Build your own tutor in four steps (planned)
+
+1. **Manifest**: id, integration level, capabilities, entity kinds, ref scheme.
+2. **Observation**: map the application state to entities (the SDK gives you the client, state digest and validation).
+3. **Actions**: one file per action with params schema, risk level, postconditions and UI path.
+4. **Profile**: skills, concepts, lessons and exercises in YAML.
+
+Then `uv run wysp-contract --tutor <name>` tells you whether your adapter is compliant. No change to the core or the Panel is needed.
+
+## How we use Kiro
+
+| Kiro feature | Where | What it does for us |
+|---|---|---|
+| Specs | `.kiro/specs/` | 6 specs (contract, core, pedagogy, panel, Blender tutor, web tutor): 52 EARS requirements, 49 correctness properties, 71 tasks with owner and milestone |
+| Steering | `.kiro/steering/` | product vocabulary, structure and boundaries, trust and safety, testing, contract guide, pedagogy, UI design system, demo and release checklists |
+| Hooks | `.kiro/hooks/` | core boundary guard, schema sync, offline contract checks, trust review, new-action integration, formatting, profile validation, tests after each task |
+| Agents | `.kiro/agents/` | `blender-adapter`, `browser-adapter`, `contract-guardian` (read-only reviewer) |
+| MCP | `docs/kiro/mcp.example.json` | Context7 (up-to-date docs), Playwright, and later a read-only bridge to a running tutor |
+
+Hooks call `scripts/kiro/hook.py`, a standard-library Python script that CI runs too.
+
+## Getting started (planned)
+
+Prerequisites: Python 3.13 with [uv](https://docs.astral.sh/uv/), Node 24, Chrome 116+, Blender 5.2 LTS.
+
+```bash
+uv sync && npm install
+uv run wysp serve --llm scripted --mock   # core + panel with the mock adapter, no API key needed
+```
+
+## Repository layout
+
+```
+.kiro/          specs, steering, hooks, agents
+core/           Wysp Core (Python)
+contract-tests/ Contract Test Kit and mock adapter
+sdk/            adapter SDKs (Python, TypeScript)
+panel/          shared React Panel
+apps/           blender-tutor/, web-tutor/
+docs/           architecture document, adapter guide, Kiro journal
+scripts/        dev scripts and the Kiro hook dispatcher
+```
+
+## License
+
+MIT (see `LICENSE`). The Blender extension in `apps/blender-tutor/adapter/` will be licensed GPL-3.0-or-later, as required for Blender add-ons.

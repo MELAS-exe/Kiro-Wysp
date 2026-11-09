@@ -1,0 +1,161 @@
+\section{Plan d'implémentation}
+
+\subsection{Hypothèses de capacité}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item 25 jours calendaires du lundi 9 novembre au vendredi 4 décembre. Nous comptons 22 jours de développement par personne et gardons les 2 et 3 décembre pour la vidéo et la soumission.
+  \item Les charges ci-dessous sont en jours-personne. L'estimation « avec Kiro » applique un facteur 0,65 à l'estimation brute, parce que l'agent écrit une grande partie du code à partir des specs et que l'humain relit, teste et corrige. \textbf{Ce facteur est une hypothèse} : à recalibrer au jalon J0 en comparant le temps réel des premières tâches à leur estimation.
+  \item Capacité : 3 $\times$ 22 = 66 jours-personne. Besoin estimé : 56 avec Kiro (86 brut). Marge d'environ 15\,\%, qui sert aux imprévus d'intégration.
+\end{itemize}
+
+\subsection{Jalons et critères de sortie}
+
+\begin{xltabular}{\textwidth}{@{}L{2.6cm}Y@{}}
+\toprule
+\textbf{Jalon} & \textbf{Critère de sortie (vérifié ensemble, avec \code{/demo-check})} \\
+\midrule
+\textbf{J0} mer.\ 11 nov. & Contrat 1.0.0 figé (modèles, schémas, types TS), adaptateur factice connecté à \code{wysp serve --mock}, panneau « hello » qui liste les adaptateurs, CI verte avec contrôle de frontière. \\
+\textbf{J1} jeu.\ 19 nov. & Blender de bout en bout \textbf{en mode texte} : expliquer la pile de modificateurs de la citrouille, tableau en disposition \code{stack}, proposition \code{add\_modifier}, approbation, exécution, vérification, annulation. Tableau de bord de démo v1. \\
+\textbf{J2} ven.\ 27 nov. & Navigateur de bout en bout sur \textbf{le même cœur} (diff de \file{core/} vide pour ce travail) : expliquer le filtre de région, création guidée d'un rapport vérifiée. Voix avec interruption. Exercices et preuves sur les deux applications. \\
+\textbf{J3} mar.\ 1\textsuperscript{er} déc. & Gel des fonctionnalités. Kit de contrat vert pour les trois adaptateurs, README et guide d'adaptateur, scénario de démo répété deux fois sans incident. \\
+\textbf{Soumission} ven.\ 4 déc. & Formulaire Devpost envoyé avant 12\,h GMT (limite officielle 22\,h GMT). \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Calendrier}
+
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{ganttchart}[
+    time slot format=isodate,
+    x unit=0.56cm, y unit chart=0.52cm, y unit title=0.55cm,
+    hgrid={*1{draw=muted!25}}, vgrid={*1{draw=muted!15}},
+    title/.style={draw=none, fill=night!8},
+    title label font=\sffamily\tiny,
+    bar label font=\sffamily\scriptsize, group label font=\sffamily\scriptsize\bfseries,
+    milestone label font=\sffamily\scriptsize\bfseries,
+    bar height=0.55, group top shift=0.25, group height=0.25, group peaks height=0.12,
+    bar/.append style={draw=none, rounded corners=1pt},
+    milestone/.append style={fill=danger, draw=none},
+    link/.style={-{Stealth[length=1.5mm]}, color=muted}
+  ]{2026-11-09}{2026-12-04}
+  \gantttitle{novembre}{22} \gantttitle{déc.}{4} \\
+  \gantttitlecalendar{day} \\
+  \ganttgroup[group/.append style={fill=pa}]{A, cœur et contrat}{2026-11-09}{2026-12-01} \\
+  \ganttbar[bar/.append style={fill=pa!45}]{Contrat, factice, squelette}{2026-11-09}{2026-11-11} \\
+  \ganttbar[bar/.append style={fill=pa!45}]{Passerelle, LLM, tableau}{2026-11-12}{2026-11-15} \\
+  \ganttbar[bar/.append style={fill=pa!45}]{Porte, orchestrateur, kit}{2026-11-16}{2026-11-19} \\
+  \ganttbar[bar/.append style={fill=pa!45}]{Exercices, leçons, apprenant}{2026-11-20}{2026-11-27} \\
+  \ganttbar[bar/.append style={fill=pa!25}]{Intégration, robustesse}{2026-11-28}{2026-12-01} \\
+  \ganttgroup[group/.append style={fill=pb}]{B, expérience}{2026-11-09}{2026-12-03} \\
+  \ganttbar[bar/.append style={fill=pb!40}]{Panneau, ui\_api}{2026-11-09}{2026-11-13} \\
+  \ganttbar[bar/.append style={fill=pb!40}]{Tableau de bord de démo}{2026-11-13}{2026-11-16} \\
+  \ganttbar[bar/.append style={fill=pb!40}]{Rendu du tableau, sous-titres}{2026-11-14}{2026-11-19} \\
+  \ganttbar[bar/.append style={fill=pb!40}]{Contenu des profils}{2026-11-20}{2026-11-25} \\
+  \ganttbar[bar/.append style={fill=pb!40}]{Voix, synthèse, exercices}{2026-11-21}{2026-11-27} \\
+  \ganttbar[bar/.append style={fill=pb!25}]{Accessibilité, vidéo}{2026-11-28}{2026-12-03} \\
+  \ganttgroup[group/.append style={fill=pc}]{C, adaptateurs}{2026-11-09}{2026-12-01} \\
+  \ganttbar[bar/.append style={fill=pc!40}]{SDK Python, extension Blender}{2026-11-09}{2026-11-13} \\
+  \ganttbar[bar/.append style={fill=pc!40}]{Observation, actions, événements}{2026-11-14}{2026-11-19} \\
+  \ganttbar[bar/.append style={fill=pc!40}]{SDK TS, surbrillance, kit Blender}{2026-11-20}{2026-11-22} \\
+  \ganttbar[bar/.append style={fill=pc!40}]{Extension Chrome}{2026-11-23}{2026-11-27} \\
+  \ganttbar[bar/.append style={fill=pc!25}]{README, guide, tests live}{2026-11-28}{2026-12-01} \\
+  \ganttbar[bar/.append style={fill=okgreen!45}]{Tournage, montage, envoi}{2026-12-02}{2026-12-04} \\
+  \ganttmilestone{Jalons J0, J1, J2, J3, envoi}{2026-11-11} \ganttmilestone{}{2026-11-19} \ganttmilestone{}{2026-11-27} \ganttmilestone{}{2026-12-01} \ganttmilestone{}{2026-12-04}
+\end{ganttchart}}
+\end{center}
+
+\subsection{Les trois sections de travail}
+
+\subsubsection*{\textcolor{pa}{Personne A : cœur et contrat}}
+
+\begin{xltabular}{\textwidth}{@{}L{3.2cm}Y@{}}
+\toprule
+Mission & Définir et tenir le contrat ; construire le cœur qui rend les deux tuteurs possibles sans code d'application. \\
+Dossiers & \file{core/}, \file{schemas/}, \file{contract-tests/} (kit et adaptateur factice). \\
+Specs et tâches & \file{adapter-contract} 1--6, 9, 10, 13 ; \file{core-orchestrator} 1--3, 5--8, 10, 12, 14 (et 5.1, 13 si le temps le permet) ; \file{pedagogy-verification} 1--9. \\
+Fournit à & \PB{} : protocole du panneau (types générés), fixtures de correctifs du tableau, LLM scénarisé. \PC{} : contrat figé à J0, kit en ligne lundi 16 novembre, chargeur de profils lundi 16 novembre. \\
+Dépend de & \PB{} pour \code{ui\_api} (tâche 4) ; \PC{} pour les retours sur le contrat avant J0. \\
+Charge & 32 jours bruts, environ 21 avec Kiro. C'est la charge la plus forte, d'où les leviers ci-dessous. \\
+Ligne de coupe & Dans l'ordre : pont MCP et Bedrock (optionnels), recommandations (remplacées par un ordre fixe des leçons), mode \code{--offline} du kit, injection de pannes en CI, résumé glissant de la conversation. \\
+\bottomrule
+\end{xltabular}
+
+\subsubsection*{\textcolor{pb}{Personne B : expérience}}
+
+\begin{xltabular}{\textwidth}{@{}L{3.2cm}Y@{}}
+\toprule
+Mission & Rendre le tutorat visible, audible et agréable : panneau, tableau, voix, tableau de bord de démo, contenu pédagogique, vidéo. \\
+Dossiers & \file{panel/}, \file{core/src/wysp_core/ui_api/}, \file{core/src/wysp_core/narration/}, \file{apps/web-tutor/demo-dashboard/}, \file{apps/*/profile/}. \\
+Specs et tâches & \file{tutor-panel} 1--11 ; \file{core-orchestrator} 4, 9, 11 ; \file{web-tutor} 1, 9 ; \file{blender-tutor} 9 ; \file{adapter-contract} 1 (partie npm). \\
+Fournit à & \PA{} : serveur \code{ui\_api}, narration. \PC{} : tableau de bord accessible lundi 16 novembre (cible de l'instantané), style de l'overlay. Tous : identité visuelle, vidéo, visuels du README. \\
+Dépend de & \PA{} : types du protocole (J0), fixtures du tableau (tâche 6), chargeur de profils (lundi 16 novembre). \PC{} : relecture technique des profils. \\
+Charge & 27 jours bruts, environ 17,5 avec Kiro. \\
+Ligne de coupe & Synthèse vocale serveur (garder celle du navigateur), dispositions \code{graph} et \code{sequence}, traduction française complète, interruption par détection d'énergie (garder Échap et l'appui pour parler). \\
+\bottomrule
+\end{xltabular}
+
+\subsubsection*{\textcolor{pc}{Personne C : adaptateurs}}
+
+\begin{xltabular}{\textwidth}{@{}L{3.2cm}Y@{}}
+\toprule
+Mission & Brancher deux applications très différentes sur le même contrat, sans jamais toucher au cœur. \\
+Dossiers & \file{sdk/}, \file{apps/blender-tutor/adapter/} et \file{demo/}, \file{apps/web-tutor/extension/}. \\
+Specs et tâches & \file{adapter-contract} 7, 8, 11 ; \file{blender-tutor} 1--8, 10--12 ; \file{web-tutor} 2--8, 10--12. \\
+Fournit à & \PA{} : retours sur le contrat avant J0, fixtures de contrat et enregistrements. \PB{} : scène de démo, catalogue d'actions pour les profils. \\
+Dépend de & \PA{} : contrat (J0), kit (lundi 16 novembre). \PB{} : tableau de bord de démo (lundi 16 novembre). \\
+Charge & 27,5 jours bruts, environ 18 avec Kiro. \\
+Ligne de coupe & \code{apply\_modifier}, \code{assign\_material}, \code{click\_element}, \code{follow\_link} ; mise en évidence des modificateurs via l'éditeur de propriétés ; traversée des racines Shadow DOM. \\
+\bottomrule
+\end{xltabular}
+
+\begin{keybox}[Leviers de rééquilibrage, décidés au point du jalon]
+Si A a plus d'un jour de retard à J1 : C reprend le lanceur Playwright et le mode hors ligne du kit, B reprend le moteur de recommandation et les tests de scénarios des leçons. Si C est en retard à J2 : A aide sur les actions web (après J2, la charge de A baisse), et l'adaptateur web se limite à \code{select\_option}, \code{fill\_field}, \code{set\_checked}, \code{focus\_element}.
+\end{keybox}
+
+\subsection{Planning semaine par semaine}
+
+{\small
+\begin{xltabular}{\textwidth}{@{}L{1.9cm}Y Y Y@{}}
+\toprule
+\textbf{Semaine} & \textcolor{pa}{\textbf{A}} & \textcolor{pb}{\textbf{B}} & \textcolor{pc}{\textbf{C}} \\
+\midrule
+9--15 nov. & Monorepo, modèles et export, prédicats et empreinte, adaptateur factice, squelette du cœur, passerelle, session (\textbf{J0}) ; puis LLM scénarisé et fournisseur réel, modèle du tableau. & Squelette du panneau et client du protocole (\textbf{J0}), serveur \code{ui\_api}, identité visuelle et modes, magasin du tableau ; début du tableau de bord. & Scène de démo, SDK Python (jeudi 12), extension Blender et connexion (jeudi 12, vendredi 13), début de l'observation. \\
+16--22 nov. & Kit en ligne et chargeur de profils (lundi 16), porte et chaîne d'action, orchestrateur et outils, service de vérification (\textbf{J1}) ; puis tests de scénarios, début des exercices. & Tableau de bord v1 (lundi 16), rendu du tableau (\code{stack}, \code{tree}), sous-titres avec synthèse du navigateur, dialogue de permission (\textbf{J1}) ; puis narration côté cœur et profil Blender. & Observation (lundi 16), actions et annulation, événements et origine, fixture du kit (\textbf{J1}) ; puis SDK TypeScript, surbrillance, kit Blender en mode sans interface. \\
+23--29 nov. & Moteur d'exercices, déroulé des leçons, modèle de l'apprenant, comportements sur événements ; appui à l'intégration web (\textbf{J2}). & Profil web, voix (transcription, interruption), synthèse serveur, carte d'exercice et progression, dispositions \code{graph} et \code{sequence} (\textbf{J2}). & Extension Chrome : squelette, instantané et masquage, localisateurs, actions, événements, overlay, fixture et lanceur (\textbf{J2}). \\
+30 nov.--4 déc. & Intégration et corrections (lundi 30), gel (\textbf{J3}), robustesse, aide au tournage avec le LLM scénarisé en secours. & Accessibilité, finitions, script et tournage (1\textsuperscript{er}--2 déc.), montage (3 déc.), visuels du README. & README des tuteurs, guide d'adaptateur, tests live ; opère Blender et Chrome pendant le tournage. \\
+\bottomrule
+\end{xltabular}}
+
+\subsection{Synchronisation et règles d'équipe}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Point quotidien de 15 minutes} à heure fixe : fait hier, prévu aujourd'hui, blocage. Les blocages de contrat passent avant tout le reste.
+  \item \textbf{Séance d'intégration à chaque jalon} (2 heures, les trois ensemble) : on exécute \code{/demo-check}, on note les écarts, on décide des coupes.
+  \item \textbf{Contrat figé à J0.} Ensuite, seuls les ajouts optionnels (version mineure) passent, selon le processus de la section 4.6.
+  \item \textbf{Branches courtes} \code{a/…}, \code{b/…}, \code{c/…}, fusionnées au moins une fois par jour. Deux personnes travaillent sur \file{core-orchestrator/tasks.md} (A et B) : fusionner souvent pour éviter les conflits sur les cases cochées.
+  \item \textbf{Une session Kiro par personne et par spec.} Ne pas lancer « Run all tasks » sur une spec partagée : chacun lance ses propres tâches.
+\end{itemize}
+
+\subsection{Définition de « fini » pour une tâche}
+
+\begin{enumerate}[leftmargin=1.2em]
+  \item Le code fait ce que disent les critères d'acceptation cités par la tâche.
+  \item Les tests de la tâche passent, y compris les tests de propriétés obligatoires ; aucun test n'appelle un vrai LLM ou un vrai service vocal.
+  \item Contrôle de frontière propre ; kit de contrat vert pour le tuteur touché (si concerné).
+  \item Documentation mise à jour (tableau des actions du README, commandes de \file{tech.md} si une commande « prévue » devient réelle).
+  \item Relecture par le responsable du périmètre, CI verte, fusion sur \code{main}, case cochée dans \file{tasks.md}.
+\end{enumerate}
+
+\subsection{Priorités (MoSCoW)}
+
+\begin{xltabular}{\textwidth}{@{}L{2.4cm}Y@{}}
+\toprule
+\textbf{Priorité} & \textbf{Contenu} \\
+\midrule
+Indispensable & Contrat et kit ; cœur avec outils, tableau, provenance, porte, vérification et annulation ; mode guidé ; narration avec interruption ; un exercice vérifié par application ; Blender avec \code{select\_object}, \code{show\_properties\_tab}, \code{add\_modifier}, \code{set\_modifier\_property}, \code{remove\_modifier} ; web avec \code{focus\_element}, \code{select\_option}, \code{fill\_field}, \code{set\_checked} ; tableau de bord ; panneau en modes \code{side} et \code{compact} ; appui pour parler ; synthèse du navigateur. \\
+Important & Déroulé complet des leçons, modèle de l'apprenant, dispositions \code{graph} et \code{sequence}, synthèse vocale serveur, interruption par la voix, actions restantes, mode hors ligne du kit, français complet. \\
+Souhaitable & Recommandations, injection de pannes en CI, pont MCP, Bedrock, mode \code{full} du panneau. \\
+Exclu du prototype & Adaptateur de niveau visuel (documenté comme extension possible), multi-utilisateur, déploiement distant. \\
+\bottomrule
+\end{xltabular}

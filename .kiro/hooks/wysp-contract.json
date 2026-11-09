@@ -1,0 +1,40 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "contract-schema-sync",
+      "description": "Regenerates the JSON Schemas and the TypeScript types when a contract model changes. No-op until the export module exists (adapter-contract task 2).",
+      "trigger": "PostFileSave",
+      "matcher": "core[\\\\/]src[\\\\/]wysp_core[\\\\/]contract[\\\\/].*\\.py$",
+      "action": {
+        "type": "command",
+        "command": "uv run --no-project python scripts/kiro/hook.py schemas"
+      },
+      "timeout": 120,
+      "enabled": true
+    },
+    {
+      "name": "adapter-contract-offline",
+      "description": "Runs the offline contract checks for the tutor whose adapter changed. No-op until the contract kit exists (adapter-contract task 9).",
+      "trigger": "PostFileSave",
+      "matcher": "apps[\\\\/][^\\\\/]+[\\\\/](adapter|extension[\\\\/]src)[\\\\/].*\\.(py|ts)$",
+      "action": {
+        "type": "command",
+        "command": "uv run --no-project python scripts/kiro/hook.py contract"
+      },
+      "timeout": 180,
+      "enabled": true
+    },
+    {
+      "name": "new-action-integration",
+      "description": "When a new adapter action file is created, wires it into its tutor: registry, risk, undo, contract fixture, README. Mirrors the gesture auto-integration hooks of Kiro InteractionKit.",
+      "trigger": "PostFileCreate",
+      "matcher": "apps[\\\\/][^\\\\/]+[\\\\/](adapter|extension[\\\\/]src)[\\\\/]actions[\\\\/][a-z0-9_]+\\.(py|ts)$",
+      "action": {
+        "type": "agent",
+        "prompt": "A new adapter action file was just created. Integrate it into its tutor without touching Wysp Core. Skip this if the file is __init__.py, index.ts, a registry or a test file. Steps: (1) make sure the file defines exactly one action whose id equals the file name (<verb>_<object>), with a title, a description written for the LLM, a JSON Schema for its params, a risk level, postconditions using ${params.*} placeholders and, when it helps the learner, guide.ui_path; (2) register it in the adapter's action registry so that adapter.get_actions returns it; (3) if it is reversible, implement undo and make sure it restores the state digest; (4) add at least one safe call and one invalid call for it in apps/<tutor>/contract.fixture.yaml; (5) add a row (id, risk, reversible, description) to the action table of apps/<tutor>/README.md; (6) run `uv run --no-project python scripts/kiro/hook.py contract` and fix failures. Finish by listing the files you changed."
+      },
+      "enabled": true
+    }
+  ]
+}

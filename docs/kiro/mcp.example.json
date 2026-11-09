@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "disabled": false,
+      "autoApprove": ["resolve-library-id", "get-library-docs"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "wysp-dev": {
+      "command": "uv",
+      "args": ["run", "--directory", "core", "wysp", "mcp-bridge", "--read-only"],
+      "disabled": true,
+      "autoApprove": []
+    }
+  }
+}

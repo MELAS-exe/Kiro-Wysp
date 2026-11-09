@@ -1,0 +1,52 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "format-python",
+      "description": "Formats and lints saved Python files with ruff. No-op until the uv workspace exists.",
+      "trigger": "PostFileSave",
+      "matcher": "\\.py$",
+      "action": {
+        "type": "command",
+        "command": "uv run --no-project python scripts/kiro/hook.py format-py"
+      },
+      "timeout": 60,
+      "enabled": true
+    },
+    {
+      "name": "format-typescript",
+      "description": "Formats saved TypeScript files with prettier. No-op until prettier is installed in node_modules.",
+      "trigger": "PostFileSave",
+      "matcher": "\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "uv run --no-project python scripts/kiro/hook.py format-ts"
+      },
+      "timeout": 60,
+      "enabled": true
+    },
+    {
+      "name": "profile-validate",
+      "description": "Validates pedagogical profiles (YAML) against the profile schema. No-op until the wysp CLI exists (pedagogy-verification task 1).",
+      "trigger": "PostFileSave",
+      "matcher": "apps[\\\\/][^\\\\/]+[\\\\/]profile[\\\\/].*\\.ya?ml$",
+      "action": {
+        "type": "command",
+        "command": "uv run --no-project python scripts/kiro/hook.py profiles"
+      },
+      "timeout": 60,
+      "enabled": true
+    },
+    {
+      "name": "task-tests",
+      "description": "After a spec task completes, runs the tests of the packages changed in the working tree (Python and TypeScript).",
+      "trigger": "PostTaskExec",
+      "action": {
+        "type": "command",
+        "command": "uv run --no-project python scripts/kiro/hook.py task-tests"
+      },
+      "timeout": 900,
+      "enabled": true
+    }
+  ]
+}

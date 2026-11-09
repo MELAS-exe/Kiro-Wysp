@@ -1,0 +1,38 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "core-boundary-guard",
+      "description": "Fails when Wysp Core imports host or adapter code, or uses application vocabulary. Keeps the Core app-agnostic, which is the proof that both tutors share the same Core.",
+      "trigger": "PostFileSave",
+      "matcher": "core[\\\\/].*\\.py$",
+      "action": {
+        "type": "command",
+        "command": "uv run --no-project python scripts/kiro/hook.py boundaries"
+      },
+      "timeout": 60,
+      "enabled": true
+    },
+    {
+      "name": "trust-review",
+      "description": "Reviews changes to permission and trust code, adapter action files and extension/add-on manifests against the trust and safety rules.",
+      "trigger": "PostFileSave",
+      "matcher": "([\\\\/](trust|actions)[\\\\/][^\\\\/]+\\.(py|ts)$)|(extension[\\\\/].*manifest\\.json$)|(blender_manifest\\.toml$)",
+      "action": {
+        "type": "agent",
+        "prompt": "You just changed a file related to permissions, adapter actions or extension/add-on permissions. Check the change against .kiro/steering/trust-and-safety.md before continuing: (1) every action declares a risk level, and every reversible action returns an undo token with a working undo; (2) no action evaluates code, scripts or shell commands; (3) nothing bypasses the permission gate or the provenance validator; (4) no token, API key or sensitive field value is logged or sent; (5) manifest permissions stay minimal (no new host or Blender permission without a reason written in the spec). If something violates these rules, fix it now and say what you changed. Otherwise continue without comment."
+      },
+      "enabled": true
+    },
+    {
+      "name": "task-preflight",
+      "description": "Before a spec task runs, reminds the agent of ownership, dependencies and the contract change process.",
+      "trigger": "PreTaskExec",
+      "action": {
+        "type": "agent",
+        "prompt": "Before implementing this spec task: (1) re-read the requirements it references in requirements.md and the related section of design.md; (2) check ownership in .kiro/steering/structure.md: if the task changes files owned by another person or changes the adapter contract (core/src/wysp_core/contract, schemas/, sdk/), stop and ask the user to confirm that the contract change process is followed; (3) check that the earlier tasks it depends on are completed; (4) keep Wysp Core free of application-specific code; (5) write or update the tests listed in the task, including required property tests."
+      },
+      "enabled": true
+    }
+  ]
+}

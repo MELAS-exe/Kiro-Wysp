@@ -1,0 +1,58 @@
+\appendix
+\section{Annexes}
+
+\subsection{Fichiers créés dans le dépôt}
+
+\begin{xltabular}{\textwidth}{@{}L{6.6cm}Y@{}}
+\toprule
+\textbf{Chemin} & \textbf{Contenu} \\
+\midrule
+\file{.kiro/steering/*.md} (10) & Règles de l'agent : produit, technique, structure, confiance, tests, contrat, pédagogie, panneau, deux listes manuelles \\
+\file{.kiro/specs/*/} (6 specs) & \file{requirements.md}, \file{design.md}, \file{tasks.md} pour \file{adapter-contract}, \file{core-orchestrator}, \file{pedagogy-verification}, \file{tutor-panel}, \file{blender-tutor}, \file{web-tutor} \\
+\file{.kiro/hooks/wysp-guards.json} & \code{core-boundary-guard}, \code{trust-review}, \code{task-preflight} \\
+\file{.kiro/hooks/wysp-contract.json} & \code{contract-schema-sync}, \code{adapter-contract-offline}, \code{new-action-integration} \\
+\file{.kiro/hooks/wysp-quality.json} & \code{format-python}, \code{format-typescript}, \code{profile-validate}, \code{task-tests} \\
+\file{.kiro/agents/*.md} (3) & \code{blender-adapter}, \code{browser-adapter}, \code{contract-guardian} \\
+\file{docs/kiro/mcp.example.json} & Configuration MCP proposée (Context7, Playwright, pont \code{wysp-dev} désactivé) \\
+\file{scripts/kiro/hook.py} & Contrôles appelés par les hooks et la CI (frontière, schémas, contrat, profils, format, tests) \\
+\file{docs/architecture/} & Ce document (source LaTeX, sections séparées) \\
+\file{docs/notes/working-notes.md} & Notes de travail : faits vérifiés, décisions, jalons \\
+\file{README.md}, \file{LICENSE}, \file{.gitignore} & Présentation du dépôt, licence MIT, exclusions (en gardant \file{.kiro/}) \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Glossaire}
+
+\begin{xltabular}{\textwidth}{@{}L{3.6cm}Y@{}}
+\toprule
+\textbf{Terme} & \textbf{Définition} \\
+\midrule
+Wysp Core (cœur) & Moteur Python commun à tous les tuteurs ; ne connaît aucune application. \\
+Adaptateur & Composant propre à une application qui implémente le contrat. \\
+Profil & Données pédagogiques (YAML) d'une application : compétences, concepts, leçons, exercices. \\
+Tuteur & Adaptateur + profil, branchés sur le cœur ; un dossier par tuteur dans \file{apps/}. \\
+Panneau & Interface React unique, commune aux tuteurs. \\
+Tableau & Vue interactive du modèle visuel (nœuds, arêtes, étapes, annotations). \\
+Provenance & Statut d'un fait : \pobs{} (observé), \pinf{} (déduit), \pill{} (exemple pédagogique). \\
+Niveau d'intégration & \code{native} (API), \code{interface} (DOM, accessibilité), \code{visual} (capture, vision). \\
+Porte de permission & Composant du cœur qui décide si une action proposée peut s'exécuter. \\
+Preuve & Trace d'une vérification : prédicat, valeur réelle, valeur attendue, observation, date. \\
+Empreinte d'état & Hachage canonique d'une observation, utilisé pour l'annulation et les appels invalides. \\
+Kit de contrat & Suite de tests qui joue le rôle du cœur contre n'importe quel adaptateur. \\
+EARS & Easy Approach to Requirements Syntax : « WHEN \dots{} THE SYSTEM SHALL \dots{} ». \\
+Propriété de correction & Énoncé « pour toute entrée valide \dots{} », testé par génération aléatoire (Hypothesis, fast-check). \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Sources}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item Note de concept « Project K » (fichier \file{project_k_rapport.pdf} du dépôt), renommée Wysp.
+  \item Kiro InteractionKit, dépôt public : \url{https://github.com/Harpita-P/Kiro-InteractionKit} (cloné le 9 novembre 2026, dernier commit du 5 décembre 2025).
+  \item Kiroween 2026, page du concours : \url{https://kiroween.devpost.com/} (période de soumission du 30 octobre au 4 décembre 2026 ; la page des règles a renvoyé une erreur 403 à la lecture automatique, à relire manuellement).
+  \item Kiro Weekly Reading List, 1\textsuperscript{er} novembre 2026 (AWS Builder Center) : clôture le 4 décembre à 14\,h heure du Pacifique.
+  \item Documentation Kiro (steering, specs, hooks, agents, MCP, skills) : \url{https://kiro.dev/docs/}.
+  \item Blender 5.2 LTS, sortie le 14 juillet 2026, Python 3.13 ; \code{bpy} sur PyPI : \url{https://pypi.org/project/bpy/}.
+  \item Chrome, WebSockets dans les service workers (Chrome 116 et suivants) : \url{https://developer.chrome.com/docs/extensions/how-to/web-platform/websockets}.
+  \item Extensions Blender et licence GPL-3.0-or-later : \url{https://docs.blender.org/manual/en/latest/advanced/extensions/getting_started.html}.
+\end{itemize}

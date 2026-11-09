@@ -1,0 +1,59 @@
+\section{Analyse du projet de référence : Kiro InteractionKit}
+
+Kiro InteractionKit (dépôt \file{github.com/Harpita-P/Kiro-InteractionKit}, dernier commit du 5 décembre 2025) a remporté le Grand Prize de Kiroween 2025 dans la catégorie Skeleton Crew. Nous avons cloné le dépôt et lu le code, les specs, le steering, les hooks et la configuration MCP.
+
+\subsection{Contenu du dépôt}
+
+\begin{xltabular}{\textwidth}{@{}L{3.6cm}L{4.4cm}Y@{}}
+\toprule
+\textbf{Élément} & \textbf{Contenu} & \textbf{Observation} \\
+\midrule
+Cœur \file{kiro_interaction_kit/} & 3 contrôleurs (main, tête, visage) sur MediaPipe, 18 fonctions de détection de gestes (\code{HA1}--\code{HA9}, \code{HE1}--\code{HE6}, \code{FA1}--\code{FA3}) & 29 fichiers, 925 lignes. Fonctions pures, une par fichier, numérotées. L'état est un dataclass de booléens (\code{is\_pinch}, \code{is\_peace}\dots). \\
+Applications \file{my_apps/} & Math-O-Lantern (jeu éducatif), Holo-Board (tableau lumineux gestuel avec enregistrement vidéo) & Un seul \file{main.py} par application : 870 lignes et 7 classes, 1\,883 lignes et 5 classes. Les deux n'importent que \code{HandTracker}. \\
+Specs \file{.kiro/specs/} & Une spec par application : exigences, design, tâches & Exigences en EARS (9 et 12 exigences), design avec 19 et 26 propriétés de correction, tâches cochées (13 et 12 faites). \\
+Steering \file{.kiro/steering/} & \file{product}, \file{tech}, \file{structure}, \file{testing}, \file{game-development} (manuel) & Règles de nommage des gestes, séparation « vision / logique de jeu », modèle de code imposé, charte graphique des démos de test. \\
+Hooks \file{.kiro/hooks/} & 3 hooks « intégrer automatiquement un nouveau geste » & À chaque nouveau fichier de geste, l'agent met à jour l'import, le champ d'état, l'appel dans le contrôleur, la démo de test et le README. Ancien format \file{.kiro.hook}. \\
+MCP \file{.kiro/settings/} & Context7 & Documentation à jour de MediaPipe et Pygame pour l'agent. \\
+Tests \file{tests/} & 3 démos interactives (\file{CV-Test-*.py}) & Ce sont des démos visuelles, pas des tests automatisés. \\
+Onboarding & \file{setup.sh}, \file{setup.bat}, README avec GIF animés, licence MIT & « Supprimez les deux applications et créez votre spec » : le template est pensé pour être réutilisé. \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Leur méthode d'implémentation}
+
+\begin{enumerate}[leftmargin=1.2em]
+  \item \textbf{Un cœur qui retire une complexité répétitive.} Le kit cache MediaPipe et la géométrie des repères derrière des fonctions \code{is\_*()} lisibles. Le développeur d'application lit un état et écrit sa logique.
+  \item \textbf{Développement piloté par specs.} Chaque application a ses exigences au format EARS, un design avec des propriétés de correction reliées aux exigences (« \emph{For any} \dots{} \textbf{Validates: Requirements 1.4} ») et un plan de tâches relié aux exigences.
+  \item \textbf{Steering prescriptif.} Les fichiers imposent la structure des dossiers, le nommage, l'architecture (« Direct Controller ») et un modèle de code. L'agent produit ainsi du code homogène.
+  \item \textbf{Hooks d'intégration.} L'extension du cœur (un nouveau geste) déclenche automatiquement toutes les modifications d'intégration. C'est leur usage de Kiro le plus original.
+  \item \textbf{Présentation soignée.} Bannière, GIF de démonstration, instructions courtes, deux applications au thème Halloween.
+\end{enumerate}
+
+\subsection{Limites observées}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Frontière faible.} Le « contrat » entre cœur et applications se réduit à un dataclass de booléens. Rien ne vérifie qu'une application respecte le cœur, et le cœur ne propose aucun protocole.
+  \item \textbf{Applications monolithiques.} Toute la logique d'une application tient dans un fichier, ce qui serait difficile à faire évoluer à plusieurs.
+  \item \textbf{Tests non réalisés.} Les 36 tâches de tests optionnelles (29 tests de propriétés, 5 tests unitaires, 2 autres) sont restées décochées. Les propriétés sont écrites mais jamais vérifiées.
+  \item \textbf{Hooks coûteux et fragiles.} Les trois hooks sont des prompts d'agent (consomment des crédits, résultat non déterministe) et utilisent l'ancien format.
+\end{itemize}
+
+\subsection{Ce que nous en tirons pour Wysp}
+
+\begin{xltabular}{\textwidth}{@{}L{4.2cm}L{4.6cm}Y@{}}
+\toprule
+\textbf{Chez InteractionKit} & \textbf{Ce que Wysp reprend} & \textbf{Ce que Wysp fait en plus} \\
+\midrule
+Cœur qui cache MediaPipe & Le cœur cache toute l'intelligence tutorielle : LLM, tableau, voix, pédagogie, permissions & Un contrat versionné, typé, exporté en JSON Schema et en types TypeScript \\
+Deux applications de thème différent & Deux tuteurs dans \file{apps/blender-tutor} et \file{apps/web-tutor} & Deux \emph{niveaux d'intégration} différents (natif et interface), preuve vérifiable que le cœur n'a pas changé (contrôle de frontière) \\
+Specs EARS et propriétés & Même format, même traçabilité exigence $\rightarrow$ propriété $\rightarrow$ tâche & Les tâches de propriétés sont \textbf{obligatoires} et tournent en CI \\
+Hooks d'intégration de gestes & Hook « nouvelle action d'adaptateur » qui câble registre, undo, fixture de contrat et README & Hooks déterministes (commandes Python) pour les contrôles fréquents ; prompts d'agent seulement pour la revue de sécurité \\
+Steering prescriptif & Produit, technique, structure, tests & Règles de confiance et sécurité, guide du contrat, pédagogie, charte du panneau \\
+MCP Context7 & Context7 pour \code{bpy} et Chrome & Playwright MCP, puis un pont MCP en lecture seule vers un tuteur en cours d'exécution \\
+README visuel et onboarding & GIF, démarrage rapide, licence MIT & « Créez votre tuteur en quatre étapes », kit de contrat pour valider un nouvel adaptateur \\
+\bottomrule
+\end{xltabular}
+
+\begin{keybox}[Leçon principale]
+Le jury de la catégorie récompense un squelette qui supprime une complexité répétitive et dont la réutilisation est démontrée. Pour Wysp, la meilleure preuve est double : le contrôle de frontière qui montre qu'aucun code d'application n'entre dans le cœur, et le même kit de tests de contrat qui passe contre l'adaptateur factice, Blender et Chrome.
+\end{keybox}

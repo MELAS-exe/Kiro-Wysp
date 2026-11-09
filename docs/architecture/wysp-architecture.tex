@@ -1,0 +1,131 @@
+% Wysp : architecture technique, workflows et plan d'implementation
+% Compilation : tectonic -X compile docs/architecture/wysp-architecture.tex
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage[french]{babel}
+\setmainfont{texgyrepagella}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+\setsansfont{texgyreheros}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+
+\usepackage[margin=2.1cm,headheight=14pt]{geometry}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.multipart,fit,backgrounds,calc,babel}
+\usepackage{pgfgantt}
+\usepackage{pgf-umlsd}
+\usepackage{booktabs,array,multirow,xltabular}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{amssymb}
+\usepackage[hidelinks]{hyperref}
+
+% ---------------------------------------------------------------- couleurs
+\definecolor{night}{HTML}{0F172A}
+\definecolor{surface}{HTML}{1E293B}
+\definecolor{wisp}{HTML}{0F9E8E}
+\definecolor{wisplight}{HTML}{CCFBF1}
+\definecolor{pumpkin}{HTML}{EA580C}
+\definecolor{pumpkinlight}{HTML}{FFEDD5}
+\definecolor{muted}{HTML}{64748B}
+\definecolor{okgreen}{HTML}{16A34A}
+\definecolor{danger}{HTML}{DC2626}
+\definecolor{pa}{HTML}{2563EB}   % personne A
+\definecolor{pb}{HTML}{9333EA}   % personne B
+\definecolor{pc}{HTML}{EA580C}   % personne C
+\definecolor{codebg}{HTML}{F8FAFC}
+
+% ---------------------------------------------------------------- mise en page
+\titleformat{\section}{\Large\sffamily\bfseries\color{night}}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\large\sffamily\bfseries\color{night}}{\thesubsection}{0.7em}{}
+\titleformat{\subsubsection}{\normalsize\sffamily\bfseries\color{surface}}{\thesubsubsection}{0.6em}{}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\small\color{muted} Wysp \textbullet{} Architecture, workflows et plan}
+\fancyhead[R]{\sffamily\small\color{muted} Brouillon 0.1 \textbullet{} 9 novembre 2026}
+\fancyfoot[C]{\sffamily\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\setlist{itemsep=2pt,topsep=4pt}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
+\renewcommand{\arraystretch}{1.18}
+
+% ---------------------------------------------------------------- code
+\lstdefinestyle{wysp}{
+  basicstyle=\ttfamily\footnotesize, backgroundcolor=\color{codebg}, frame=single, rulecolor=\color{muted!40},
+  breaklines=true, columns=fullflexible, keepspaces=true, showstringspaces=false,
+  keywordstyle=\color{pa}\bfseries, commentstyle=\color{muted}\itshape, stringstyle=\color{okgreen!70!black},
+  xleftmargin=2pt, xrightmargin=2pt, aboveskip=6pt, belowskip=6pt}
+\lstset{style=wysp}
+
+% ---------------------------------------------------------------- boites
+\newtcolorbox{keybox}[1][]{enhanced, colback=wisplight!45, colframe=wisp, boxrule=0.6pt, arc=2mm,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\sffamily\bfseries, title={#1}}
+\newtcolorbox{warnbox}[1][]{enhanced, colback=pumpkinlight!60, colframe=pumpkin, boxrule=0.6pt, arc=2mm,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\sffamily\bfseries, title={#1}}
+\newtcolorbox{notebox}{enhanced, colback=codebg, colframe=muted!50, boxrule=0.4pt, arc=2mm,
+  left=6pt, right=6pt, top=3pt, bottom=3pt}
+
+% ---------------------------------------------------------------- macros
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\file}[1]{{\small\path{#1}}}
+\renewcommand{\UrlFont}{\ttfamily}
+\newcommand{\PA}{\textcolor{pa}{\textbf{A}}}
+\newcommand{\PB}{\textcolor{pb}{\textbf{B}}}
+\newcommand{\PC}{\textcolor{pc}{\textbf{C}}}
+\newcommand{\pobs}{\textsf{observed}}
+\newcommand{\pinf}{\textsf{inferred}}
+\newcommand{\pill}{\textsf{illustrative}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\begin{document}
+
+% ---------------------------------------------------------------- titre
+\begin{titlepage}
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[night] (current page.north west) rectangle ([yshift=-9.5cm]current page.north east);
+  \foreach \x/\y/\r/\o in {3.2/-2.6/0.55/0.9, 4.1/-3.4/0.25/0.6, 2.5/-3.7/0.15/0.5, 15.5/-6.8/0.35/0.5, 16.4/-7.6/0.18/0.4}
+    \shade[inner color=wisp!80!white, outer color=night, opacity=\o] ([xshift=\x cm, yshift=\y cm]current page.north west) circle (\r cm);
+  \node[anchor=west, text=white, font=\sffamily\bfseries\fontsize{54}{60}\selectfont] at ([xshift=2.2cm,yshift=-5.0cm]current page.north west) {Wysp};
+  \node[anchor=west, text=wisplight, font=\sffamily\Large] at ([xshift=2.25cm,yshift=-6.4cm]current page.north west) {Un framework pour créer des tuteurs IA adaptés aux logiciels};
+  \node[anchor=west, text=white!75, font=\sffamily\normalsize] at ([xshift=2.25cm,yshift=-7.3cm]current page.north west) {Kiroween 2026 \textbullet{} Catégorie Skeleton Crew};
+\end{tikzpicture}
+
+\vspace*{9.2cm}
+{\sffamily\huge\bfseries\color{night} Architecture technique, workflows\\[2pt] et plan d'implémentation\par}
+\vspace{0.6cm}
+{\sffamily\large\color{muted} Brouillon de travail pour l'équipe (trois personnes)\par}
+\vspace{1.0cm}
+
+\begin{tabularx}{\textwidth}{@{}L{3.4cm}Y@{}}
+\textbf{Version} & 0.1 (brouillon), 9 novembre 2026 \\
+\textbf{Base} & Note de concept « Project K », renommé \textbf{Wysp} \\
+\textbf{Référence étudiée} & Kiro InteractionKit, Grand Prize Kiroween 2025 \\
+\textbf{Échéance} & Vendredi 4 décembre 2026, 14\,h heure du Pacifique (22\,h GMT, heure de Dakar) \\
+\textbf{Dépôt} & \file{github.com/MELAS-exe/Kiro-Wysp} \\
+\textbf{Mise en place Kiro} & 10 fichiers de steering, 6 specs, 10 hooks, 3 agents, configuration MCP proposée \\
+\end{tabularx}
+
+\vfill
+\begin{notebox}
+\small Ce document rassemble l'analyse du projet de référence, l'architecture proposée pour Wysp, les workflows principaux, la configuration Kiro mise en place dans le dépôt et le plan d'implémentation réparti entre trois personnes. Les choix techniques sont des propositions à valider pendant la première semaine. Les specs Kiro (\file{.kiro/specs/}) restent la référence détaillée, en anglais pour le jury.
+\end{notebox}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\input{sections/00-resume}
+\input{sections/01-reference}
+\input{sections/02-architecture}
+\input{sections/03-workflows}
+\input{sections/04-kiro}
+\input{sections/05-plan}
+\input{sections/06-demo-risques}
+\input{sections/07-annexes}
+
+\end{document}

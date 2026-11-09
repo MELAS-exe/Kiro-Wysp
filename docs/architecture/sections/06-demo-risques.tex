@@ -1,0 +1,50 @@
+\section{Démonstration, risques et questions ouvertes}
+
+\subsection{Scénario de la vidéo (moins de 3 minutes)}
+
+La vidéo doit montrer un produit utilisable, la réutilisation réelle du cœur et l'usage de Kiro. Elle est tournée en anglais (ou sous-titrée en anglais), avec le LLM réel ; le LLM scénarisé reste prêt en secours.
+
+\begin{xltabular}{\textwidth}{@{}L{1.6cm}L{3.0cm}Y@{}}
+\toprule
+\textbf{Temps} & \textbf{Écran} & \textbf{Ce qu'on montre} \\
+\midrule
+0:00--0:15 & Titre, Blender & Le problème : apprendre un logiciel sur son propre travail. Wysp en une phrase. \\
+0:15--0:50 & Blender + panneau & « Explain this pumpkin's modifiers. » Le tableau se construit en pile (nœuds observés), la narration met en évidence Subdivision puis Solidify dans Blender. \\
+0:50--1:05 & idem & Interruption à la voix : « Wait, why is Solidify after Subdivision? » Réponse avec un nœud \emph{illustratif} « if Solidify came first », marqué « for example ». \\
+1:05--1:35 & idem & « Round the candle's edges. » Dialogue de permission, approbation, ajout du Bevel, badge « verified in Blender ». Puis l'exercice « 3 segments » fait par l'utilisateur lui-même et vérifié. \\
+1:35--2:15 & Chrome + panneau & Même panneau, même voix. « What does the region filter do? » Le tableau montre les filtres et le tableau des commandes. Création guidée du rapport : surbrillance des contrôles, l'utilisateur agit, rapport vérifié dans la liste. \\
+2:15--2:40 & Code, terminal & Seul l'adaptateur change : arborescence \file{apps/}, \code{git diff} vide sur \file{core/}, le même kit de contrat vert sur factice, Blender et Chrome, le hook de frontière en action. \\
+2:40--2:55 & \file{.kiro/} & Specs avec propriétés, hooks, agents ; « build your own tutor in 4 steps ». \\
+2:55--3:00 & Logo & Lien du dépôt. \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Risques et mitigations}
+
+\begin{xltabular}{\textwidth}{@{}L{4.3cm}L{1.3cm}Y@{}}
+\toprule
+\textbf{Risque} & \textbf{Niveau} & \textbf{Mitigation} \\
+\midrule
+Glissement du contrat après J0, intégration tardive & élevé & Contrat figé à J0, kit en ligne lundi 16 novembre, enregistrements hors ligne, intégration de bout en bout dès J1 avec l'adaptateur factice puis Blender. \\
+Charge de A la plus forte & élevé & B porte \code{ui\_api} et la narration ; lignes de coupe définies ; leviers de rééquilibrage à J1 et J2. \\
+Fiabilité du LLM (outils mal appelés, latence) pendant la démo & élevé & Outils peu nombreux et typés, erreurs structurées, 8 tours maximum, scénario rejoué par \code{ScriptedLLM} en secours, prompts testés sur les deux scénarios. \\
+Voix : écho, faux déclenchements, permission micro & moyen & Appui pour parler par défaut, Échap toujours actif, annulation d'écho, repli sur le texte et sur la synthèse du navigateur. \\
+Threads Blender (plantage si \code{bpy} hors du fil principal) & moyen & File et pompe par minuteur, propriété BLD-P1, tests avec \code{bpy} de PyPI. \\
+Service worker MV3 arrêté par Chrome & moyen & Battement de 20\,s, reconnexion et état dans \code{chrome.storage.session}. \\
+Changements d'API entre versions de Blender & moyen & Cible unique Blender 5.2 LTS, Context7, extraction RNA générique plutôt que code par type. \\
+Coût des appels LLM et vocaux & faible & Fournisseur compatible OpenAI configurable (y compris modèle local), cache de la synthèse vocale. \\
+Règles du concours mal lues (page non accessible automatiquement) & moyen & Relecture humaine des règles officielles cette semaine ; liste \code{/release-checklist}. \\
+Dépassement de la durée de la vidéo & faible & Script minuté ci-dessus, répétition à J3. \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Questions ouvertes à trancher cette semaine}
+
+\begin{enumerate}[leftmargin=1.2em]
+  \item \textbf{Fournisseur LLM} : quel modèle avec appels d'outils, quel budget ? Une offre compatible OpenAI (ou Bedrock si nous avons des crédits AWS) est prévue par l'architecture.
+  \item \textbf{Synthèse vocale} : service externe (meilleure voix) ou synthèse du navigateur seule (aucun coût) ?
+  \item \textbf{Répartition A, B, C} : la proposition suppose une personne à l'aise en Python asynchrone (A), une en React et design (B), une curieuse de Blender et des extensions Chrome (C). À ajuster selon les profils réels.
+  \item \textbf{Machines} : Blender 5.2 LTS et Chrome récent sur les trois postes ; une machine de tournage avec micro correct.
+  \item \textbf{Langue} : dépôt et vidéo en anglais (recommandé pour le jury), panneau bilingue.
+  \item \textbf{Licences} : MIT à la racine, GPL-3.0-or-later pour l'extension Blender. À confirmer par l'équipe.
+\end{enumerate}

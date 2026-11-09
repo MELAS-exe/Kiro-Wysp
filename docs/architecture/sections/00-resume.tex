@@ -1,0 +1,31 @@
+\section{Résumé}
+
+\textbf{Wysp} est un socle réutilisable pour créer des tuteurs IA propres à chaque logiciel. Un tuteur Wysp observe l'état réel de l'application, explique ses concepts, construit un tableau visuel interactif, guide les actions et vérifie dans l'application ce que l'utilisateur a réussi. Le prototype doit prouver qu'un même cœur sert deux applications très différentes : \textbf{Blender} (intégration native par l'API Python) et un \textbf{tableau de bord web} (intégration par le DOM et l'accessibilité, via une extension Chrome).
+
+\begin{keybox}[Les décisions structurantes]
+\begin{enumerate}[leftmargin=1.2em]
+  \item \textbf{Contrat d'abord.} Un protocole JSON-RPC 2.0 sur WebSocket local. Les adaptateurs sont clients, le cœur est serveur sur \code{127.0.0.1:8765}. Les modèles Pydantic sont la source unique, exportés en JSON Schema et en types TypeScript.
+  \item \textbf{Un modèle d'observation générique} : un graphe d'entités (\code{ref}, \code{kind}, \code{props}, liens, focus). Les types d'entités sont déclarés par l'adaptateur, jamais par le cœur.
+  \item \textbf{Le LLM décide quoi dire et quoi montrer. Le cœur décide ce qui est vrai et ce qui est permis.} Les nœuds « observés » du tableau sont créés par projection des observations, pas par le LLM. Les actions passent par une porte de permission, puis une vérification par prédicats, avec annulation automatique en cas d'échec.
+  \item \textbf{Provenance visible partout} : \pobs, \pinf, \pill, avec le même code visuel sur le tableau et dans les sous-titres.
+  \item \textbf{Vérification par preuves} : les critères de réussite sont des prédicats écrits par l'auteur du profil et évalués sur une observation fraîche. Une réussite vérifiée compte plus qu'une réponse ou une déclaration.
+  \item \textbf{Testabilité} : un adaptateur factice (Kanban), un LLM scénarisé et un kit de tests de contrat exécutable contre chaque adaptateur.
+\end{enumerate}
+\end{keybox}
+
+\paragraph{Ce que nous retenons du lauréat 2025.} Kiro InteractionKit a gagné avec un cœur petit et clair, deux applications distinctes, un dossier \file{.kiro} complet et un README très visuel. Leur cœur (29 fichiers, 925 lignes) ne contenait que des fonctions de détection, et chaque application était un fichier monolithique de 870 à 1\,883 lignes. Leurs 36 tâches de tests optionnelles, dont 29 tests de propriétés, n'ont pas été réalisées. Wysp reprend la forme (cœur mince, deux applications, Kiro visible, onboarding en quatre étapes) et va plus loin sur la frontière : un contrat versionné, un kit de tests de contrat et des propriétés de correction obligatoires.
+
+\paragraph{Répartition en trois sections.}
+\begin{itemize}[leftmargin=1.2em]
+  \item \PA{} \textbf{Cœur et contrat} : contrat, passerelle, orchestrateur, LLM, tableau (modèle), confiance, pédagogie, kit de contrat, adaptateur factice.
+  \item \PB{} \textbf{Expérience} : panneau React, serveur du panneau et narration côté cœur, rendu du tableau, voix, tableau de bord de démo, contenu pédagogique des deux profils, identité visuelle, vidéo.
+  \item \PC{} \textbf{Adaptateurs} : SDK Python et TypeScript, extension Blender et scène de démo, extension Chrome.
+\end{itemize}
+
+\paragraph{Calendrier.} Il reste 25 jours. Quatre jalons : \textbf{J0} mercredi 11 novembre (contrat 1.0 figé, squelettes connectés), \textbf{J1} jeudi 19 novembre (Blender de bout en bout en mode texte), \textbf{J2} vendredi 27 novembre (navigateur de bout en bout sans toucher au cœur, voix), \textbf{J3} mardi 1\textsuperscript{er} décembre (gel des fonctionnalités). Tournage les 1\textsuperscript{er} et 2 décembre, soumission le 4 décembre avant midi GMT.
+
+\paragraph{Mise en place Kiro faite dans le dépôt.} Dix fichiers de steering, six specs complètes (exigences EARS, design avec 49 propriétés de correction, tâches avec responsable et jalon), dix hooks au format v1 appuyés sur un script Python testé, trois agents spécialisés. La configuration MCP est fournie dans \file{docs/kiro/mcp.example.json}, à copier dans \file{.kiro/settings/mcp.json} (ce dossier est protégé en écriture pour l'agent).
+
+\begin{warnbox}[Points à valider par l'équipe cette semaine]
+Choix du fournisseur LLM et du service de synthèse vocale (budget, clés), disponibilité de Blender 5.2 sur les trois machines, répartition des rôles proposée, langue de la vidéo (anglais recommandé), et relecture des règles officielles 2026 (la page des règles n'a pas pu être lue automatiquement).
+\end{warnbox}
