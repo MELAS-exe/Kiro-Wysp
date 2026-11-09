@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,8 +14,9 @@ from ..board import Board, BoardError, apply_ops, make_patch, node_id, project, 
 from ..contract import ActionCall, Observation, Scope, WyspError
 from ..gateway import AdapterConnection, AdapterRegistry
 from ..llm import CancelToken, LLMProvider
-from ..narration import NarrationState
+from ..narration import NarrationState, looks_like_tool_markup
 from ..pedagogy import Profile, find_profile
+from ..telemetry import Telemetry
 from ..trust import AuditLog, PermissionGate, UndoStack
 from ..ui_api import UiHub
 from .bus import EventBus
@@ -47,8 +49,10 @@ class Session:
         llm: LLMProvider,
         profile_roots: list[Path] | None = None,
         lang: str = "en",
+        telemetry: Telemetry | None = None,
     ) -> None:
         self.id = uuid.uuid4().hex[:10]
+        self.tm = telemetry or Telemetry("off")
         self.registry = registry
         self.bus = bus
         self.hub = hub
@@ -57,13 +61,14 @@ class Session:
         self.lang = lang
         self.profile_roots = profile_roots or []
         self.profile: Profile | None = None
-        self.gate = PermissionGate(audit, hub.broadcast)
+        self.gate = PermissionGate(audit, hub.broadcast, telemetry=self.tm)
         self.undo = UndoStack()
         self.board = Board()
         self.observed_refs: set[str] = set()
         self.board_spec: dict[str, Any] | None = None  # last show_entities request, replayed on refresh
         self.watch: Watch | None = None
         self.narration = NarrationState()
+        self.first_segment_t: float | None = None
         self.history: list[dict[str, Any]] = []
         self.status = "idle"
         self.active_adapter_id: str | None = None
@@ -105,32 +110,32 @@ class Session:
     async def broadcast(self, message: dict[str, Any]) -> None:
         await self.hub.broadcast(message)
 
-    async def send_state(self) -> None:
+    def _state_message(self) -> dict[str, Any]:
         conn = self.conn
-        await self.broadcast(
-            {
-                "type": "session.state",
-                "session_id": self.id,
-                "lang": self.lang,
-                "active_adapter": conn.adapter_id if conn else None,
-                "llm": getattr(self.llm, "name", "?"),
-                "profile": self.profile.id if self.profile else None,
-            }
-        )
+        return {
+            "type": "session.state",
+            "session_id": self.id,
+            "lang": self.lang,
+            "active_adapter": conn.adapter_id if conn else None,
+            "llm": getattr(self.llm, "name", "?"),
+            "model": getattr(self.llm, "model", None),
+            "profile": self.profile.id if self.profile else None,
+            "logging": self.tm.level,
+            "log_path": str(self.tm.path) if self.tm.path else None,
+        }
+
+    async def set_logging(self, level: str) -> None:
+        self.tm.set_level(level)
+        await self.send_state()
+
+    async def send_state(self) -> None:
+        await self.broadcast(self._state_message())
         await self.broadcast({"type": "adapters.list", "adapters": self.registry.describe()})
         await self.broadcast({"type": "status", "state": self.status})
 
     def snapshot_messages(self) -> list[dict[str, Any]]:
-        conn = self.conn
         return [
-            {
-                "type": "session.state",
-                "session_id": self.id,
-                "lang": self.lang,
-                "active_adapter": conn.adapter_id if conn else None,
-                "llm": getattr(self.llm, "name", "?"),
-                "profile": self.profile.id if self.profile else None,
-            },
+            self._state_message(),
             {"type": "adapters.list", "adapters": self.registry.describe()},
             {"type": "status", "state": self.status},
             {"type": "board.snapshot", "board": self.board.model_dump(mode="json")},
@@ -138,6 +143,7 @@ class Session:
 
     async def set_status(self, state: str) -> None:
         if state != self.status:
+            self.tm.emit("status", previous=self.status, state=state)
             self.status = state
             await self.broadcast({"type": "status", "state": state})
 
@@ -155,6 +161,15 @@ class Session:
             return {"ok": False, "error": str(exc)}
         patch = make_patch(self.board, after, ops)
         self.board = after
+        self.tm.emit(
+            "board.patch",
+            full={"ops": ops, "warnings": warnings},
+            version=after.version,
+            n_ops=len(ops),
+            op_kinds=sorted({o.get("op", "?") for o in ops}),
+            nodes=len(after.nodes),
+            warnings=len(warnings),
+        )
         await self.broadcast({"type": "board.patch", "patch": patch.model_dump(mode="json")})
         return {"ok": True, "warnings": warnings}
 
@@ -195,16 +210,31 @@ class Session:
     async def narrate(self, text: str, provenance: str = "observed", cues: list[dict[str, Any]] | None = None) -> int:
         if self.narration.turn_id is None:
             self.narration.new_turn()
+        if looks_like_tool_markup(text):
+            # A model wrote a tool call as prose. Never read it out; record it so the leak can be measured.
+            self.tm.emit("narration.blocked", full={"text": text}, reason="tool_markup", chars=len(text))
+            return 0
         segments = self.narration.add(text, provenance, cues)
         for seg in segments:
+            self.tm.emit(
+                "narration.segment",
+                full={"text": seg.text, "cues": seg.cues},
+                index=seg.index,
+                chars=len(seg.text),
+                provenance=seg.provenance,
+                n_cues=len(seg.cues),
+            )
             await self.broadcast(seg.to_message())
         if segments:
+            if self.first_segment_t is None:
+                self.first_segment_t = time.monotonic()
             await self.set_status("speaking")
         return len(segments)
 
     async def on_narration_progress(self, segment_id: str, played: bool) -> None:
         if played:
             self.narration.mark_played(segment_id)
+        self.tm.emit("narration.progress", segment=segment_id, played=played)
         if all(s.id in self.narration.played for s in self.narration.segments) and self._turn_task_done():
             await self.set_status("idle")
 
@@ -239,6 +269,7 @@ class Session:
         await self.interrupt(quiet=True)
         from ..orchestrator import TurnRunner  # local import: orchestrator depends on Session
 
+        self.tm.emit("user.message", full={"text": text}, chars=len(text), source=source)
         self._cancel = CancelToken()
         runner = TurnRunner(self, self._cancel)
         self._turn_task = asyncio.create_task(runner.run(text), name="wysp-turn")
@@ -249,6 +280,8 @@ class Session:
             await asyncio.shield(self._turn_task)
 
     async def interrupt(self, quiet: bool = False) -> None:
+        if not quiet:
+            self.tm.emit("interrupt", status=self.status)
         if self._cancel is not None:
             self._cancel.cancel()
         self.gate.cancel_all()
@@ -309,9 +342,12 @@ class Session:
         conn = self.conn
         if conn is None or event["adapter_id"] != conn.adapter_id:
             return
-        if event["name"] != "state_changed":
+        if event["name"] not in ("state_changed", "selection_changed"):
             return
-        origin = event["data"].get("origin", "unknown")
+        # A selection change is always the user's doing unless the adapter says otherwise; guided
+        # "select this" steps are verified from it.
+        default_origin = "user" if event["name"] == "selection_changed" else "unknown"
+        origin = event["data"].get("origin", default_origin)
         self._schedule_after_change(origin)
 
     def _schedule_after_change(self, origin: str) -> None:

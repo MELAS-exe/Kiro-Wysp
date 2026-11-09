@@ -166,6 +166,23 @@
           "default": null,
           "title": "Lang"
         },
+        "logging": {
+          "anyOf": [
+            {
+              "enum": [
+                "off",
+                "basic",
+                "full"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Logging"
+        },
         "type": {
           "const": "settings.update",
           "title": "Type",

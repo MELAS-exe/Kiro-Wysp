@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -44,8 +45,9 @@ class Grant:
 
 
 class PermissionGate:
-    def __init__(self, audit: AuditLog, publish: Publish, timeout_s: float = REQUEST_TIMEOUT_S) -> None:
+    def __init__(self, audit: AuditLog, publish: Publish, timeout_s: float = REQUEST_TIMEOUT_S, telemetry=None) -> None:
         self.audit = audit
+        self.tm = telemetry
         self._publish = publish
         self.timeout_s = timeout_s
         self.grants: list[Grant] = []
@@ -82,6 +84,7 @@ class PermissionGate:
 
         fut: asyncio.Future = asyncio.get_running_loop().create_future()
         self._pending[proposal.id] = (fut, proposal)
+        asked_at = time.monotonic()
         await self._emit(
             {
                 "type": "permission.request",
@@ -104,6 +107,18 @@ class PermissionGate:
             approval = Approval(False, "timeout", "auto")
         finally:
             self._pending.pop(proposal.id, None)
+        if self.tm is not None:
+            self.tm.emit(
+                "permission",
+                request_id=proposal.id,
+                action_id=proposal.action_id,
+                risk=proposal.risk,
+                policy=decision.value,
+                approved=approval.approved,
+                by=approval.by,
+                via=approval.via,
+                duration_ms=round((time.monotonic() - asked_at) * 1000, 1),
+            )
         self.audit.append(
             "approval", request_id=proposal.id, approved=approval.approved, by=approval.by, via=approval.via
         )

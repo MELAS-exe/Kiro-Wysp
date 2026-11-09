@@ -224,12 +224,18 @@ class ToolBox:
                 "error": "this application does not support that" if conn else "no application is connected",
             }
         handler = getattr(self, f"_t_{name}")
-        try:
-            return await handler(args)
-        except WyspError as exc:
-            return {"ok": False, "error": exc.message}
-        except (KeyError, TypeError, ValueError) as exc:
-            return {"ok": False, "error": f"bad arguments: {exc}"}
+        with self.s.tm.span("tool.call", full={"args": args}, tool=name) as extra:
+            try:
+                out = await handler(args)
+            except WyspError as exc:
+                out = {"ok": False, "error": exc.message}
+            except (KeyError, TypeError, ValueError) as exc:
+                out = {"ok": False, "error": f"bad arguments: {exc}"}
+            extra["ok"] = bool(out.get("ok", True))
+            if not extra["ok"]:
+                extra["error"] = str(out.get("error"))[:200]
+            extra["_full"] = {"result": out}
+        return out
 
     # ---------------------------------------------------------------------- handlers
     async def _t_observe(self, a: dict[str, Any]) -> dict[str, Any]:
@@ -357,25 +363,37 @@ def normalize_tool_name(name: str) -> str:
 
 
 def recover_tool_call(text: str, known_tools: set[str]) -> ToolCall | None:
-    """Some models (notably gpt-oss) write a tool call as JSON text instead of a real tool call.
+    """Some models (notably gpt-oss) write a tool call as text instead of a real tool call.
 
-    Recognised shapes: the arguments of `narrate` ({"segments": [...]}), or {"name": ..., "arguments": {...}}.
-    Returns None for ordinary prose, so normal answers are never altered.
+    Recognised shapes, with or without a wrapper such as ``<narrate{...}>``, ``<function=narrate>{...}</function>``
+    or a code fence: the arguments of `narrate` ({"segments": [...]}), `{"name": ..., "arguments": {...}}`,
+    or a known tool name followed by its JSON arguments. Returns None for ordinary prose.
     """
     s = text.strip()
     if s.startswith("```"):
         s = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", s).strip()
-    if not (s.startswith("{") and s.endswith("}")):
+    start, end = s.find("{"), s.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    prefix, suffix = s[:start].strip(), s[end + 1 :].strip()
+    # Only a tag-like wrapper may surround the JSON; real prose around it means this is not a tool call.
+    if prefix and not re.fullmatch(r"<[^<>{}]*", prefix):
+        return None
+    if suffix and not re.fullmatch(r"(?:</[^<>{}]*>|>)+", suffix):
         return None
     try:
-        data = json.loads(s)
+        data = json.loads(s[start : end + 1])
     except json.JSONDecodeError:
         return None
     if not isinstance(data, dict):
         return None
+    named = [normalize_tool_name(w) for w in re.findall(r"[A-Za-z_][\w.]*", prefix)]
+    from_tag = next((n for n in reversed(named) if n in known_tools), None)
     if isinstance(data.get("segments"), list) and "narrate" in known_tools:
         return ToolCall(id=uuid.uuid4().hex[:8], name="narrate", arguments=data)
     name, args = data.get("name"), data.get("arguments")
     if isinstance(name, str) and normalize_tool_name(name) in known_tools and isinstance(args, dict):
         return ToolCall(id=uuid.uuid4().hex[:8], name=normalize_tool_name(name), arguments=args)
+    if from_tag is not None:
+        return ToolCall(id=uuid.uuid4().hex[:8], name=from_tag, arguments=data)
     return None

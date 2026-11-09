@@ -19,6 +19,7 @@ from .llm import LLMProvider
 from .session.bus import EventBus
 from .session.session import Session
 from .store import ensure_home, load_or_create_token, register_env_secrets, register_secret, wysp_home
+from .telemetry import TelemetryLogHandler, from_env
 from .trust import AuditLog
 from .ui_api import UiHub
 from .ui_api.server import serve_ui
@@ -42,11 +43,26 @@ class Config:
     panel_dist: Path | None = None
     profile_roots: list[Path] = field(default_factory=list)
     lang: str = "en"
+    log_level: str | None = None  # off | basic | full; None means the WYSP_LOG variable (default full)
 
     def allowed_origins(self) -> set[str]:
         own = {f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}"}
         extra = {o.strip() for o in os.environ.get("WYSP_ALLOWED_ORIGINS", "").split(",") if o.strip()}
         return own | set(self.dev_origins) | extra
+
+
+def _session_meta(llm: LLMProvider) -> dict:
+    import platform
+    import sys
+
+    return {
+        "wysp_version": __version__,
+        "contract_version": CONTRACT_VERSION,
+        "llm_provider": getattr(llm, "name", "?"),
+        "llm_model": getattr(llm, "model", None),
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+    }
 
 
 def create_app(config: Config, llm: LLMProvider) -> FastAPI:
@@ -63,15 +79,22 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
 
     bus = EventBus()
     hub = UiHub()
-    registry = AdapterRegistry(bus)
+    tm = from_env(directory=wysp_home() / "logs", meta=_session_meta(llm), level_override=config.log_level)
+    logging.getLogger("wysp").addHandler(TelemetryLogHandler(tm))
+    logging.getLogger("wysp").setLevel(min(logging.getLogger("wysp").level or logging.INFO, logging.INFO))
+    if hasattr(llm, "__dict__"):
+        llm.telemetry = tm  # providers time their own requests
+    registry = AdapterRegistry(bus, tm)
     audit = AuditLog(wysp_home() / "audit")
-    session = Session(registry, bus, hub, audit, llm, config.profile_roots, config.lang)
+    session = Session(registry, bus, hub, audit, llm, config.profile_roots, config.lang, tm)
     allowed = config.allowed_origins()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         session.start()
         yield
+        tm.emit("session.end")
+        tm.close()
 
     app = FastAPI(title="Wysp Core", version=__version__, lifespan=lifespan)
     app.state.session = session
@@ -79,6 +102,11 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
     app.state.hub = hub
     app.state.token = token
     app.state.config = config
+    app.state.telemetry = tm
+
+    @app.get("/api/metrics")
+    async def metrics() -> JSONResponse:
+        return JSONResponse(tm.metrics())
 
     @app.get("/api/health")
     async def health() -> JSONResponse:

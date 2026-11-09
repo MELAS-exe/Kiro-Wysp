@@ -98,6 +98,8 @@ async def handle_ui_message(session: Session, hub: UiHub, ws, msg) -> None:
         if msg.lang:
             session.lang = msg.lang
             await session.send_state()
+        if msg.logging:
+            await session.set_logging(msg.logging)
 
 
 __all__ = ["handle_ui_message", "node_id", "serve_ui"]

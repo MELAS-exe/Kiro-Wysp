@@ -76,6 +76,7 @@ class UndoLast(_Msg):
 class SettingsUpdate(_Msg):
     type: Literal["settings.update"]
     lang: str | None = Field(default=None, max_length=8)
+    logging: Literal["off", "basic", "full"] | None = None
 
 
 UiInbound = Annotated[

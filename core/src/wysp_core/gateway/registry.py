@@ -9,8 +9,9 @@ from .connection import AdapterConnection
 
 
 class AdapterRegistry:
-    def __init__(self, bus: EventBus) -> None:
+    def __init__(self, bus: EventBus, telemetry=None) -> None:
         self.bus = bus
+        self.tm = telemetry
         self._conns: dict[str, AdapterConnection] = {}
 
     def add(self, conn: AdapterConnection) -> AdapterConnection | None:

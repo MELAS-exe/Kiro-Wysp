@@ -40,7 +40,8 @@ class Transport(Protocol):
 
 
 class AdapterConnection:
-    def __init__(self, transport: Transport, manifest: Manifest, session_id: str) -> None:
+    def __init__(self, transport: Transport, manifest: Manifest, session_id: str, telemetry=None) -> None:
+        self.tm = telemetry
         self.transport = transport
         self.manifest = manifest
         self.session_id = session_id
@@ -86,15 +87,32 @@ class AdapterConnection:
         fut: asyncio.Future = asyncio.get_running_loop().create_future()
         self._pending[request_id] = fut
         budget = (timeout if timeout is not None else BUDGETS_S.get(method, 5.0)) + SLACK_S
+        started = time.monotonic()
+        code: int | None = None
         try:
             await self.transport.send_json(
                 {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params or {}}
             )
             return await asyncio.wait_for(fut, budget)
         except TimeoutError as exc:
+            code = int(ErrorCode.TIMEOUT)
             raise WyspError(ErrorCode.TIMEOUT, f"{method} exceeded {budget:.1f}s") from exc
+        except WyspError as exc:
+            code = exc.code
+            raise
         finally:
             self._pending.pop(request_id, None)
+            if self.tm is not None:
+                self.tm.emit(
+                    "adapter.call",
+                    full={"params": params},
+                    method=method,
+                    adapter=self.adapter_id,
+                    duration_ms=round((time.monotonic() - started) * 1000, 1),
+                    ok=code is None,
+                    code=code,
+                    budget_s=budget,
+                )
 
     # --------------------------------------------------------------------- typed calls
     async def observe(self, scope: Scope | None = None) -> Observation:

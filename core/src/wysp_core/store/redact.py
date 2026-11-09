@@ -8,6 +8,8 @@ from typing import Any
 
 _SECRET_ENV = re.compile(r"(API_KEY|TOKEN|SECRET|PASSWORD)", re.IGNORECASE)
 _registered: set[str] = set()
+# Shapes of well-known credentials, redacted even when the value was never registered.
+_PATTERNS = re.compile(r"(Bearer\s+[A-Za-z0-9._~+/=-]{12,}|\b(?:gsk|sk|csk|AIza)[-_][A-Za-z0-9_-]{16,})")
 
 
 def register_secret(value: str | None) -> None:
@@ -26,7 +28,7 @@ def register_env_secrets() -> None:
 def redact_text(text: str) -> str:
     for secret in sorted(_registered, key=len, reverse=True):
         text = text.replace(secret, "[redacted]")
-    return text
+    return _PATTERNS.sub("[redacted]", text)
 
 
 def redact(obj: Any) -> Any:

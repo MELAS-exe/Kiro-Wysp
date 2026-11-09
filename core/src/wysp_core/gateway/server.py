@@ -91,6 +91,8 @@ async def serve_adapter(ws: WebSocket, registry: AdapterRegistry, token: str, al
         if conn is not None:
             conn.fail_all("adapter disconnected")
             registry.remove(conn)
+            if registry.tm is not None:
+                registry.tm.emit("adapter.disconnected", adapter=conn.adapter_id, adapter_session=conn.session_id)
 
 
 async def _handshake(
@@ -138,8 +140,18 @@ async def _handshake(
         await transport.close(4409)
         return None
     session_id = uuid.uuid4().hex[:12]
-    conn = AdapterConnection(transport, hello.manifest, session_id)
+    conn = AdapterConnection(transport, hello.manifest, session_id, registry.tm)
     previous = registry.add(conn)
+    if registry.tm is not None:
+        registry.tm.emit(
+            "adapter.connected",
+            adapter=conn.adapter_id,
+            adapter_session=session_id,
+            app=hello.manifest.app.model_dump(),
+            level=hello.manifest.integration_level,
+            capabilities=list(hello.manifest.capabilities),
+            replaced_previous=previous is not None,
+        )
     if previous is not None:
         previous.fail_all("replaced by a new connection")
         await previous.transport.close(4000)
@@ -188,6 +200,17 @@ async def _read_loop(ws: WebSocket, conn: AdapterConnection, registry: AdapterRe
                 continue
             if isinstance(data, StateChanged):
                 conn.state_version = max(conn.state_version, data.state_version)
+            if registry.tm is not None:
+                dump = data.model_dump(mode="json")
+                registry.tm.emit(
+                    "adapter.event",
+                    full={"data": dump},
+                    adapter=conn.adapter_id,
+                    name=name,
+                    origin=dump.get("origin"),
+                    changed=len(dump.get("changed", [])) if "changed" in dump else None,
+                    state_version=dump.get("state_version"),
+                )
             bus.publish("adapter.event", adapter_id=conn.adapter_id, name=name, data=data.model_dump(mode="json"))
         elif msg.get("id") is not None:
             await conn.transport.send_json(

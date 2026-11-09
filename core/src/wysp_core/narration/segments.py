@@ -34,6 +34,19 @@ class Segment:
         }
 
 
+_TOOL_KEYS = re.compile(r'"(?:segments|cues|arguments|action_id|include_children|attach_to)"\s*:')
+_TOOL_TAGS = ("<narrate", "<function", "<tool_call", "<tool", '{"segments"', '{ "segments"')
+
+
+def looks_like_tool_markup(text: str) -> bool:
+    """True when `text` is a tool call written as prose (``<narrate{...}>``, raw JSON arguments...).
+
+    Such text must never be spoken or captioned: it is machine syntax, not an explanation.
+    """
+    head = text.lstrip()[:40].lower()
+    return head.startswith(_TOOL_TAGS) or bool(_TOOL_KEYS.search(text))
+
+
 def clean_text(text: str) -> str:
     """Narration is spoken: strip the Markdown that chat models like to add (bold, code, bullets, headings)."""
     text = re.sub(r"```.*?```", " ", text, flags=re.S)

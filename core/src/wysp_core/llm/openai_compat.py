@@ -9,6 +9,9 @@ Free endpoints are unreliable, so requests are resilient:
 * `hedge_after_s`: when set, a second identical request is launched if nothing came back in that
   time (LLM calls have no side effects), and the first successful answer wins. Pollinations'
   anonymous tier stalls on roughly every other request, so it is enabled for that preset.
+
+Every call is measured (telemetry kind `llm.request`): attempts, stalls, rate limits and the waiting they
+caused, token usage reported by the API, prompt and reply sizes, and the final outcome.
 """
 
 from __future__ import annotations
@@ -82,6 +85,7 @@ class OpenAICompatProvider:
         self.timeout_s = timeout_s
         self.hedge_after_s = hedge_after_s
         self.max_attempts = max_attempts
+        self.telemetry = None  # set by the app; a wysp_core.telemetry.Telemetry
         self._key = api_key
         register_secret(api_key)
 
@@ -107,7 +111,38 @@ class OpenAICompatProvider:
         if self._key:
             headers["Authorization"] = f"Bearer {self._key}"
 
+        stats: dict[str, Any] = {
+            "attempts": 0,
+            "timeouts": 0,
+            "network_errors": 0,
+            "rate_limited": 0,
+            "rate_wait_ms": 0.0,
+            "server_errors": 0,
+            "statuses": [],
+        }
         started = time.monotonic()
+        result: LLMResult | None = None
+        usage: dict[str, Any] | None = None
+        error: str | None = None
+        cancelled = False
+        try:
+            response = await self._run(body, headers, cancel, stats)
+            if response is None:
+                cancelled = True
+                return LLMResult()
+            if isinstance(response, LLMResult):
+                result = response  # recovered from a rejected generation
+                return result
+            result = self._parse(response)
+            usage = _usage(response)
+            return result
+        except LLMError as exc:
+            error = str(exc)
+            raise
+        finally:
+            self._record(messages, tools, started, stats, result, usage, error, cancelled)
+
+    async def _run(self, body, headers, cancel: CancelToken, stats: dict[str, Any]):
         waiter = asyncio.create_task(cancel.wait())
         running: set[asyncio.Task] = set()
         launched = 0
@@ -117,22 +152,33 @@ class OpenAICompatProvider:
                 if launched < self.max_attempts and (not running or self.hedge_after_s is not None):
                     running.add(asyncio.create_task(self._post(body, headers)))
                     launched += 1
+                    stats["attempts"] = launched
                 if not running:
                     raise LLMError(f"{self.name}: {last_problem}")
-                wait_for = self.hedge_after_s if self.hedge_after_s is not None else None
-                done, _ = await asyncio.wait({waiter, *running}, timeout=wait_for, return_when=asyncio.FIRST_COMPLETED)
+                done, _ = await asyncio.wait(
+                    {waiter, *running}, timeout=self.hedge_after_s, return_when=asyncio.FIRST_COMPLETED
+                )
                 if waiter in done:
-                    return LLMResult()
+                    return None
                 for task in done:
                     running.discard(task)
                     try:
                         response = task.result()
-                    except httpx.HTTPError as exc:
+                    except httpx.TimeoutException as exc:
+                        stats["timeouts"] += 1
                         last_problem = f"network error ({type(exc).__name__})"
-                        log.warning("%s: %s after %.1fs", self.name, last_problem, time.monotonic() - started)
+                        log.warning("%s: %s", self.name, last_problem)
                         continue
+                    except httpx.HTTPError as exc:
+                        stats["network_errors"] += 1
+                        last_problem = f"network error ({type(exc).__name__})"
+                        log.warning("%s: %s", self.name, last_problem)
+                        continue
+                    stats["statuses"].append(response.status_code)
                     if response.status_code == 429:
                         pause = min(self._retry_after(response), MAX_RETRY_AFTER_S)
+                        stats["rate_limited"] += 1
+                        stats["rate_wait_ms"] += pause * 1000
                         last_problem = f"rate limited (retry after {pause:.0f}s)"
                         log.warning("%s: %s", self.name, last_problem)
                         if launched >= self.max_attempts and not running:
@@ -140,6 +186,7 @@ class OpenAICompatProvider:
                         await asyncio.sleep(pause)
                         continue
                     if response.status_code >= 500:
+                        stats["server_errors"] += 1
                         last_problem = f"server error HTTP {response.status_code}"
                         log.warning("%s: %s", self.name, last_problem)
                         continue
@@ -147,21 +194,45 @@ class OpenAICompatProvider:
                         recovered = self._recover_failed_generation(response)
                         if recovered is not None:
                             log.info("%s: recovered a tool call from a rejected generation", self.name)
+                            stats["recovered_generation"] = True
                             return recovered
                         snippet = redact_text(response.text[:200].replace("\n", " "))
                         raise LLMError(f"{self.name}: HTTP {response.status_code} {snippet}")
-                    log.info(
-                        "llm %s %s: %.1fs (%d request%s), %d messages, %d tools",
-                        self.name, self.model, time.monotonic() - started, launched, "s" if launched > 1 else "",
-                        len(messages), len(tools),
-                    )  # fmt: skip
-                    return self._parse(response)
-                if not done and launched >= self.max_attempts and not running:
-                    raise LLMError(f"{self.name}: {last_problem}")
+                    return response
         finally:
             waiter.cancel()
             for task in running:
                 task.cancel()
+
+    def _record(self, messages, tools, started, stats, result, usage, error, cancelled) -> None:
+        tm = self.telemetry
+        if tm is None:
+            return
+        prompt_chars = sum(len(json.dumps(m, ensure_ascii=False, default=str)) for m in messages)
+        tm.emit(
+            "llm.request",
+            full={
+                "last_message": messages[-1] if messages else None,
+                "reply_text": result.text if result else None,
+                "reply_tool_calls": [
+                    {"name": t.name, "arguments": t.arguments} for t in (result.tool_calls if result else [])
+                ],
+            },
+            provider=self.name,
+            model=self.model,
+            duration_ms=round((time.monotonic() - started) * 1000, 1),
+            ok=error is None and not cancelled,
+            error=error,
+            cancelled=cancelled,
+            n_messages=len(messages),
+            n_tools=len(tools),
+            prompt_chars=prompt_chars,
+            reply_chars=len(result.text) if result else 0,
+            reply_tools=[t.name for t in (result.tool_calls if result else [])],
+            hedged=self.hedge_after_s is not None and stats["attempts"] > 1,
+            usage=usage,
+            **stats,
+        )
 
     @staticmethod
     def _recover_failed_generation(response: httpx.Response) -> LLMResult | None:
@@ -222,6 +293,25 @@ class OpenAICompatProvider:
                 args = {"_unparsed": str(raw_args)[:300]}
             calls.append(ToolCall(id=tc.get("id") or uuid.uuid4().hex[:8], name=fn.get("name", ""), arguments=args))
         return LLMResult(text=(message.get("content") or "").strip(), tool_calls=calls)
+
+
+def _usage(response: httpx.Response) -> dict[str, Any] | None:
+    try:
+        raw = response.json().get("usage")
+    except ValueError:
+        return None
+    if not isinstance(raw, dict):
+        return None
+    keep = (
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "queue_time",
+        "prompt_time",
+        "completion_time",
+        "total_time",
+    )
+    return {k: raw[k] for k in keep if k in raw}
 
 
 def from_env(env: dict[str, str] | None = None) -> OpenAICompatProvider:

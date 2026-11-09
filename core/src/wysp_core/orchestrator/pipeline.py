@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from typing import TYPE_CHECKING, Any
 
 import jsonschema
@@ -145,6 +146,13 @@ async def _start_guide(
         await session.highlight_ref(first_ref)
     session.watch = Watch(conn.adapter_id, spec.id, title, params, post, [s["id"] for s in steps])
     session.audit.append("guide_started", action_id=spec.id, params=params)
+    session.tm.emit(
+        "guide.start",
+        full={"params": params, "steps": [s["text"] for s in steps]},
+        action_id=spec.id,
+        n_steps=len(steps),
+        postconditions=len(post),
+    )
     return {
         "ok": True,
         "status": "waiting_for_user",
@@ -160,9 +168,16 @@ async def check_watch(session: Session) -> None:
     if watch is None or conn is None or conn.adapter_id != watch.adapter_id:
         return
     result = await verify(conn, watch.postconditions, watch.params)
+    session.tm.emit(
+        "guide.check",
+        action_id=watch.action_id,
+        ok=result.ok,
+        full={"failure": None if result.ok else result.failure_summary()},
+    )
     if not result.ok:
         return
     session.watch = None
+    session.tm.emit("guide.verified", action_id=watch.action_id)
     await session.apply_board(
         [{"op": "update_step", "id": sid, "status": "done"} for sid in watch.step_ids], validate=False
     )
@@ -212,7 +227,10 @@ async def _do_action(
 
     await session.set_status("acting")
     try:
-        result = await conn.execute(ActionCall(action_id=spec.id, params=params, request_id=proposal.id))
+        with session.tm.span("action.execute", full={"params": params}, action_id=spec.id, risk=spec.risk) as ex:
+            result = await conn.execute(ActionCall(action_id=spec.id, params=params, request_id=proposal.id))
+            ex["changed"] = len(result.changed)
+            ex["undo_token"] = bool(result.undo_token)
     except WyspError as exc:
         session.audit.append("execution", request_id=proposal.id, action_id=spec.id, ok=False, error=exc.message)
         return {"ok": False, "status": "failed", "error": exc.message, "code": exc.code}
@@ -238,7 +256,15 @@ async def _do_action(
             "changed": result.changed,
             "message": "Done, but this action declares no way to verify it.",
         }
+    t_verify = time.monotonic()
     check = await verify(conn, post, params)
+    session.tm.emit(
+        "action.verify",
+        full={"failure": None if check.ok else check.failure_summary()},
+        action_id=spec.id,
+        ok=check.ok,
+        duration_ms=round((time.monotonic() - t_verify) * 1000, 1),
+    )
     if check.ok:
         evidence = check.evidence("verified")
         session.audit.append("verification", request_id=proposal.id, ok=True, evidence_id=evidence.id)
