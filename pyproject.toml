@@ -1,0 +1,37 @@
+[project]
+name = "wysp"
+version = "0.1.0"
+description = "Wysp: a skeleton for building AI tutors for software applications"
+requires-python = ">=3.13"
+dependencies = ["wysp-core", "wysp-contract-tests", "wysp-adapter-sdk"]
+
+[tool.uv.sources]
+wysp-core = { workspace = true }
+wysp-contract-tests = { workspace = true }
+wysp-adapter-sdk = { workspace = true }
+
+[tool.uv.workspace]
+members = ["core", "contract-tests", "sdk/python"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "hypothesis>=6.115",
+    "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["core/tests", "contract-tests/tests", "sdk/python/tests"]
+markers = ["live: needs a running Blender or Chrome"]
+addopts = "-m 'not live'"
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+extend-exclude = ["schemas", "node_modules", "apps/blender-tutor/adapter/wheels"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

@@ -1,0 +1,55 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://wysp.dev/schemas/1/rpc-request.schema.json",
+  "additionalProperties": false,
+  "description": "A request (has an id) or a notification (no id).",
+  "properties": {
+    "id": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Id"
+    },
+    "jsonrpc": {
+      "const": "2.0",
+      "default": "2.0",
+      "title": "Jsonrpc",
+      "type": "string"
+    },
+    "method": {
+      "title": "Method",
+      "type": "string"
+    },
+    "params": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Params"
+    }
+  },
+  "required": [
+    "method"
+  ],
+  "title": "RpcRequest",
+  "type": "object"
+}

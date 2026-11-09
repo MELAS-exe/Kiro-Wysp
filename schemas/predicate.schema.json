@@ -1,0 +1,159 @@
+{
+  "$defs": {
+    "AllOf": {
+      "additionalProperties": false,
+      "properties": {
+        "all": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "All",
+          "type": "array"
+        }
+      },
+      "required": [
+        "all"
+      ],
+      "title": "AllOf",
+      "type": "object"
+    },
+    "AnyOf": {
+      "additionalProperties": false,
+      "properties": {
+        "any": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Any",
+          "type": "array"
+        }
+      },
+      "required": [
+        "any"
+      ],
+      "title": "AnyOf",
+      "type": "object"
+    },
+    "Compare": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "enum": [
+            "eq",
+            "ne",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "in",
+            "contains",
+            "exists",
+            "not_exists",
+            "matches",
+            "len_eq",
+            "len_gte"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        }
+      },
+      "required": [
+        "path",
+        "op"
+      ],
+      "title": "Compare",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Not": {
+      "additionalProperties": false,
+      "properties": {
+        "not": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Compare"
+            },
+            {
+              "$ref": "#/$defs/AllOf"
+            },
+            {
+              "$ref": "#/$defs/AnyOf"
+            },
+            {
+              "$ref": "#/$defs/Not"
+            }
+          ],
+          "title": "Not"
+        }
+      },
+      "required": [
+        "not"
+      ],
+      "title": "Not",
+      "type": "object"
+    }
+  },
+  "$id": "https://wysp.dev/schemas/1/predicate.schema.json",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/Compare"
+    },
+    {
+      "$ref": "#/$defs/AllOf"
+    },
+    {
+      "$ref": "#/$defs/AnyOf"
+    },
+    {
+      "$ref": "#/$defs/Not"
+    }
+  ]
+}

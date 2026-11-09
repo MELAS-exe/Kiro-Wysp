@@ -1,0 +1,46 @@
+{
+  "$id": "https://wysp.dev/schemas/1/scope.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "depth": {
+      "anyOf": [
+        {
+          "maximum": 8,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Depth"
+    },
+    "level": {
+      "default": "focus",
+      "enum": [
+        "summary",
+        "focus",
+        "full"
+      ],
+      "title": "Level",
+      "type": "string"
+    },
+    "root": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Root"
+    }
+  },
+  "title": "Scope",
+  "type": "object"
+}

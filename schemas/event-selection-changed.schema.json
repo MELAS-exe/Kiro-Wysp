@@ -1,0 +1,17 @@
+{
+  "$id": "https://wysp.dev/schemas/1/event-selection-changed.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "focus": {
+      "items": {
+        "maxLength": 512,
+        "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+        "type": "string"
+      },
+      "title": "Focus",
+      "type": "array"
+    }
+  },
+  "title": "SelectionChanged",
+  "type": "object"
+}

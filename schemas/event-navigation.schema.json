@@ -1,0 +1,20 @@
+{
+  "$id": "https://wysp.dev/schemas/1/event-navigation.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "url": {
+      "title": "Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url"
+  ],
+  "title": "Navigation",
+  "type": "object"
+}

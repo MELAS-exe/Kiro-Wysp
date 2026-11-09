@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "PredicateOutcome": {
+      "additionalProperties": false,
+      "description": "Result of evaluating a predicate: the raw material of an Evidence record.",
+      "properties": {
+        "actual": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "children": {
+          "items": {
+            "$ref": "#/$defs/PredicateOutcome"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "expected": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "op": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Op"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "title": "PredicateOutcome",
+      "type": "object"
+    }
+  },
+  "$id": "https://wysp.dev/schemas/1/predicate-outcome.schema.json",
+  "$ref": "#/$defs/PredicateOutcome"
+}

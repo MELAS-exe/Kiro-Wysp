@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://wysp.dev/schemas/1/context.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "facts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Facts",
+      "type": "object"
+    },
+    "focus": {
+      "items": {
+        "maxLength": 512,
+        "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+        "type": "string"
+      },
+      "title": "Focus",
+      "type": "array"
+    },
+    "mode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mode"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "summary"
+  ],
+  "title": "Context",
+  "type": "object"
+}

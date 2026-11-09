@@ -1,0 +1,164 @@
+{
+  "$defs": {
+    "AppInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "AppInfo",
+      "type": "object"
+    },
+    "EntityKind": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "label"
+      ],
+      "title": "EntityKind",
+      "type": "object"
+    },
+    "Manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_id": {
+          "title": "Adapter Id",
+          "type": "string"
+        },
+        "app": {
+          "$ref": "#/$defs/AppInfo"
+        },
+        "capabilities": {
+          "items": {
+            "enum": [
+              "observe",
+              "context",
+              "actions",
+              "execute",
+              "undo",
+              "highlight",
+              "events.state",
+              "events.selection",
+              "events.user_action",
+              "events.navigation",
+              "verify.native"
+            ],
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "contract_version": {
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "entity_kinds": {
+          "items": {
+            "$ref": "#/$defs/EntityKind"
+          },
+          "title": "Entity Kinds",
+          "type": "array"
+        },
+        "integration_level": {
+          "enum": [
+            "native",
+            "interface",
+            "visual"
+          ],
+          "title": "Integration Level",
+          "type": "string"
+        },
+        "locales": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Locales",
+          "type": "array"
+        },
+        "profile_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Id"
+        },
+        "ref_scheme": {
+          "title": "Ref Scheme",
+          "type": "string"
+        },
+        "volatile_props": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Volatile Props",
+          "type": "array"
+        }
+      },
+      "required": [
+        "adapter_id",
+        "app",
+        "contract_version",
+        "integration_level",
+        "ref_scheme",
+        "capabilities",
+        "entity_kinds"
+      ],
+      "title": "Manifest",
+      "type": "object"
+    }
+  },
+  "$id": "https://wysp.dev/schemas/1/hello-params.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "manifest": {
+      "$ref": "#/$defs/Manifest"
+    },
+    "token": {
+      "title": "Token",
+      "type": "string"
+    }
+  },
+  "required": [
+    "manifest",
+    "token"
+  ],
+  "title": "HelloParams",
+  "type": "object"
+}

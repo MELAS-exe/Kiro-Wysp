@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "PredicateOutcome": {
+      "additionalProperties": false,
+      "description": "Result of evaluating a predicate: the raw material of an Evidence record.",
+      "properties": {
+        "actual": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "children": {
+          "items": {
+            "$ref": "#/$defs/PredicateOutcome"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "expected": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "op": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Op"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "title": "PredicateOutcome",
+      "type": "object"
+    }
+  },
+  "$id": "https://wysp.dev/schemas/1/evidence.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "exercise_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exercise Id"
+    },
+    "hints_used": {
+      "default": 0,
+      "title": "Hints Used",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "observation_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observation Id"
+    },
+    "outcomes": {
+      "items": {
+        "$ref": "#/$defs/PredicateOutcome"
+      },
+      "title": "Outcomes",
+      "type": "array"
+    },
+    "skills": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Skills",
+      "type": "array"
+    },
+    "source": {
+      "default": "core",
+      "enum": [
+        "core",
+        "adapter",
+        "learner"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "state_version": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "State Version"
+    },
+    "type": {
+      "enum": [
+        "verified",
+        "answered",
+        "declared"
+      ],
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "created_at"
+  ],
+  "title": "Evidence",
+  "type": "object"
+}

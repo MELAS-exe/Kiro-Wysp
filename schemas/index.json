@@ -1,0 +1,29 @@
+{
+  "contract_version": "1.0.0",
+  "schemas": {
+    "action-call": "https://wysp.dev/schemas/1/action-call.schema.json",
+    "action-result": "https://wysp.dev/schemas/1/action-result.schema.json",
+    "action-spec": "https://wysp.dev/schemas/1/action-spec.schema.json",
+    "context": "https://wysp.dev/schemas/1/context.schema.json",
+    "entity": "https://wysp.dev/schemas/1/entity.schema.json",
+    "event-navigation": "https://wysp.dev/schemas/1/event-navigation.schema.json",
+    "event-selection-changed": "https://wysp.dev/schemas/1/event-selection-changed.schema.json",
+    "event-state-changed": "https://wysp.dev/schemas/1/event-state-changed.schema.json",
+    "event-user-action": "https://wysp.dev/schemas/1/event-user-action.schema.json",
+    "evidence": "https://wysp.dev/schemas/1/evidence.schema.json",
+    "hello-params": "https://wysp.dev/schemas/1/hello-params.schema.json",
+    "hello-result": "https://wysp.dev/schemas/1/hello-result.schema.json",
+    "manifest": "https://wysp.dev/schemas/1/manifest.schema.json",
+    "observation": "https://wysp.dev/schemas/1/observation.schema.json",
+    "params-execute": "https://wysp.dev/schemas/1/params-execute.schema.json",
+    "params-highlight": "https://wysp.dev/schemas/1/params-highlight.schema.json",
+    "params-observe": "https://wysp.dev/schemas/1/params-observe.schema.json",
+    "params-undo": "https://wysp.dev/schemas/1/params-undo.schema.json",
+    "params-verify": "https://wysp.dev/schemas/1/params-verify.schema.json",
+    "predicate": "https://wysp.dev/schemas/1/predicate.schema.json",
+    "predicate-outcome": "https://wysp.dev/schemas/1/predicate-outcome.schema.json",
+    "rpc-request": "https://wysp.dev/schemas/1/rpc-request.schema.json",
+    "rpc-response": "https://wysp.dev/schemas/1/rpc-response.schema.json",
+    "scope": "https://wysp.dev/schemas/1/scope.schema.json"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://wysp.dev/schemas/1/entity.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "confidence": {
+      "default": 1.0,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "kind": {
+      "title": "Kind",
+      "type": "string"
+    },
+    "label": {
+      "title": "Label",
+      "type": "string"
+    },
+    "parent": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent"
+    },
+    "props": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Props",
+      "type": "object"
+    },
+    "ref": {
+      "maxLength": 512,
+      "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+      "title": "Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "ref",
+    "kind",
+    "label"
+  ],
+  "title": "Entity",
+  "type": "object"
+}

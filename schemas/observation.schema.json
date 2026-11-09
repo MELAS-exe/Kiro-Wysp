@@ -1,0 +1,195 @@
+{
+  "$defs": {
+    "Entity": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "default": 1.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent"
+        },
+        "props": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Props",
+          "type": "object"
+        },
+        "ref": {
+          "maxLength": 512,
+          "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "kind",
+        "label"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Link": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "maxLength": 512,
+          "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+          "title": "From",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "to": {
+          "maxLength": 512,
+          "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "kind"
+      ],
+      "title": "Link",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "anyOf": [
+            {
+              "maximum": 8,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Depth"
+        },
+        "level": {
+          "default": "focus",
+          "enum": [
+            "summary",
+            "focus",
+            "full"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "root": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Root"
+        }
+      },
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "$id": "https://wysp.dev/schemas/1/observation.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Counts",
+      "type": "object"
+    },
+    "entities": {
+      "items": {
+        "$ref": "#/$defs/Entity"
+      },
+      "title": "Entities",
+      "type": "array"
+    },
+    "focus": {
+      "items": {
+        "maxLength": 512,
+        "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+        "type": "string"
+      },
+      "title": "Focus",
+      "type": "array"
+    },
+    "links": {
+      "items": {
+        "$ref": "#/$defs/Link"
+      },
+      "title": "Links",
+      "type": "array"
+    },
+    "observation_id": {
+      "title": "Observation Id",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "state_version": {
+      "minimum": 0,
+      "title": "State Version",
+      "type": "integer"
+    },
+    "truncated": {
+      "default": false,
+      "title": "Truncated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "observation_id",
+    "state_version",
+    "captured_at"
+  ],
+  "title": "Observation",
+  "type": "object"
+}

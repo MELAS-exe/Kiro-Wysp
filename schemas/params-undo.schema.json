@@ -1,0 +1,15 @@
+{
+  "$id": "https://wysp.dev/schemas/1/params-undo.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "token": {
+      "title": "Token",
+      "type": "string"
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "title": "UndoParams",
+  "type": "object"
+}

@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://wysp.dev/schemas/1/event-user-action.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "details": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Details",
+      "type": "object"
+    },
+    "kind": {
+      "title": "Kind",
+      "type": "string"
+    },
+    "origin": {
+      "default": "user",
+      "enum": [
+        "user",
+        "wysp",
+        "unknown"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target"
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "UserAction",
+  "type": "object"
+}

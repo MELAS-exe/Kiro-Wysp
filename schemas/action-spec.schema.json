@@ -1,0 +1,304 @@
+{
+  "$defs": {
+    "AllOf": {
+      "additionalProperties": false,
+      "properties": {
+        "all": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "All",
+          "type": "array"
+        }
+      },
+      "required": [
+        "all"
+      ],
+      "title": "AllOf",
+      "type": "object"
+    },
+    "AnyOf": {
+      "additionalProperties": false,
+      "properties": {
+        "any": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Any",
+          "type": "array"
+        }
+      },
+      "required": [
+        "any"
+      ],
+      "title": "AnyOf",
+      "type": "object"
+    },
+    "Compare": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "enum": [
+            "eq",
+            "ne",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "in",
+            "contains",
+            "exists",
+            "not_exists",
+            "matches",
+            "len_eq",
+            "len_gte"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        }
+      },
+      "required": [
+        "path",
+        "op"
+      ],
+      "title": "Compare",
+      "type": "object"
+    },
+    "Guide": {
+      "additionalProperties": false,
+      "properties": {
+        "ui_path": {
+          "items": {
+            "$ref": "#/$defs/GuideStep"
+          },
+          "title": "Ui Path",
+          "type": "array"
+        }
+      },
+      "title": "Guide",
+      "type": "object"
+    },
+    "GuideStep": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            }
+          ],
+          "title": "Text"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "GuideStep",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Not": {
+      "additionalProperties": false,
+      "properties": {
+        "not": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Compare"
+            },
+            {
+              "$ref": "#/$defs/AllOf"
+            },
+            {
+              "$ref": "#/$defs/AnyOf"
+            },
+            {
+              "$ref": "#/$defs/Not"
+            }
+          ],
+          "title": "Not"
+        }
+      },
+      "required": [
+        "not"
+      ],
+      "title": "Not",
+      "type": "object"
+    }
+  },
+  "$id": "https://wysp.dev/schemas/1/action-spec.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "guide": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Guide"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "params_schema": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Params Schema",
+      "type": "object"
+    },
+    "postconditions": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Compare"
+          },
+          {
+            "$ref": "#/$defs/AllOf"
+          },
+          {
+            "$ref": "#/$defs/AnyOf"
+          },
+          {
+            "$ref": "#/$defs/Not"
+          }
+        ]
+      },
+      "title": "Postconditions",
+      "type": "array"
+    },
+    "preconditions": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Compare"
+          },
+          {
+            "$ref": "#/$defs/AllOf"
+          },
+          {
+            "$ref": "#/$defs/AnyOf"
+          },
+          {
+            "$ref": "#/$defs/Not"
+          }
+        ]
+      },
+      "title": "Preconditions",
+      "type": "array"
+    },
+    "reversible": {
+      "title": "Reversible",
+      "type": "boolean"
+    },
+    "risk": {
+      "enum": [
+        "read_only",
+        "ui_state",
+        "reversible",
+        "irreversible"
+      ],
+      "title": "Risk",
+      "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      ],
+      "title": "Title"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "description",
+    "params_schema",
+    "risk",
+    "reversible"
+  ],
+  "title": "ActionSpec",
+  "type": "object"
+}

@@ -1,0 +1,30 @@
+{
+  "$id": "https://wysp.dev/schemas/1/hello-result.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "core_version": {
+      "title": "Core Version",
+      "type": "string"
+    },
+    "heartbeat_interval_s": {
+      "default": 20.0,
+      "title": "Heartbeat Interval S",
+      "type": "number"
+    },
+    "session_id": {
+      "title": "Session Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_id",
+    "contract_version",
+    "core_version"
+  ],
+  "title": "HelloResult",
+  "type": "object"
+}

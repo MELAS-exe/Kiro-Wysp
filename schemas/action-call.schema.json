@@ -1,0 +1,35 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://wysp.dev/schemas/1/action-call.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "action_id": {
+      "title": "Action Id",
+      "type": "string"
+    },
+    "dry_run": {
+      "default": false,
+      "title": "Dry Run",
+      "type": "boolean"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Params",
+      "type": "object"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "action_id",
+    "request_id"
+  ],
+  "title": "ActionCall",
+  "type": "object"
+}

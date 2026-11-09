@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://wysp.dev/schemas/1/action-result.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "changed": {
+      "items": {
+        "maxLength": 512,
+        "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+        "type": "string"
+      },
+      "title": "Changed",
+      "type": "array"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "preview": {
+      "$ref": "#/$defs/JsonValue",
+      "default": null
+    },
+    "state_version": {
+      "minimum": 0,
+      "title": "State Version",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "undo_token": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Undo Token"
+    }
+  },
+  "required": [
+    "status",
+    "state_version"
+  ],
+  "title": "ActionResult",
+  "type": "object"
+}
