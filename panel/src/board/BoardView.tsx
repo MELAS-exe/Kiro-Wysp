@@ -1,0 +1,211 @@
+import {
+  Background,
+  Controls,
+  Handle,
+  MarkerType,
+  Position,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  type Edge,
+  type Node,
+  type NodeProps,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { memo, useEffect, useMemo, useState } from "react";
+import type { Annotation, Board, BoardNode } from "../protocol";
+import { useStore } from "../store";
+import { NODE_W, computeLayout, type Positions } from "./layout";
+
+interface WispData extends Record<string, unknown> {
+  node: BoardNode;
+  focused: boolean;
+  annotations: Annotation[];
+  vertical: boolean;
+}
+
+const PROV_TAG: Record<string, string | null> = { observed: null, inferred: "likely", illustrative: "example" };
+
+const WispNode = memo(function WispNode({ data }: NodeProps<Node<WispData>>) {
+  const { node, focused, annotations, vertical } = data;
+  const send = useStore((s) => s.send);
+  const tag = PROV_TAG[node.provenance];
+  return (
+    <div className={`wnode ${node.provenance}${focused ? " focused" : ""}`} style={{ width: NODE_W }} title={node.ref ?? node.id}>
+      <Handle type="target" position={vertical ? Position.Top : Position.Left} />
+      <div className="wnode-head">
+        <span className="kind">{node.kind}</span>
+        {node.provenance === "observed" ? (
+          <span className="eye" role="img" aria-label="observed in the application" title="Observed in the application">
+            ◉
+          </span>
+        ) : (
+          <span className="tag">{tag}</span>
+        )}
+        {node.confidence < 1 && <span className="conf" title="confidence">{Math.round(node.confidence * 100)}%</span>}
+      </div>
+      <div className="wnode-label">{node.label}</div>
+      {node.props_view.length > 0 && (
+        <dl className="wnode-props">
+          {node.props_view.map(([k, v]) => (
+            <div key={k}>
+              <dt>{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {annotations.map((a) => (
+        <div key={a.id} className={`wnote ${a.provenance}`}>
+          {a.text}
+        </div>
+      ))}
+      <button
+        className="why nodrag"
+        aria-label={`Why is ${node.label} here?`}
+        onClick={(e) => {
+          e.stopPropagation();
+          send({ type: "board.ask_why", node_id: node.id });
+        }}
+      >
+        Why?
+      </button>
+      <Handle type="source" position={vertical ? Position.Bottom : Position.Right} />
+    </div>
+  );
+});
+
+const nodeTypes = { wisp: WispNode };
+
+function Flow({ board }: { board: Board }) {
+  const send = useStore((s) => s.send);
+  const setSelected = useStore((s) => s.setSelected);
+  const [positions, setPositions] = useState<Positions>({});
+  const { fitView } = useReactFlow();
+  const vertical = board.layout === "tree" || board.layout === "stack";
+
+  // The layout key ignores props_view text so that value updates do not re-run ELK.
+  const layoutKey = JSON.stringify([board.layout, board.nodes.map((n) => [n.id, n.order, n.props_view.length]), board.edges.map((e) => e.id)]);
+  useEffect(() => {
+    let alive = true;
+    computeLayout(board).then((p) => {
+      if (!alive) return;
+      setPositions(p);
+      setTimeout(() => fitView({ duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 300, padding: 0.2 }), 80);
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutKey]);
+
+  const nodes: Node<WispData>[] = useMemo(
+    () =>
+      board.nodes.map((n) => ({
+        id: n.id,
+        type: "wisp",
+        position: positions[n.id] ?? { x: 0, y: 0 },
+        data: { node: n, focused: board.focus.includes(n.id), annotations: board.annotations.filter((a) => a.target === n.id), vertical },
+        draggable: true,
+      })),
+    [board.nodes, board.focus, board.annotations, positions, vertical],
+  );
+
+  const edges: Edge[] = useMemo(() => {
+    const real: Edge[] = board.edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: e.kind === "contains" ? undefined : e.kind.replace(/_/g, " "),
+      className: `wedge ${e.provenance}`,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      animated: false,
+    }));
+    if (board.layout === "stack") {
+      const ordered = board.nodes.filter((n) => n.order !== null).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      for (let i = 0; i + 1 < ordered.length; i++) {
+        const a = ordered[i];
+        const b = ordered[i + 1];
+        if (a && b)
+          real.push({
+            id: `order:${a.id}>${b.id}`,
+            source: a.id,
+            target: b.id,
+            label: "then",
+            className: "wedge order",
+            markerEnd: { type: MarkerType.ArrowClosed },
+          });
+      }
+    }
+    return real;
+  }, [board.edges, board.nodes, board.layout]);
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      fitView
+      minZoom={0.3}
+      maxZoom={1.6}
+      nodesConnectable={false}
+      onNodeClick={(_, n) => {
+        setSelected(n.id);
+        send({ type: "board.select", node_id: n.id });
+      }}
+      colorMode="dark"
+    >
+      <Background gap={24} color="#1e293b" />
+      <Controls showInteractive={false} />
+    </ReactFlow>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="legend" aria-label="Legend">
+      <span className="swatch observed" /> observed in the app
+      <span className="swatch inferred" /> likely
+      <span className="swatch illustrative" /> example
+    </div>
+  );
+}
+
+function Steps({ board }: { board: Board }) {
+  if (board.steps.length === 0) return null;
+  const icon = { pending: "○", active: "◉", done: "✓", failed: "✕" } as const;
+  return (
+    <ol className="steps" aria-label="Steps">
+      {board.steps.map((s) => (
+        <li key={s.id} className={s.status}>
+          <span className="stepicon" aria-hidden>
+            {icon[s.status]}
+          </span>
+          {s.text}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function BoardView() {
+  const board = useStore((s) => s.board);
+  return (
+    <div className="boardwrap">
+      {board.stale && <div className="stale">The application disconnected: this board may be out of date.</div>}
+      {board.nodes.length === 0 ? (
+        <div className="empty">
+          <div className="orb" />
+          <p>Ask me about what you are working on.</p>
+          <p className="muted">Real elements of your project will appear here, marked as observed.</p>
+        </div>
+      ) : (
+        <ReactFlowProvider>
+          <Flow board={board} />
+        </ReactFlowProvider>
+      )}
+      <Steps board={board} />
+      <Legend />
+    </div>
+  );
+}

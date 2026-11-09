@@ -45,6 +45,11 @@ class TurnRunner:
                 result = await self._complete(messages, tools)
                 if self.cancel.cancelled:
                     return
+                log.info(
+                    "round: text=%r tools=%s",
+                    result.text[:80],
+                    [(tc.name, json.dumps(tc.arguments, ensure_ascii=False)[:110]) for tc in result.tool_calls],
+                )
                 if result.text and not (result.tool_calls and toolbox.narrated):
                     # Plain text from the model is narrated, so free models that skip `narrate` still work.
                     await s.narrate(result.text)

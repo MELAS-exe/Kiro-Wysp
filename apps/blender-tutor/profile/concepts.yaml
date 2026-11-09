@@ -1,0 +1,63 @@
+concepts:
+  - id: object
+    term: Object
+    short: "Anything you can place in a scene: a mesh, a light, a camera."
+    detail: "Objects have a position, rotation and scale. Mesh objects also have geometry (vertices, edges, faces) and can carry modifiers and materials."
+    links: ["https://docs.blender.org/manual/en/latest/scene_layout/object/introduction.html"]
+  - id: mesh
+    term: Mesh
+    short: "A surface made of vertices, edges and faces."
+    detail: "Most models are meshes. More vertices means more detail, and more work for the computer."
+    links: ["https://docs.blender.org/manual/en/latest/modeling/meshes/introduction.html"]
+  - id: modifier
+    term: Modifier
+    short: "A non-destructive operation applied on top of an object's geometry."
+    detail: "The original mesh is untouched. You can change, hide, reorder or delete a modifier at any time, until you apply it."
+    links: ["https://docs.blender.org/manual/en/latest/modeling/modifiers/introduction.html"]
+  - id: modifier_stack
+    term: Modifier stack
+    short: "The ordered list of modifiers on an object, evaluated from top to bottom."
+    detail: "Each modifier receives the result of the one above. Changing the order changes the result."
+    aliases: ["stack", "modifier order"]
+    links: ["https://docs.blender.org/manual/en/latest/modeling/modifiers/introduction.html#interface"]
+  - id: subdivision_surface
+    term: Subdivision Surface
+    short: "Smooths a mesh by splitting its faces into smaller ones."
+    detail: "Levels Viewport controls the smoothness you see while working, Render controls the final render. Each level roughly quadruples the face count."
+    aliases: ["subsurf", "subdivision"]
+    links: ["https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/subdivision_surface.html"]
+  - id: bevel
+    term: Bevel
+    short: "Rounds hard edges so that they catch the light."
+    detail: "Segments sets how smooth the rounding is, Width sets how big it is. Real objects almost never have perfectly sharp edges."
+    links: ["https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/bevel.html"]
+  - id: solidify
+    term: Solidify
+    short: "Gives a surface a thickness, like a shell."
+    detail: "Useful for walls, glass or a hollow pumpkin. Thickness is in scene units."
+    links: ["https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/solidify.html"]
+  - id: apply_modifier
+    term: Apply a modifier
+    short: "Bakes the modifier into the mesh and removes it from the stack."
+    detail: "After applying you can no longer change the modifier's settings. Blender's own undo (Ctrl+Z) can still bring it back."
+    links: ["https://docs.blender.org/manual/en/latest/modeling/modifiers/introduction.html#interface"]
+  - id: material
+    term: Material
+    short: "Describes how a surface looks: colour, shininess, transparency."
+    detail: "An object can have several material slots."
+    links: ["https://docs.blender.org/manual/en/latest/render/materials/introduction.html"]
+  - id: collection
+    term: Collection
+    short: "A named group of objects, to organise a scene."
+    detail: "Collections can be hidden or excluded together, and can be nested."
+    links: ["https://docs.blender.org/manual/en/latest/scene_layout/collections/introduction.html"]
+  - id: outliner
+    term: Outliner
+    short: "The panel that lists every object and collection of the scene."
+    detail: "Click an item to select it. Eye and camera icons control visibility in the viewport and the render."
+    links: ["https://docs.blender.org/manual/en/latest/editors/outliner/introduction.html"]
+  - id: properties_editor
+    term: Properties editor
+    short: "The panel with tabs (object, modifiers, material...) for the active object."
+    detail: "The blue wrench tab holds the modifier stack."
+    links: ["https://docs.blender.org/manual/en/latest/editors/properties_editor.html"]

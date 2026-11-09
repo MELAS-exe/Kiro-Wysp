@@ -34,6 +34,10 @@ apps/blender-tutor/demo/*.blend
 contract-tests/reports/
 *.junit.xml
 
+# Generated Blender extension artefacts
+apps/blender-tutor/adapter/wheels/
+dist/
+
 # LaTeX build by-products (the PDF itself is committed)
 docs/architecture/*.log
 docs/architecture/*.aux

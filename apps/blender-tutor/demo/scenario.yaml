@@ -1,0 +1,66 @@
+# Offline demo scenario for the ScriptedLLM (no network, deterministic).
+#   uv run wysp serve --llm scripted --scenario apps/blender-tutor/demo/scenario.yaml
+# Matches the demo scene "Pumpkin Patch" (apps/blender-tutor/demo/build_scene.py).
+steps:
+  # 1. "Explain the pumpkin's modifiers" -> real elements on the board, then the explanation.
+  - when: "pumpkin|modifier|explain|tour"
+    calls:
+      - name: show_entities
+        arguments:
+          refs: ["blender://object/Pumpkin"]
+          layout: stack
+          include_children: true
+          focus: ["blender://object/Pumpkin"]
+  - after_tool: show_entities
+    calls:
+      - name: add_concept
+        arguments:
+          label: "If Solidify ran first, Subdivision would smooth its walls too"
+          kind: example
+          provenance: illustrative
+          attach_to: "blender://object/Pumpkin/modifier/Solidify"
+      - name: narrate
+        arguments:
+          segments:
+            - text: "This is your Pumpkin. It carries a modifier stack, and Blender evaluates it from the top down."
+              cues:
+                - {at_word: 2, op: focus, target: "blender://object/Pumpkin"}
+                - {at_word: 6, op: highlight, target: "blender://object/Pumpkin"}
+            - text: "First comes Subdivision, which smooths the sphere by adding geometry."
+              cues:
+                - {at_word: 3, op: highlight, target: "blender://object/Pumpkin/modifier/Subdivision"}
+            - text: "Then Solidify gives that smooth surface a real thickness, like a shell."
+              cues:
+                - {at_word: 2, op: highlight, target: "blender://object/Pumpkin/modifier/Solidify"}
+            - text: "Order matters. If Solidify came first, Subdivision would round off its walls as well."
+              provenance: illustrative
+  - after_tool: narrate
+    say: "Want to try one yourself? Ask me to round the candle's edges with a Bevel."
+
+  # 2. Guided: the user does it, Wysp verifies.
+  - when: "bevel|candle|round"
+    calls:
+      - name: show_entities
+        arguments: {refs: ["blender://object/Candle"], layout: tree, include_children: true, focus: ["blender://object/Candle"]}
+  - after_tool: show_entities
+    calls:
+      - name: propose_action
+        arguments:
+          action_id: add_modifier
+          params: {target: "blender://object/Candle", type: BEVEL}
+          mode: guide
+          rationale: "Learn to add a modifier yourself"
+  - after_tool: propose_action
+    say: "Follow the steps on the board. I will tell you as soon as I see the Bevel in your scene."
+
+  # 3. Do it for me: permission, execution, verification.
+  - when: "do it|for me|add it"
+    calls:
+      - name: propose_action
+        arguments:
+          action_id: add_modifier
+          params: {target: "blender://object/Candle", type: BEVEL}
+          mode: do
+          rationale: "You asked me to add the Bevel for you"
+  - after_tool: propose_action
+    say: "Done. The Bevel is on the candle, and I checked it in the scene. You can undo it any time."

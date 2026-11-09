@@ -9,7 +9,9 @@ Wysp is our entry for **Kiroween 2026, category Skeleton Crew**. One shared core
 | Blender tutor | `apps/blender-tutor/` | native (Blender 5.2 Python API) | explain an object's modifier stack, add a Bevel with permission, verify it |
 | Web tutor | `apps/web-tutor/` | interface (DOM and accessibility, Chrome MV3 extension) | explain a dashboard filter, guide the creation of a report, verify it |
 
-> **Status (9 Nov 2026): design and planning.** The specs, steering rules, hooks and agents are in `.kiro/`. Code arrives task by task from the specs. Commands below are the planned ones.
+> **Status (9 Nov 2026): working prototype of the first tutor.** The contract, the Core, the Panel and the Blender tutor run end to end (see "Run it"). The web tutor is next. Specs, steering, hooks and agents are in `.kiro/`.
+
+![The Panel in guide mode on the Blender demo scene](docs/img/panel-guide.png)
 
 ## How it works
 
@@ -24,6 +26,45 @@ Chrome extension ──┘   (adapter contract)    └─ LLM with tool calling,
 - **Contract Test Kit**: the same test suite runs against the mock adapter, the Blender tutor and the web tutor.
 
 The full design (in French) is in [`docs/architecture/wysp-architecture.pdf`](docs/architecture/wysp-architecture.pdf). The normative specs (in English) are in [`.kiro/specs/`](.kiro/specs/).
+
+## Run it (Windows, Blender 5.2 LTS)
+
+Prerequisites: Python 3.13 with [uv](https://docs.astral.sh/uv/), Node 24, Chrome, Blender 5.2 LTS.
+
+```powershell
+uv sync                         # Python workspace
+npm install; npm run build -w panel   # use npm.cmd if PowerShell blocks npm
+copy .env.example .env          # optional: add a free GROQ_API_KEY (console.groq.com/keys) for a fast LLM
+```
+
+**1. Core + headless Blender (quickest)**
+
+```powershell
+scripts\dev_up.ps1                                   # Core on http://127.0.0.1:8765 + headless Blender with the demo scene
+# offline and deterministic (no LLM account needed):
+scripts\dev_up.ps1 -Llm scripted -Scenario apps\blender-tutor\demo\scenario.yaml
+uv run python scripts\dev_chat.py                    # terminal Panel, or open http://127.0.0.1:8765
+scripts\dev_down.ps1                                 # stop everything
+```
+
+**2. With the Blender interface**
+
+```powershell
+uv run python scripts\build_blender_extension.py --install   # builds and installs the extension
+uv run wysp serve                                            # then in Blender: sidebar (N) > Wysp > Connect
+```
+
+**LLM providers.** `auto` picks the first of Groq, Cerebras, OpenRouter whose key is in `.env`, otherwise keyless
+Pollinations (works, but stalls on about every second request). `--llm scripted` replays a scenario offline.
+
+## Tests
+
+```powershell
+uv run pytest                                              # 27 tests: contract, Core, end-to-end with the mock adapter
+uv run pytest -m live -o addopts="" apps\blender-tutor\tests   # 4 tests inside a real headless Blender
+npm test -w panel                                          # Panel unit and property tests
+uv run python scripts\kiro\hook.py boundaries              # the Core must stay application-agnostic
+```
 
 ## Build your own tutor in four steps (planned)
 
@@ -46,14 +87,9 @@ Then `uv run wysp-contract --tutor <name>` tells you whether your adapter is com
 
 Hooks call `scripts/kiro/hook.py`, a standard-library Python script that CI runs too.
 
-## Getting started (planned)
+## Getting started
 
-Prerequisites: Python 3.13 with [uv](https://docs.astral.sh/uv/), Node 24, Chrome 116+, Blender 5.2 LTS.
-
-```bash
-uv sync && npm install
-uv run wysp serve --llm scripted --mock   # core + panel with the mock adapter, no API key needed
-```
+See "Run it" above.
 
 ## Repository layout
 

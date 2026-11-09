@@ -34,7 +34,6 @@ import re
 import shutil
 import subprocess
 import sys
-import threading
 import tokenize
 from pathlib import Path
 
@@ -44,14 +43,31 @@ ALLOW_MARK = "wysp: allow-app-term"
 
 # Host APIs and packages that Wysp Core must never import.
 FORBIDDEN_IMPORT_ROOTS = {
-    "bpy", "bmesh", "mathutils", "gpu", "blf", "bgl",
-    "apps", "wysp_adapter_sdk", "wysp_blender", "wysp_web",
+    "bpy",
+    "bmesh",
+    "mathutils",
+    "gpu",
+    "blf",
+    "bgl",
+    "apps",
+    "wysp_adapter_sdk",
+    "wysp_blender",
+    "wysp_web",
 }
 
 # Application vocabulary that must not appear in Core identifiers or strings.
 FORBIDDEN_WORDS = {
-    "bpy", "bmesh", "blender", "chrome", "chromium", "webextension",
-    "dom", "bevel", "subsurf", "modifier", "modifiers",
+    "bpy",
+    "bmesh",
+    "blender",
+    "chrome",
+    "chromium",
+    "webextension",
+    "dom",
+    "bevel",
+    "subsurf",
+    "modifier",
+    "modifiers",
 }
 
 PYTHON_PACKAGES = ["core", "contract-tests", "sdk/python", "apps/blender-tutor"]
@@ -59,6 +75,7 @@ TS_WORKSPACES = ["panel", "sdk/ts", "apps/web-tutor/extension", "apps/web-tutor/
 
 
 # --------------------------------------------------------------------------- utils
+
 
 def fail(message: str) -> int:
     print(message.rstrip(), file=sys.stderr)
@@ -76,8 +93,13 @@ def run(cmd: list[str], cwd: Path = ROOT, timeout: int = 600) -> tuple[int, str]
     """Run a command and return (exit code, combined output)."""
     try:
         proc = subprocess.run(
-            cmd, cwd=cwd, capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=timeout,
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
         )
     except FileNotFoundError as exc:
         return 127, f"command not found: {exc}"
@@ -90,27 +112,61 @@ def tail(text: str, lines: int = 60) -> str:
     return "\n".join(text.strip().splitlines()[-lines:])
 
 
+def _read_stdin_nowait(timeout: float) -> str:
+    """Read what is available on STDIN within `timeout` seconds, never blocking on an open, silent pipe."""
+    if sys.stdin is None:
+        return ""
+    try:
+        fd = sys.stdin.fileno()
+    except (OSError, ValueError):
+        return ""
+    import stat
+    import time
+
+    try:
+        mode = os.fstat(fd).st_mode
+    except OSError:
+        return ""
+    if stat.S_ISREG(mode):  # redirected file: safe to read it all
+        return sys.stdin.read()
+    chunks: list[bytes] = []
+    deadline = time.monotonic() + timeout
+    if os.name == "nt":
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        handle = msvcrt.get_osfhandle(fd)
+        avail = wintypes.DWORD(0)
+        while time.monotonic() < deadline:
+            if not ctypes.windll.kernel32.PeekNamedPipe(handle, None, 0, None, ctypes.byref(avail), None):
+                break  # pipe closed (EOF) or not a pipe
+            if avail.value:
+                chunks.append(os.read(fd, avail.value))
+                deadline = min(deadline, time.monotonic() + 0.05)  # got data: wait only briefly for more
+            else:
+                time.sleep(0.01)
+    else:
+        import select
+
+        while select.select([fd], [], [], max(0.0, deadline - time.monotonic()))[0]:
+            data = os.read(fd, 65536)
+            if not data:
+                break
+            chunks.append(data)
+            deadline = min(deadline, time.monotonic() + 0.05)
+    return b"".join(chunks).decode("utf-8", "replace")
+
+
 def read_stdin_paths(timeout: float = 0.5) -> list[str]:
     """Extract file paths from the hook event JSON sent on STDIN, if any.
 
-    The exact field name is not documented, so every string value whose key
-    looks like a path is collected. Reading happens in a thread so that an
-    open-but-silent STDIN never blocks the hook.
+    The exact field name is not documented, so every string value whose key looks like a path is
+    collected. STDIN is read without blocking: an open but silent pipe yields nothing.
     """
     if sys.stdin is None or sys.stdin.isatty():
         return []
-    box: dict[str, str] = {}
-
-    def reader() -> None:
-        try:
-            box["raw"] = sys.stdin.read()
-        except Exception:  # noqa: BLE001 - best effort only
-            box["raw"] = ""
-
-    thread = threading.Thread(target=reader, daemon=True)
-    thread.start()
-    thread.join(timeout)
-    raw = box.get("raw", "")
+    raw = _read_stdin_nowait(timeout)
     if not raw.strip():
         return []
     try:
@@ -173,6 +229,7 @@ def uv_path() -> str | None:
 
 
 # ------------------------------------------------------------------ boundaries
+
 
 def _split_words(text: str) -> set[str]:
     text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
@@ -261,6 +318,7 @@ def check_boundaries(_args: list[str]) -> int:
 
 # ------------------------------------------------------------------- schemas
 
+
 def check_schemas(_args: list[str]) -> int:
     if not (CORE_SRC / "contract" / "export.py").exists():
         return 0
@@ -279,6 +337,7 @@ def check_schemas(_args: list[str]) -> int:
 
 
 # ------------------------------------------------------------------ contract
+
 
 def _tutors_from(paths: list[Path]) -> list[str]:
     tutors = set()
@@ -310,6 +369,7 @@ def check_contract(args: list[str]) -> int:
 
 # ------------------------------------------------------------------ profiles
 
+
 def check_profiles(_args: list[str]) -> int:
     if not (CORE_SRC / "cli.py").exists():
         return 0
@@ -325,6 +385,7 @@ def check_profiles(_args: list[str]) -> int:
 
 
 # -------------------------------------------------------------------- format
+
 
 def _targets(args: list[str], suffixes: tuple[str, ...]) -> list[str]:
     paths = [p for p in resolve_paths(args) if p.suffix in suffixes and p.exists()]
@@ -358,6 +419,7 @@ def check_format_ts(args: list[str]) -> int:
 
 
 # ---------------------------------------------------------------- task-tests
+
 
 def check_task_tests(_args: list[str]) -> int:
     changed = [rel(p) for p in changed_files()]
@@ -403,4 +465,8 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    code = main(sys.argv[1:])
+    # A daemon thread may still be blocked reading an open STDIN; exit without waiting for it.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(code)

@@ -24,6 +24,7 @@
     "predicate-outcome": "https://wysp.dev/schemas/1/predicate-outcome.schema.json",
     "rpc-request": "https://wysp.dev/schemas/1/rpc-request.schema.json",
     "rpc-response": "https://wysp.dev/schemas/1/rpc-response.schema.json",
-    "scope": "https://wysp.dev/schemas/1/scope.schema.json"
+    "scope": "https://wysp.dev/schemas/1/scope.schema.json",
+    "ui-inbound": "https://wysp.dev/schemas/1/ui-inbound.schema.json"
   }
 }

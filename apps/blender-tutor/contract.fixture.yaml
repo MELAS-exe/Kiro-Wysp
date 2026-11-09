@@ -1,0 +1,51 @@
+# Contract Test Kit fixture for the Blender tutor (see .kiro/specs/adapter-contract/design.md).
+# Scene: apps/blender-tutor/demo/build_scene.py ("Pumpkin Patch").
+tutor: blender-tutor
+launch:
+  kind: command
+  # {blender}, {url}, {token}, {repo}, {site_packages} are filled in by the kit.
+  command:
+    - "{blender}"
+    - "-b"
+    - "--python-use-system-env"
+    - "{repo}/apps/blender-tutor/demo/pumpkin.blend"
+    - "--python"
+    - "{repo}/apps/blender-tutor/demo/run_adapter.py"
+    - "--"
+    - "--url"
+    - "{url}"
+    - "--token"
+    - "{token}"
+  env:
+    PYTHONPATH: "{site_packages}"
+  connect_timeout_s: 90
+expect:
+  entity_kinds: [scene, collection, object, modifier, material]
+  min_entities: 8
+  actions:
+    - select_object
+    - show_properties_tab
+    - add_modifier
+    - set_modifier_property
+    - move_modifier
+    - remove_modifier
+    - apply_modifier
+safe_calls:
+  - {action_id: select_object, params: {target: "blender://object/Candle"}}
+  - {action_id: add_modifier, params: {target: "blender://object/Candle", type: BEVEL}}
+  - {action_id: set_modifier_property, params: {target: "blender://object/Pumpkin/modifier/Subdivision", property: levels, value: 1}}
+  - {action_id: move_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify", index: 0}}
+  - {action_id: remove_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify"}}
+dry_run_calls:
+  - {action_id: apply_modifier, params: {target: "blender://object/Pumpkin/modifier/Subdivision"}}
+invalid_calls:
+  - {action_id: add_modifier, params: {target: "blender://object/DoesNotExist", type: BEVEL}, expect_error: -32012}
+  - {action_id: add_modifier, params: {target: "blender://object/Candle", type: 12}, expect_error: -32602}
+  - {action_id: set_modifier_property, params: {target: "blender://object/Pumpkin/modifier/Subdivision", property: nope, value: 1}, expect_error: -32013}
+  - {action_id: set_modifier_property, params: {target: "blender://object/Pumpkin/modifier/Subdivision", property: levels, value: "many"}, expect_error: -32602}
+  - {action_id: move_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify", index: 40}, expect_error: -32013}
+  - {action_id: remove_modifier, params: {target: "blender://object/Pumpkin/modifier/Nope"}, expect_error: -32012}
+  - {action_id: no_such_action, params: {}, expect_error: -32011}
+skip:
+  - {check: highlight, reason: "no 3D viewport in background mode"}
+  - {check: action:show_properties_tab, reason: "no Properties editor in background mode"}

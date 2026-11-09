@@ -32,8 +32,19 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("token", help="print the location of the pairing token")
 
+    validate = sub.add_parser("validate-profile", help="check a tutor profile directory")
+    validate.add_argument("path", type=Path)
+
     args = parser.parse_args(argv)
     load_dotenv(find_repo_root() / ".env")
+
+    if args.command == "validate-profile":
+        from .pedagogy.profile import validate_profile
+
+        problems = validate_profile(args.path)
+        for p in problems:
+            print(f"ERROR {p}", file=sys.stderr)
+        return 1 if problems else 0
 
     if args.command == "token":
         ensure_home()

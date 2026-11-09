@@ -1,0 +1,25 @@
+id: blender-tutor
+app: Blender
+languages: [en]
+primer: >
+  Blender is a free 3D creation suite. A scene contains collections and objects (meshes, lights,
+  cameras). A mesh object can carry a stack of modifiers: non-destructive operations that Blender
+  evaluates from the top of the stack to the bottom, so their order changes the result. Typical
+  modifiers are Subdivision Surface (smooths by adding geometry), Bevel (rounds hard edges), Solidify
+  (gives a surface thickness), Mirror and Array. Modifier settings live in the Properties editor,
+  under the blue wrench tab. Materials define how a surface looks. Applying a modifier bakes its
+  effect into the mesh and removes it from the stack.
+  Teach with the user's real scene: start from the objects they have, and prefer letting them
+  perform the steps themselves.
+board:
+  # What each kind shows on its board node, in order (at most 6).
+  props:
+    object: [type, modifiers_count, material, vertices]
+    modifier: [type, index, show_viewport, levels, segments, width, thickness]
+    collection: [objects]
+    material: [users]
+skills:
+  - {id: scene_navigation, title: {en: "Read the scene"}, prior: 0.3}
+  - {id: modifier_stack, title: {en: "Understand the modifier stack"}, prerequisites: [scene_navigation]}
+  - {id: subdivision_surface, title: {en: "Smooth a mesh with Subdivision Surface"}, prerequisites: [modifier_stack]}
+  - {id: bevel_modifier, title: {en: "Round edges with a Bevel"}, prerequisites: [modifier_stack]}

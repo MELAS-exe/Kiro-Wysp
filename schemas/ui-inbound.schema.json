@@ -1,0 +1,329 @@
+{
+  "$defs": {
+    "AdapterActivate": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_id": {
+          "title": "Adapter Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "adapter.activate",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "adapter_id"
+      ],
+      "title": "AdapterActivate",
+      "type": "object"
+    },
+    "BoardAskWhy": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "title": "Node Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "board.ask_why",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "node_id"
+      ],
+      "title": "BoardAskWhy",
+      "type": "object"
+    },
+    "BoardSelect": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "title": "Node Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "board.select",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "node_id"
+      ],
+      "title": "BoardSelect",
+      "type": "object"
+    },
+    "NarrationCue": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "segment_id": {
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "narration.cue",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "segment_id",
+        "index"
+      ],
+      "title": "NarrationCue",
+      "type": "object"
+    },
+    "NarrationProgress": {
+      "additionalProperties": false,
+      "properties": {
+        "played": {
+          "default": true,
+          "title": "Played",
+          "type": "boolean"
+        },
+        "segment_id": {
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "narration.progress",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "segment_id"
+      ],
+      "title": "NarrationProgress",
+      "type": "object"
+    },
+    "PermissionRespond": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "approve",
+            "deny",
+            "grant_lesson"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "permission.respond",
+          "title": "Type",
+          "type": "string"
+        },
+        "via": {
+          "default": "click",
+          "enum": [
+            "click",
+            "voice"
+          ],
+          "title": "Via",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "request_id",
+        "decision"
+      ],
+      "title": "PermissionRespond",
+      "type": "object"
+    },
+    "SettingsUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "lang": {
+          "anyOf": [
+            {
+              "maxLength": 8,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lang"
+        },
+        "type": {
+          "const": "settings.update",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "SettingsUpdate",
+      "type": "object"
+    },
+    "SnapshotRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "board.snapshot_request",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "SnapshotRequest",
+      "type": "object"
+    },
+    "UndoLast": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "undo.last",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "UndoLast",
+      "type": "object"
+    },
+    "UserContinue": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "user.continue",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "UserContinue",
+      "type": "object"
+    },
+    "UserInterrupt": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "user.interrupt",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "UserInterrupt",
+      "type": "object"
+    },
+    "UserMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "default": "typed",
+          "enum": [
+            "typed",
+            "voice"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "const": "user.message",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "text"
+      ],
+      "title": "UserMessage",
+      "type": "object"
+    }
+  },
+  "$id": "https://wysp.dev/schemas/1/ui-inbound.schema.json",
+  "discriminator": {
+    "mapping": {
+      "adapter.activate": "#/$defs/AdapterActivate",
+      "board.ask_why": "#/$defs/BoardAskWhy",
+      "board.select": "#/$defs/BoardSelect",
+      "board.snapshot_request": "#/$defs/SnapshotRequest",
+      "narration.cue": "#/$defs/NarrationCue",
+      "narration.progress": "#/$defs/NarrationProgress",
+      "permission.respond": "#/$defs/PermissionRespond",
+      "settings.update": "#/$defs/SettingsUpdate",
+      "undo.last": "#/$defs/UndoLast",
+      "user.continue": "#/$defs/UserContinue",
+      "user.interrupt": "#/$defs/UserInterrupt",
+      "user.message": "#/$defs/UserMessage"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/UserMessage"
+    },
+    {
+      "$ref": "#/$defs/UserInterrupt"
+    },
+    {
+      "$ref": "#/$defs/UserContinue"
+    },
+    {
+      "$ref": "#/$defs/PermissionRespond"
+    },
+    {
+      "$ref": "#/$defs/BoardSelect"
+    },
+    {
+      "$ref": "#/$defs/BoardAskWhy"
+    },
+    {
+      "$ref": "#/$defs/NarrationProgress"
+    },
+    {
+      "$ref": "#/$defs/NarrationCue"
+    },
+    {
+      "$ref": "#/$defs/AdapterActivate"
+    },
+    {
+      "$ref": "#/$defs/SnapshotRequest"
+    },
+    {
+      "$ref": "#/$defs/UndoLast"
+    },
+    {
+      "$ref": "#/$defs/SettingsUpdate"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+schema_version = "1.0.0"
+
+id = "wysp_tutor"
+version = "0.1.0"
+name = "Wysp Tutor"
+tagline = "An AI tutor that sees your scene and teaches you Blender"
+maintainer = "Wysp contributors <noreply@users.noreply.github.com>"
+type = "add-on"
+
+website = "https://github.com/MELAS-exe/Kiro-Wysp"
+tags = ["3D View", "Development"]
+
+blender_version_min = "5.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2026 Wysp contributors"]
+
+# Pure-Python wheels, built by scripts/build_blender_extension.py
+wheels = [
+  "./wheels/wysp_adapter_sdk-0.1.0-py3-none-any.whl",
+  "./wheels/websocket_client-1.9.2-py3-none-any.whl",
+]
+
+[permissions]
+network = "Talks to the Wysp Core running on this computer (127.0.0.1)"
+files = "Reads the pairing token from ~/.wysp/token"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "*.pyc",
+  "/tests/",
+]

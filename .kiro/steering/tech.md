@@ -32,21 +32,25 @@ inclusion: always
 - Speech: `WYSP_TTS_PROVIDER`, `WYSP_TTS_API_KEY`, `WYSP_STT_PROVIDER` (default `browser`).
 - Secrets live in a local `.env` (git-ignored). Never commit keys, never log them.
 
-## Common commands *(planned)*
+## Common commands
 
 | Goal | Command |
 |---|---|
 | Install Python dependencies | `uv sync` |
-| Install JS dependencies | `npm install` |
-| Run the Core (serves the built Panel) | `uv run wysp serve` |
-| Run with the scripted LLM and the mock adapter | `uv run wysp serve --llm scripted --mock` |
-| Panel dev server | `npm run dev -w panel` |
-| Regenerate schemas and TS types | `uv run --no-project python scripts/kiro/hook.py schemas` |
+| Install JS dependencies and build the Panel | `npm install` then `npm run build -w panel` |
+| Start Core + headless Blender | `scripts\dev_up.ps1 [-Llm scripted -Scenario file.yaml]` |
+| Stop them | `scripts\dev_down.ps1` |
+| Run the Core only | `uv run wysp serve [--llm auto\|scripted\|groq\|pollinations...]` |
+| Terminal Panel | `uv run python scripts\dev_chat.py [-m "message"]` |
+| Panel dev server | `npm run dev -w panel` (http://127.0.0.1:5173, talks to the Core on :8765) |
+| Regenerate schemas | `uv run python -m wysp_core.contract.export` |
 | Python tests | `uv run pytest` |
-| TypeScript tests | `npm test --workspaces --if-present` |
-| Contract kit against a tutor | `uv run wysp-contract --tutor blender-tutor` |
-| Validate profiles | `uv run wysp validate-profile apps/blender-tutor/profile` |
-| Core boundary check (available now) | `uv run --no-project python scripts/kiro/hook.py boundaries` |
+| Live Blender tests | `uv run pytest -m live -o addopts="" apps\blender-tutor\tests` |
+| TypeScript tests / typecheck | `npm test -w panel` / `npm run typecheck -w panel` |
+| Contract kit (offline fixture check) | `uv run wysp-contract --tutor blender-tutor --offline` *(online harness: planned)* |
+| Validate a profile | `uv run wysp validate-profile apps/blender-tutor/profile` |
+| Core boundary check | `uv run --no-project python scripts/kiro/hook.py boundaries` |
+| Build and install the Blender extension | `uv run python scripts\build_blender_extension.py --install` |
 
 ## Windows notes
 - If PowerShell refuses `npm` (execution policy), use `npm.cmd`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.

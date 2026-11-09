@@ -1,0 +1,13 @@
+{
+  "name": "wysp-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Wysp: a skeleton for building AI tutors for software applications",
+  "license": "MIT",
+  "workspaces": [
+    "panel"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

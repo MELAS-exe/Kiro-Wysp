@@ -132,8 +132,6 @@
         "target": {
           "anyOf": [
             {
-              "maxLength": 512,
-              "pattern": "^[a-z][a-z0-9+.-]*://.+$",
               "type": "string"
             },
             {

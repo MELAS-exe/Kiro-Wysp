@@ -2,6 +2,13 @@
 
 Non-streaming for robustness with free endpoints. Secrets never leave this module except in the
 Authorization header, and every error message is redacted.
+
+Free endpoints are unreliable, so requests are resilient:
+* HTTP 429 honours `Retry-After` (capped) and tries again;
+* 5xx and timeouts are retried;
+* `hedge_after_s`: when set, a second identical request is launched if nothing came back in that
+  time (LLM calls have no side effects), and the first successful answer wins. Pollinations'
+  anonymous tier stalls on roughly every other request, so it is enabled for that preset.
 """
 
 from __future__ import annotations
@@ -10,6 +17,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -21,6 +29,8 @@ from .base import CancelToken, LLMError, LLMResult, ToolCall, ToolSpec
 
 log = logging.getLogger("wysp.llm")
 
+MAX_RETRY_AFTER_S = 20.0
+
 
 @dataclass(frozen=True)
 class Preset:
@@ -28,6 +38,9 @@ class Preset:
     model: str
     key_env: tuple[str, ...]
     needs_key: bool = True
+    hedge_after_s: float | None = None
+    timeout_s: float = 45.0
+    max_attempts: int = 3
 
 
 # Free tiers, no credit card (checked 9 Nov 2026). Models change often: override with WYSP_LLM_MODEL.
@@ -37,26 +50,47 @@ PRESETS: dict[str, Preset] = {
         "https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free", ("OPENROUTER_API_KEY",)
     ),
     "cerebras": Preset("https://api.cerebras.ai/v1", "gpt-oss-120b", ("CEREBRAS_API_KEY",)),
-    "pollinations": Preset("https://text.pollinations.ai/openai", "openai", (), needs_key=False),
+    "pollinations": Preset(
+        "https://text.pollinations.ai/openai",
+        "openai",
+        (),
+        needs_key=False,
+        hedge_after_s=9.0,
+        timeout_s=30.0,
+        max_attempts=5,
+    ),
     "openai": Preset("https://api.openai.com/v1", "gpt-4o-mini", ("OPENAI_API_KEY",)),
-    "ollama": Preset("http://127.0.0.1:11434/v1", "llama3.1", (), needs_key=False),
+    "ollama": Preset("http://127.0.0.1:11434/v1", "llama3.1", (), needs_key=False, timeout_s=120.0),
 }
 
 
 class OpenAICompatProvider:
     def __init__(
-        self, name: str, base_url: str, model: str, api_key: str | None = None, timeout_s: float = 45.0
+        self,
+        name: str,
+        base_url: str,
+        model: str,
+        api_key: str | None = None,
+        timeout_s: float = 45.0,
+        hedge_after_s: float | None = None,
+        max_attempts: int = 3,
     ) -> None:
         self.name = name
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout_s = timeout_s
+        self.hedge_after_s = hedge_after_s
+        self.max_attempts = max_attempts
         self._key = api_key
         register_secret(api_key)
 
     @property
     def endpoint(self) -> str:
         return self.base_url if self.base_url.endswith("/chat/completions") else self.base_url + "/chat/completions"
+
+    async def _post(self, body: dict[str, Any], headers: dict[str, str]) -> httpx.Response:
+        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+            return await client.post(self.endpoint, headers=headers, json=body)
 
     async def complete(self, messages: list[dict[str, Any]], tools: list[ToolSpec], cancel: CancelToken) -> LLMResult:
         body: dict[str, Any] = {
@@ -72,26 +106,72 @@ class OpenAICompatProvider:
         if self._key:
             headers["Authorization"] = f"Bearer {self._key}"
 
-        async def post() -> httpx.Response:
-            async with httpx.AsyncClient(timeout=self.timeout_s) as client:
-                return await client.post(self.endpoint, headers=headers, json=body)
-
-        task = asyncio.create_task(post())
+        started = time.monotonic()
         waiter = asyncio.create_task(cancel.wait())
+        running: set[asyncio.Task] = set()
+        launched = 0
+        last_problem = "no answer"
         try:
-            done, _ = await asyncio.wait({task, waiter}, return_when=asyncio.FIRST_COMPLETED)
-            if task not in done:
-                task.cancel()
-                return LLMResult()
-            response = task.result()
-        except httpx.HTTPError as exc:
-            raise LLMError(redact_text(f"{self.name}: network error ({type(exc).__name__})")) from exc
+            while True:
+                if launched < self.max_attempts and (not running or self.hedge_after_s is not None):
+                    running.add(asyncio.create_task(self._post(body, headers)))
+                    launched += 1
+                if not running:
+                    raise LLMError(f"{self.name}: {last_problem}")
+                wait_for = self.hedge_after_s if self.hedge_after_s is not None else None
+                done, _ = await asyncio.wait({waiter, *running}, timeout=wait_for, return_when=asyncio.FIRST_COMPLETED)
+                if waiter in done:
+                    return LLMResult()
+                for task in done:
+                    running.discard(task)
+                    try:
+                        response = task.result()
+                    except httpx.HTTPError as exc:
+                        last_problem = f"network error ({type(exc).__name__})"
+                        log.warning("%s: %s after %.1fs", self.name, last_problem, time.monotonic() - started)
+                        continue
+                    if response.status_code == 429:
+                        pause = min(self._retry_after(response), MAX_RETRY_AFTER_S)
+                        last_problem = f"rate limited (retry after {pause:.0f}s)"
+                        log.warning("%s: %s", self.name, last_problem)
+                        if launched >= self.max_attempts and not running:
+                            raise LLMError(f"{self.name}: {last_problem}")
+                        await asyncio.sleep(pause)
+                        continue
+                    if response.status_code >= 500:
+                        last_problem = f"server error HTTP {response.status_code}"
+                        log.warning("%s: %s", self.name, last_problem)
+                        continue
+                    if response.status_code >= 400:
+                        snippet = redact_text(response.text[:200].replace("\n", " "))
+                        raise LLMError(f"{self.name}: HTTP {response.status_code} {snippet}")
+                    log.info(
+                        "llm %s %s: %.1fs (%d request%s), %d messages, %d tools",
+                        self.name, self.model, time.monotonic() - started, launched, "s" if launched > 1 else "",
+                        len(messages), len(tools),
+                    )  # fmt: skip
+                    return self._parse(response)
+                if not done and launched >= self.max_attempts and not running:
+                    raise LLMError(f"{self.name}: {last_problem}")
         finally:
             waiter.cancel()
-        if response.status_code >= 400:
-            snippet = redact_text(response.text[:200].replace("\n", " "))
-            raise LLMError(f"{self.name}: HTTP {response.status_code} {snippet}")
-        return self._parse(response)
+            for task in running:
+                task.cancel()
+
+    @staticmethod
+    def _retry_after(response: httpx.Response) -> float:
+        header = response.headers.get("retry-after")
+        if header:
+            try:
+                return float(header)
+            except ValueError:
+                pass
+        try:
+            msg = response.json().get("error", {}).get("message", "")
+            digits = "".join(c if c.isdigit() else " " for c in msg).split()
+            return float(digits[0]) if digits else 2.0
+        except (ValueError, AttributeError):
+            return 2.0
 
     @staticmethod
     def _clean(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -125,7 +205,7 @@ def from_env(env: dict[str, str] | None = None) -> OpenAICompatProvider:
     env = dict(os.environ) if env is None else env
     name = (env.get("WYSP_LLM_PROVIDER") or "").lower()
     if not name:
-        for candidate in ("groq", "openrouter", "cerebras"):
+        for candidate in ("groq", "cerebras", "openrouter"):
             if any(env.get(k) for k in PRESETS[candidate].key_env):
                 name = candidate
                 break
@@ -147,4 +227,7 @@ def from_env(env: dict[str, str] | None = None) -> OpenAICompatProvider:
         base_url=env.get("WYSP_LLM_BASE_URL") or preset.base_url,
         model=env.get("WYSP_LLM_MODEL") or preset.model,
         api_key=key,
+        timeout_s=preset.timeout_s,
+        hedge_after_s=preset.hedge_after_s,
+        max_attempts=preset.max_attempts,
     )
