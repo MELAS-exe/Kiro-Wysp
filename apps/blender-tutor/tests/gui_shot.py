@@ -7,6 +7,7 @@ Not a pytest: a developer tool to look at what Wysp draws (it needs a window, no
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -22,6 +23,10 @@ argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 OUT = Path(argv[0])
 REFS = argv[1:]
 OUT.mkdir(parents=True, exist_ok=True)
+if os.environ.get("WYSP_TEST_CORE"):  # label refs need a Core for OCR, e.g. ws://127.0.0.1:8799/ws/adapter
+    highlight.set_core_url(os.environ["WYSP_TEST_CORE"])
+if os.environ.get("WYSP_TEST_UI_SCALE"):  # check that markers follow Blender's Resolution Scale
+    bpy.context.preferences.view.ui_scale = float(os.environ["WYSP_TEST_UI_SCALE"])
 _queue = list(REFS)
 _phase = {"n": 0, "ref": None}
 
@@ -37,6 +42,7 @@ def _step():
             _phase["ref"] = ref
             try:
                 print("GUI_HIGHLIGHT", ref, highlight.highlight(ref, "pulse", 6000))
+                print("GUI_RECTS tab", highlight._state.get("tab_rect"), "label", highlight._state.get("label_rect"))
             except Exception as exc:  # noqa: BLE001
                 print("GUI_ERROR", ref, exc)
             return 0.6

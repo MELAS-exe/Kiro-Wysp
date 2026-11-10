@@ -4,7 +4,8 @@ import { applyPatch, emptyBoard } from "./board/applyOps";
 import { CoreSocket, coreUrl } from "./protocol";
 import type { AdapterInfo, Board, CoreMessage, LogLevel, PanelMessage, PermissionRequest, Segment } from "./protocol";
 
-export type SegState = "queued" | "playing" | "played" | "cancelled";
+// queued: not spoken yet (hidden); skipped: cancelled before it was spoken (hidden, Continue replays it).
+export type SegState = "queued" | "playing" | "played" | "cancelled" | "skipped";
 
 export type TranscriptItem =
   | { kind: "user"; id: string; text: string; source: string }
@@ -95,7 +96,7 @@ export const useStore = create<PanelState>((set, get) => ({
       current: null,
       transcript: s.transcript.map((t) =>
         t.kind === "wysp" && (t.state === "queued" || t.state === "playing") && (fromIndex === undefined || t.segment.index >= fromIndex)
-          ? { ...t, state: "cancelled" as const }
+          ? { ...t, state: t.state === "playing" ? ("cancelled" as const) : ("skipped" as const) }
           : t,
       ),
     })),

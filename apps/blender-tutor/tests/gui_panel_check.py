@@ -9,6 +9,7 @@ opens the board in a new window and saves screenshots of every window.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -92,14 +93,14 @@ def step():
                 return None
             return 0.2
         if phase["name"] == "wait_answer":
-            if len(MESSAGES) > 1 and now - phase["t"] > 8:
+            if len(MESSAGES) > 1 and now - phase["t"] > 6:
                 nxt = MESSAGES.pop(1)
                 s.state.cancel_narration()  # what the sidebar's Send does
                 s.send({"type": "user.message", "text": nxt, "source": "typed"})
                 s.state.add_user(nxt)
                 phase["t"] = now
                 return 0.3
-            if now - phase["t"] > 9:
+            if now - phase["t"] > float(os.environ.get("WYSP_TEST_WAIT", "9")):
                 items = [(i["kind"], i.get("text", "")[:50], i.get("state")) for i in s.state.transcript]
                 print("GUI_TRANSCRIPT", items)
                 print(

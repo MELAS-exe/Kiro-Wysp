@@ -5,6 +5,9 @@ Grammar (all refs start with ``blender://ui/``):
 * ``area/<VIEW_3D|OUTLINER|PROPERTIES|TIMELINE>``  a whole editor
 * ``region/VIEW_3D/<HEADER|TOOLBAR|SIDEBAR|GIZMO>``  a part of the 3D Viewport
 * ``properties/tab/<TAB>``                              a tab of the Properties editor
+* ``label/<AREA>/<text>``                                a button, menu or field by its visible text, found on a
+                                                          screenshot of that editor (visual integration, see
+                                                          ``highlight.py``); percent-encoding is optional
 
 The Blender API does not expose button rectangles, so pointing is by region (exact) plus, for
 Properties tabs and the viewport gizmo, an estimated marker (approximate). Everything here is pure
@@ -15,6 +18,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from urllib.parse import unquote
 
 PREFIX = "blender://ui/"
 
@@ -51,6 +55,7 @@ class UiTarget:
     label_region: str = "WINDOW"  # where the callout text is drawn
     tab: str | None = None
     gizmo: bool = False
+    text: str | None = None  # label refs: the visible text to find on the editor's screenshot
 
 
 AREAS: dict[str, tuple[str, str]] = {
@@ -71,6 +76,8 @@ VIEWPORT_REGIONS: dict[str, tuple[str, str, bool]] = {
 _AREA_RE = re.compile(r"^blender://ui/area/([A-Z_0-9]+)$")
 _REGION_RE = re.compile(r"^blender://ui/region/VIEW_3D/([A-Z_]+)$")
 _TAB_RE = re.compile(r"^blender://ui/properties/tab/([A-Z_]+)$")
+_LABEL_RE = re.compile(r"^blender://ui/label/([A-Z_0-9]+)/(.+)$")
+MAX_LABEL_CHARS = 60
 
 
 def is_ui_ref(ref: str) -> bool:
@@ -89,6 +96,11 @@ def parse(ref: str) -> UiTarget | None:
             label, region, gizmo = VIEWPORT_REGIONS[m.group(1)]
             # Labels go in the viewport itself so they never cover the header or toolbar buttons.
             return UiTarget(ref, label, "VIEW_3D", (region,), "WINDOW", gizmo=gizmo)
+        return None
+    if m := _LABEL_RE.match(ref):
+        area, text = m.group(1), unquote(m.group(2)).strip()
+        if area in AREAS and text and len(text) <= MAX_LABEL_CHARS and text.isprintable():
+            return UiTarget(ref, f"\u201c{text}\u201d", AREAS[area][1], (), "WINDOW", text=text)
         return None
     if m := _TAB_RE.match(ref):
         if m.group(1) in PROPERTIES_TABS:

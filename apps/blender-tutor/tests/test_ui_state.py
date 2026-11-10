@@ -273,3 +273,27 @@ def test_tts_url_follows_the_core_address() -> None:
     ui_voice = _load("ui_voice")
     assert ui_voice.tts_url("ws://127.0.0.1:8765/ws/adapter") == "http://127.0.0.1:8765/api/tts"
     assert ui_voice.tts_url("ws://localhost:8799/ws/adapter") == "http://localhost:8799/api/tts"
+
+
+def test_sentences_appear_as_they_are_spoken() -> None:
+    clock = Clock()
+    s = ui_state.UiState(narrate=True, clock=clock)
+    for i, text in enumerate(["First sentence here.", "Second one.", "Third one."]):
+        seg = {"id": f"g{i}", "turn_id": "t", "index": i, "text": text, "marker": None, "cues": []}
+        s.handle({"type": "narration.segment", "segment": seg})
+    assert [t["text"] for t in s.visible_transcript()] == []  # nothing shown before it is spoken
+    s.tick()
+    assert [t["text"] for t in s.visible_transcript()] == ["First sentence here."]
+    clock.t = 5.0
+    s.tick()  # first finished
+    s.tick()  # second starts
+    assert [t["text"] for t in s.visible_transcript()] == ["First sentence here.", "Second one."]
+    s.interrupt()  # second was playing: stays visible; third was never spoken: stays hidden
+    assert [t["text"] for t in s.visible_transcript()] == ["First sentence here.", "Second one."]
+    assert [t["state"] for t in s.transcript] == ["played", "cancelled", "skipped"]
+
+
+def test_without_pacing_sentences_show_on_arrival() -> None:
+    s = ui_state.UiState(narrate=False)
+    s.handle(_segment("hello", []))
+    assert [t["text"] for t in s.visible_transcript()] == ["hello"]

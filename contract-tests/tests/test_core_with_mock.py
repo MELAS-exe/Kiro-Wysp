@@ -364,3 +364,33 @@ async def test_tts_endpoint(make_stack):
         assert evil.status_code == 403
         empty = await client.post(url, json={"text": "   "})
         assert empty.status_code == 400
+
+
+async def test_ocr_endpoint(make_stack):
+    """Hybrid adapters ask where text is on their own screenshot. A fake engine stands in for Windows OCR."""
+    s = await make_stack([])
+    seen: list[int] = []
+
+    class FakeOcr:
+        name = "fake"
+
+        async def recognize(self, image: bytes) -> dict:
+            seen.append(len(image))
+            return {
+                "width": 10,
+                "height": 10,
+                "lines": [{"text": "Add", "words": [{"text": "Add", "x": 1, "y": 2, "w": 3, "h": 4}]}],
+            }
+
+    s.app.state.ocr = FakeOcr()
+    url = f"http://127.0.0.1:{s.port}/api/ocr"
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+    async with httpx.AsyncClient(timeout=5) as client:
+        ok = await client.post(url, content=png, headers={"Content-Type": "image/png"})
+        assert ok.status_code == 200 and ok.json()["lines"][0]["text"] == "Add" and seen == [len(png)]
+        assert "access-control-allow-origin" not in ok.headers
+        assert (await client.post(url, content=b"not a png")).status_code == 415
+        evil = await client.post(url, content=png, headers={"Origin": "https://evil.example"})
+        assert evil.status_code == 403
+    recs = [r for r in s.session.tm.ring if r["kind"] == "ocr.recognize"]
+    assert recs and "image" not in recs[-1] and recs[-1]["bytes"] == len(png)  # sizes only, never the picture

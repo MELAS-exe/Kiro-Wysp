@@ -31,7 +31,10 @@ def spec() -> dict:
         ],
         [
             {"text": "In the Modifiers tab, find the “${label:params.target}” panel", "target": "${params.target}"},
-            {"text": "Set ${params.property} to ${params.value}"},
+            {
+                "text": "Set ${params.property} to ${params.value}",
+                "target": "blender://ui/label/PROPERTIES/${params.property}",
+            },
         ],
     )
 

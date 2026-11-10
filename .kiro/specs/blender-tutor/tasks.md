@@ -110,3 +110,9 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - `adapter/actions/set_object_transform.py`, observation props `rotation` and `scale`, fixture calls, README row; `tests/probe_transform.py` checks postconditions and undo digests in Blender
   - _Owner: C_ · _Gate: J2_
   - _Requirements: 11.1, 11.2_
+
+- [x] 18. Hybrid pointing and spoken-order chat
+  - Core `POST /api/ocr` (`wysp_core/ocr.py`, Windows OCR); `adapter/label_match.py`, `adapter/nav_detect.py`; label refs and tab detection in `highlight.py`; guided steps target labels; effective UI scale
+  - Tests on OCR output recorded from real screenshots (`tests/fixtures/`), synthetic tab columns, GUI runs at Resolution Scale 0.85, 1.0 and 1.25
+  - _Owner: C (Core endpoint: A)_ · _Gate: J2_
+  - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_

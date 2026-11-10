@@ -137,3 +137,15 @@ The Blender tutor is the first application built on Wysp. It is a Blender 5.2 LT
 
 1. THE catalog SHALL include `set_object_transform` (reversible) setting location, rotation in degrees or scale to exact values, with a postcondition on the observed value and an undo that restores the state digest.
 2. THE observation SHALL expose each object's `location`, `rotation` (degrees) and `scale`.
+
+### Requirement 12: Hybrid native and visual pointing
+
+**User Story:** As a learner, I want Wysp to frame the exact button, menu or field it is talking about.
+
+#### Acceptance Criteria
+
+1. THE adapter SHALL accept `blender://ui/label/<EDITOR>/<text>` and frame the words showing that text, found by local OCR (`POST /api/ocr` on the Core) on a screenshot of that editor only.
+2. IF the text is not visible, THEN THE adapter SHALL return `-32012 TARGET_NOT_FOUND` with the labels that are visible, or say that the editor is too narrow to read.
+3. WHEN a Properties tab is highlighted, THE adapter SHALL locate its icon on a screenshot of the tab column, use an estimate only when that fails, and report a tab scrolled out of view.
+4. Screenshots SHALL be sent only to the local Core, never stored or logged, and deleted at once.
+5. THE chat SHALL show each of Wysp's sentences when it starts being spoken, not when it arrives.

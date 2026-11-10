@@ -141,6 +141,15 @@ class UiState:
     def node(self, node_id: str) -> dict[str, Any] | None:
         return next((n for n in self.board["nodes"] if n["id"] == node_id), None)
 
+    def visible_transcript(self) -> list[dict[str, Any]]:
+        """What the chat shows: Wysp's sentences appear as they are spoken, not all at once.
+
+        Without narration pacing (another Panel speaks), sentences are shown as they arrive.
+        """
+        if not self.narrate:
+            return list(self.transcript)
+        return [t for t in self.transcript if not (t["kind"] == "wysp" and t["state"] in ("queued", "skipped"))]
+
     @property
     def steps(self) -> list[dict[str, Any]]:
         return self.board["steps"]
@@ -222,7 +231,8 @@ class UiState:
 
         for item in self.transcript:
             if item["kind"] == "wysp" and item["state"] in ("queued", "playing") and cut(item["segment"]):
-                item["state"] = "cancelled"
+                # Cancelled while being spoken stays visible; never spoken is "skipped" and stays hidden.
+                item["state"] = "cancelled" if item["state"] == "playing" else "skipped"
         dropped = [s for s in self._queue if cut(s)]
         self._queue = deque(s for s in self._queue if not cut(s))
         if self._current is not None and cut(self._current):

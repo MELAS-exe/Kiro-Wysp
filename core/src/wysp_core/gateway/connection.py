@@ -137,5 +137,6 @@ class AdapterConnection:
     async def undo(self, token: str) -> ActionResult:
         return ActionResult.model_validate(await self.call(METHOD_UNDO, {"token": token}))
 
-    async def highlight(self, ref: str, style: str = "pulse", duration_ms: int = 2500) -> None:
-        await self.call(METHOD_HIGHLIGHT, {"ref": ref, "style": style, "duration_ms": duration_ms})
+    async def highlight(self, ref: str, style: str = "pulse", duration_ms: int = 2500) -> dict:
+        result = await self.call(METHOD_HIGHLIGHT, {"ref": ref, "style": style, "duration_ms": duration_ms})
+        return result if isinstance(result, dict) else {}

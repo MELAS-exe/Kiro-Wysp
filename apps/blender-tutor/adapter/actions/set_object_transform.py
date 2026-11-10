@@ -46,7 +46,10 @@ def spec() -> dict:
                 "text": "In the Properties editor, open the Object tab (orange square)",
                 "target": "blender://ui/properties/tab/OBJECT",
             },
-            {"text": "Under Transform, type ${params.value} into the ${params.property} fields"},
+            {
+                "text": "Under Transform, type ${params.value} into the ${params.property} fields",
+                "target": "blender://ui/label/PROPERTIES/${params.property}",
+            },
         ],
     )
 

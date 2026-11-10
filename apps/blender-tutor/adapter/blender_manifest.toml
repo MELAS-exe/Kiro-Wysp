@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "wysp_tutor"
-version = "0.3.0"
+version = "0.4.0"
 name = "Wysp Tutor"
 tagline = "An AI tutor that sees your scene and teaches you Blender"
 maintainer = "Wysp contributors <noreply@users.noreply.github.com>"
@@ -22,7 +22,7 @@ wheels = [
 
 [permissions]
 network = "Talks to the Wysp Core running on this computer (127.0.0.1)"
-files = "Pairing token and logs in ~/.wysp, temporary voice audio"
+files = "Token and logs in ~/.wysp, temp audio and editor screenshots"
 
 [build]
 paths_exclude_pattern = [

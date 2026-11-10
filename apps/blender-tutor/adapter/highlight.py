@@ -4,18 +4,27 @@
 * Interface elements (``blender://ui/...``, see ``ui_targets``): a pulsing frame around the region plus a
   callout. Properties tabs and the viewport gizmo also get an estimated marker, because Blender's API does
   not expose button rectangles. The frame is exact, the marker is approximate, and the callout says what to find.
+* Labels (``blender://ui/label/<AREA>/<text>``): hybrid native + visual. Blender knows where each editor is but
+  not where its buttons are, so the editor is screenshotted (``screen.screenshot_area``), the Core's local OCR
+  (``POST /api/ocr``) says where the words are, and the matching words get a frame. The screenshot is sent to
+  the local Core only and deleted at once.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import math
+import os
+import tempfile
 import time
+import urllib.error
+import urllib.request
 
 import bpy
 from wysp_adapter_sdk import ErrorCode, WyspError
 
-from . import refs, ui_targets
+from . import label_match, nav_detect, refs, telemetry, ui_targets
 
 log = logging.getLogger("wysp.blender")
 
@@ -29,7 +38,11 @@ _state: dict = {
     "broken": False,
     "tabs": [],
     "drawn": set(),
+    "label_rect": None,  # (x, y, w, h) in window pixels, origin bottom-left
+    "tab_rect": None,  # same, for a Properties tab found on a screenshot
 }
+_core: dict = {"http": None}  # http://host:port of the Core, set when the adapter connects
+OCR_TIMEOUT_S = 0.8  # the Core waits 1.5 s for a highlight in total (0.5 s budget + 1 s slack)
 _EDGES = ((0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7))
 _SPACES = {
     "VIEW_3D": "SpaceView3D",
@@ -54,9 +67,16 @@ def _pulse() -> float:
     return 0.55 + 0.45 * math.sin(time.monotonic() * 8.0)
 
 
+MEASURED_AT_SCALE = 1.5  # the pixel constants below were measured at this effective UI scale (Blender 5.2)
+
+
 def _ui_scale() -> float:
-    prefs = bpy.context.preferences
-    return float(prefs.view.ui_scale) * float(prefs.system.pixel_size)
+    """Factor for the measured pixel constants.
+
+    `preferences.system.ui_scale` is the effective scale: the Resolution Scale preference times the monitor
+    DPI, which is what Blender sizes its widgets with.
+    """
+    return float(bpy.context.preferences.system.ui_scale) / MEASURED_AT_SCALE
 
 
 # --------------------------------------------------------------------------- 3D object outline
@@ -169,12 +189,13 @@ def tab_marker_rect(
     """
     if tab not in tabs:
         return None
-    pitch = 40 * s
+    unit = 20 * s * MEASURED_AT_SCALE  # Blender's UI unit in pixels
+    pitch = 1.8 * unit - 14  # fitted at two scales; only a fallback when the screenshot cannot be read
     y = region_height - 10 * s
     first_object = next((t for t in tabs if t in ui_targets.OBJECT_LEVEL_TABS), None)
     for t in tabs:
         if t in ("RENDER", first_object) and t != tabs[0]:
-            y -= 12 * s
+            y -= 0.4 * unit
         y -= pitch
         if t == tab:
             return (2 * s, y + 1, pitch - 4 * s, pitch - 2)
@@ -214,6 +235,9 @@ def _draw_ui() -> None:
         for target in _state["ui"]:
             if area.ui_type != target.area and area.type != target.area:
                 continue
+            if target.text is not None:
+                _draw_label(area, region, target, s, alpha)
+                continue
             outlined = (not target.regions and region.type in _ALL_REGIONS) or (
                 region.type in target.regions and not target.gizmo
             )
@@ -221,7 +245,11 @@ def _draw_ui() -> None:
                 inset = 3.0
                 _draw_lines(_rect_lines(inset, inset, region.width - 2 * inset, region.height - 2 * inset), 4.0, alpha)
             if target.tab and region.type == "NAVIGATION_BAR":
-                rect = tab_marker_rect(region.height, _state["tabs"], target.tab, s)
+                seen = _state["tab_rect"]
+                if seen is not None:
+                    rect = (seen[0] - region.x, seen[1] - region.y, seen[2], seen[3])
+                else:
+                    rect = tab_marker_rect(region.height, _state["tabs"], target.tab, s)
                 if rect:
                     _fill_rect(*rect, (*COLOR, 0.25 * alpha))
                     _draw_lines(_rect_lines(*rect), 3.0, 1.0)
@@ -240,6 +268,184 @@ def _draw_ui() -> None:
         gpu.state.blend_set("NONE")
     except Exception:  # noqa: BLE001
         _break("interface highlight")
+
+
+def _draw_label(area, region, target, s: float, alpha: float) -> None:
+    rect = _state["label_rect"]
+    if rect is None:  # not located (no OCR): frame the editor and say what to look for
+        if region.type == "WINDOW":
+            inset = 3.0
+            _draw_lines(_rect_lines(inset, inset, region.width - 2 * inset, region.height - 2 * inset), 4.0, alpha)
+            _draw_callout(region, f"Look for {target.label}", top=region.height - _overlap_top(area, region) - 8 * s)
+        return
+    pad = 5 * s
+    x, y, w, h = rect[0] - region.x - pad, rect[1] - region.y - pad, rect[2] + 2 * pad, rect[3] + 2 * pad
+    if x + w < 0 or y + h < 0 or x > region.width or y > region.height:
+        return  # not in this region
+    _fill_rect(x, y, w, h, (*COLOR, 0.18 * alpha))
+    _draw_lines(_rect_lines(x, y, w, h), 3.0, 1.0)
+    # No name tag: the frame sits on the text itself, and a tag would cover the neighbouring controls.
+
+
+def set_core_url(adapter_url: str) -> None:
+    """Remember the Core's HTTP address (derived from the adapter WebSocket URL) for OCR requests."""
+    base = adapter_url.rsplit("/ws/", 1)[0] if "/ws/" in adapter_url else adapter_url.rstrip("/")
+    if base.startswith("wss://"):
+        base = "https://" + base[len("wss://") :]
+    elif base.startswith("ws://"):
+        base = "http://" + base[len("ws://") :]
+    _core["http"] = base
+
+
+def _window_of(area):
+    return next(w for w in bpy.context.window_manager.windows if area in w.screen.areas[:])
+
+
+def _shoot(area) -> str:
+    """Screenshot one editor to a temporary PNG (main thread). The caller deletes the file.
+
+    Do not force a redraw first (``wm.redraw_timer`` with a buffer swap): the capture then reads an empty
+    buffer. An older Wysp frame may still be in the picture; it is thin and faint, and both the OCR match
+    and the icon detection ignore it.
+    """
+    win = _window_of(area)
+    region = next((r for r in area.regions if r.type == "WINDOW"), area.regions[0])
+    fd, path = tempfile.mkstemp(prefix="wysp-ui-", suffix=".png")
+    os.close(fd)
+    with bpy.context.temp_override(window=win, screen=win.screen, area=area, region=region):
+        bpy.ops.screen.screenshot_area(filepath=path)
+    debug_dir = os.environ.get("WYSP_DEBUG_SHOTS")  # developer switch: keep what Wysp looked at
+    if debug_dir:
+        import shutil
+
+        os.makedirs(debug_dir, exist_ok=True)
+        shutil.copy(path, os.path.join(debug_dir, f"{time.strftime('%H%M%S')}-{area.type}-{os.path.basename(path)}"))
+    return path
+
+
+def _forget(path: str) -> None:
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def _screenshot_area(area) -> bytes:
+    """PNG bytes of one editor. The temporary file is deleted before returning."""
+    path = _shoot(area)
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    finally:
+        _forget(path)
+
+
+def _detect_tab(area, tabs: list[str], tab: str):
+    """Window rect of `tab`'s icon in the tab column, read from a screenshot; None when unsure."""
+    nav = next((r for r in area.regions if r.type == "NAVIGATION_BAR"), None)
+    if nav is None or tab not in tabs:
+        return None
+    started = time.monotonic()
+    path = _shoot(area)
+    image = None
+    try:
+        import numpy as np
+
+        image = bpy.data.images.load(path, check_existing=False)
+        w, h = image.size
+        if (w, h) != (area.width, area.height):
+            return None
+        px = np.empty(w * h * 4, dtype=np.float32)
+        image.pixels.foreach_get(px)
+        px = px.reshape(h, w, 4)  # rows bottom-up, as Blender stores images
+        x0, x1 = nav.x - area.x + 6, nav.x - area.x + nav.width - 6
+        y0, y1 = nav.y - area.y, nav.y - area.y + nav.height
+        if x1 - x0 < 6 or y1 - y0 < 20:
+            return None
+        crop = px[y0:y1, x0:x1, :3]
+        lum = (crop[..., 0] * 0.3 + crop[..., 1] * 0.59 + crop[..., 2] * 0.11)[::-1, ::2]  # top row first
+        boxes = nav_detect.tab_boxes(nav_detect.icon_runs(lum.tolist()), len(tabs))
+        index = tabs.index(tab)
+        telemetry.tm.emit(
+            "highlight.tab",
+            ok=bool(boxes) and index < len(boxes),
+            icons=len(boxes or []),
+            tabs=len(tabs),
+            ms=round((time.monotonic() - started) * 1000, 1),
+        )
+        if boxes and index >= len(boxes) and len(boxes) >= index * 0.5:
+            return "below"  # the column is cut off: this tab is under its visible part
+        if not boxes or index >= len(boxes):
+            return None
+        top, bottom = boxes[index]
+        return (nav.x + 2.0, nav.y + nav.height - 1.0 - bottom, nav.width - 4.0, float(bottom - top + 1))
+    except Exception:  # noqa: BLE001 - fall back to the estimate rather than fail the highlight
+        log.debug("tab detection failed", exc_info=True)
+        return None
+    finally:
+        if image is not None:
+            bpy.data.images.remove(image)
+        _forget(path)
+
+
+def _recognize(png: bytes) -> dict:
+    if not _core["http"]:
+        raise RuntimeError("not connected to a Core")
+    req = urllib.request.Request(_core["http"] + "/api/ocr", data=png, headers={"Content-Type": "image/png"})
+    with urllib.request.urlopen(req, timeout=OCR_TIMEOUT_S) as resp:  # noqa: S310 - the local Core only
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _spellings(text: str) -> list[str]:
+    """The label as written, plus Blender's UI name when the tutor used a property identifier (``segments``)."""
+    names = [text]
+    obj = bpy.context.view_layer.objects.active
+    owners = [obj, *obj.modifiers] if obj is not None else []
+    for owner in owners:
+        prop = owner.bl_rna.properties.get(text)
+        if prop is not None and prop.name and prop.name not in names:
+            names.append(prop.name)
+    return names
+
+
+def _locate(area, text: str) -> tuple[tuple[float, float, float, float] | None, dict]:
+    """Find `text` on a screenshot of `area`. Returns (window rect or None, details for the tutor)."""
+    started = time.monotonic()
+    png = _screenshot_area(area)
+    shot_ms = (time.monotonic() - started) * 1000
+    try:
+        result = _recognize(png)
+    except (urllib.error.URLError, TimeoutError, RuntimeError, ValueError, OSError) as exc:
+        telemetry.tm.emit("highlight.label", ok=False, reason="ocr_unavailable", shot_ms=round(shot_ms, 1))
+        return None, {"located": False, "reason": f"text recognition unavailable ({type(exc).__name__})"}
+    lines = result.get("lines", [])
+    match, ties = label_match.find(_spellings(text), lines)
+    total_ms = (time.monotonic() - started) * 1000
+    telemetry.tm.emit(
+        "highlight.label",
+        ok=match is not None,
+        shot_ms=round(shot_ms, 1),
+        ocr_ms=result.get("ms"),
+        total_ms=round(total_ms, 1),
+        lines=len(lines),
+        score=match.score if match else None,
+        ties=ties,
+        full={"wanted": text, "seen": match.text if match else None},
+    )
+    if match is None:
+        visible = label_match.visible_labels(lines)
+        cut = sum(1 for line in lines if str(line.get("text", "")).rstrip().endswith(("...", "…")))
+        return None, {"located": False, "visible": visible, "too_narrow": cut >= max(3, len(lines) // 3)}
+    # Image pixels (origin top-left) -> window pixels (origin bottom-left). The screenshot is the area's size;
+    # scale anyway in case a platform captures at another resolution.
+    sx = area.width / float(result.get("width") or area.width)
+    sy = area.height / float(result.get("height") or area.height)
+    x = area.x + match.x * sx
+    y = area.y + area.height - (match.y + match.h) * sy
+    details = {"located": True, "seen": match.text, "confidence": match.score}
+    if ties > 1:
+        details["note"] = f"{ties} places show this text; the first one is marked"
+    return (x, y, match.w * sx, match.h * sy), details
 
 
 def _register_ui_handlers(targets) -> None:
@@ -282,7 +488,17 @@ def clear_highlight() -> None:
             getattr(bpy.types, cls_name).draw_handler_remove(h, region_type)
         except (ValueError, RuntimeError, AttributeError):
             pass
-    _state.update(object=None, object_handle=None, ui=[], handlers=[], handles={}, timer=False, drawn=set())
+    _state.update(
+        object=None,
+        object_handle=None,
+        ui=[],
+        handlers=[],
+        handles={},
+        timer=False,
+        drawn=set(),
+        label_rect=None,
+        tab_rect=None,
+    )
     try:
         for area in _areas():
             area.tag_redraw()
@@ -317,6 +533,9 @@ def _highlight_ui(ref: str, duration_ms: int) -> dict:
         raise WyspError(
             ErrorCode.TARGET_NOT_FOUND, f"{target.label} is not visible in the current layout; ask the user to open it"
         )
+    if target.text is not None:
+        return _highlight_label(target, duration_ms)
+    _state["tab_rect"] = None
     if target.tab:
         _state["tabs"] = _probe_tabs()
         from .actions.show_properties_tab import switch_tab
@@ -325,11 +544,48 @@ def _highlight_ui(ref: str, duration_ms: int) -> dict:
             raise WyspError(
                 ErrorCode.PRECONDITION_FAILED, f"the {target.tab} tab is not available for the active object"
             )
+        _state["ui"] = []
+        props = [a for a in _areas() if a.type == "PROPERTIES"]
+        if props:
+            _state["tab_rect"] = _detect_tab(max(props, key=lambda a: a.width * a.height), _state["tabs"], target.tab)
+    note = None
+    if _state["tab_rect"] == "below":
+        _state["tab_rect"] = None
+        note = "the tab is open, but its icon is below the visible part of the tab column (the user can scroll it)"
     _state["object"] = None
     _state["ui"] = [target]
     _register_ui_handlers([target])
     _start(duration_ms)
-    return {"ok": True, "note": target.label}
+    out = {"ok": True, "note": target.label}
+    if note:
+        out["warning"] = note
+    return out
+
+
+def _highlight_label(target, duration_ms: int) -> dict:
+    areas = [a for a in _areas() if a.ui_type == target.area or a.type == target.area]
+    area = max(areas, key=lambda a: a.width * a.height)
+    _state["object"] = None
+    _state["label_rect"] = None
+    _state["ui"] = []  # do not photograph an older highlight
+    rect, details = _locate(area, target.text)
+    if rect is None and details.get("visible") is not None:
+        shown = ", ".join(details["visible"][:25]) or "no readable text"
+        why = (
+            "the editor is too narrow: Blender shortened its labels; ask the user to widen it"
+            if details.get("too_narrow")
+            else "it may be scrolled away, collapsed or in another tab"
+        )
+        raise WyspError(
+            ErrorCode.TARGET_NOT_FOUND,
+            f"{target.label} is not visible in the {ui_targets.AREAS.get(target.area, (target.area,))[0]} right now "
+            f"({why}). Visible labels: {shown}",
+        )
+    _state["label_rect"] = rect
+    _state["ui"] = [target]
+    _register_ui_handlers([target])
+    _start(duration_ms)
+    return {"ok": True, "note": target.label, **details}
 
 
 def _highlight_object(ref: str, duration_ms: int) -> dict:
@@ -347,6 +603,11 @@ def _highlight_object(ref: str, duration_ms: int) -> dict:
         switch_tab("MODIFIER")
         tab = ui_targets.parse(ui_targets.PREFIX + "properties/tab/MODIFIER")
         if tab is not None:
+            props = [a for a in _areas() if a.type == "PROPERTIES"]
+            if props:
+                area = max(props, key=lambda a: a.width * a.height)
+                found = _detect_tab(area, _state["tabs"], "MODIFIER")
+                _state["tab_rect"] = None if found == "below" else found
             _state["ui"] = [tab]
             _register_ui_handlers([tab])
     if _state.get("object_handle") is None:

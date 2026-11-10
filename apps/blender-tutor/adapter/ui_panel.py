@@ -422,7 +422,7 @@ def draw_steps(layout, context, steps: list[dict]) -> None:
 def draw_transcript(layout, context, state: UiState) -> None:
     box = layout.box()
     # Newest first: Blender panels cannot be scrolled from a script, so the latest message must be on top.
-    items = list(state.transcript)[-TRANSCRIPT_LINES:][::-1]
+    items = state.visible_transcript()[-TRANSCRIPT_LINES:][::-1]
     if items:
         box.label(text="Newest first", icon="SORT_DESC")
     if not items:

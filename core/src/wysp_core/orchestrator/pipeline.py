@@ -10,6 +10,7 @@ import logging
 import re
 import time
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 
 import jsonschema
 
@@ -49,13 +50,25 @@ def render_template(text: str, params: dict[str, Any], obs: Observation | None) 
 
 
 def render_ref(target: str | None, params: dict[str, Any]) -> str | None:
+    """A step's target ref with its ``${params.x}`` placeholders filled in; None when one cannot be."""
     if not target:
         return None
     m = TEMPLATE_RE.fullmatch(target)
     if m and not m.group(1):
         value = params.get(m.group(2))
         return value if isinstance(value, str) else None
-    return target
+    missing = False
+
+    def fill(match: re.Match) -> str:
+        nonlocal missing
+        value = params.get(match.group(2))
+        if match.group(1) or not isinstance(value, (str, int, float)) or isinstance(value, bool):
+            missing = True
+            return ""
+        return quote(str(value), safe="")
+
+    rendered = TEMPLATE_RE.sub(fill, target)  # placeholders inside a ref, e.g. ".../label/AREA/${params.x}"
+    return None if missing else rendered
 
 
 def target_label(spec: ActionSpec, params: dict[str, Any], obs: Observation | None) -> str | None:

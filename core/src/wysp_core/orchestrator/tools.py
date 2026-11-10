@@ -334,7 +334,13 @@ class ToolBox:
     async def _t_highlight(self, a: dict[str, Any]) -> dict[str, Any]:
         ok = await self.s.highlight_ref(str(a["ref"]))
         if ok:
-            return {"ok": True}
+            # Only plain, short facts from the adapter (what was found, warnings), never arbitrary payloads.
+            extra = {
+                k: v
+                for k, v in self.s.last_highlight_result.items()
+                if k in ("seen", "confidence", "located", "warning", "note") and isinstance(v, (str, int, float, bool))
+            }
+            return {"ok": True, **{k: (v[:200] if isinstance(v, str) else v) for k, v in extra.items()}}
         return {"ok": False, "error": self.s.last_highlight_error or "could not highlight that element"}
 
     async def _t_propose_action(self, a: dict[str, Any]) -> dict[str, Any]:

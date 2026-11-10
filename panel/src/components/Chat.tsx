@@ -38,12 +38,14 @@ export function Chat() {
   const listening = useStore((s) => s.listening);
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
-  const hasCancelled = transcript.some((t) => t.kind === "wysp" && t.state === "cancelled");
+  // Show Wysp's sentences as they are spoken, not all at once when they arrive.
+  const visible = transcript.filter((t) => !(t.kind === "wysp" && (t.state === "queued" || t.state === "skipped")));
+  const hasCancelled = transcript.some((t) => t.kind === "wysp" && (t.state === "cancelled" || t.state === "skipped"));
   const busy = status !== "idle";
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [transcript.length, clarification]);
+  }, [visible.length, clarification]);
 
   const submit = (value: string) => {
     const v = value.trim();
@@ -58,7 +60,7 @@ export function Chat() {
     <section className="chat" aria-label="Conversation">
       <LiveCaption />
       <div className="transcript" role="log" aria-live="off">
-        {transcript.map((t) => {
+        {visible.map((t) => {
           if (t.kind === "user")
             return (
               <div key={t.id} className="msg user">

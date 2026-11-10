@@ -18,8 +18,14 @@ primer: >
   blender://ui/region/VIEW_3D/GIZMO (navigation gizmo), and Properties tabs as
   blender://ui/properties/tab/<TAB> with TAB in TOOL, RENDER, OUTPUT, VIEW_LAYER, SCENE, WORLD,
   COLLECTION, OBJECT, MODIFIER, PARTICLES, PHYSICS, CONSTRAINT, DATA, MATERIAL, TEXTURE.
-  Highlighting a tab also opens it. Individual buttons cannot be highlighted: point at the closest
-  area or tab and describe the button in words.
+  Highlighting a tab also opens it. To point at a specific button, menu or field, use its visible
+  text: blender://ui/label/<EDITOR>/<text> with EDITOR in VIEW_3D, OUTLINER, PROPERTIES, TIMELINE,
+  for example blender://ui/label/PROPERTIES/Add%20Modifier (in the Modifiers tab),
+  blender://ui/label/VIEW_3D/Add (the Add menu of the 3D Viewport header, where new objects such as
+  a cube are created), blender://ui/label/PROPERTIES/Segments. Wysp finds the text on a screenshot
+  of that editor; open the right tab first. If the text is not visible, the tool answers with the
+  labels that are, so pick one of those. Icons without text cannot be found this way: point at the
+  closest area or tab and describe the icon in words.
 board:
   # What each kind shows on its board node, in order (at most 6).
   props:

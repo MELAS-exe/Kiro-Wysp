@@ -67,6 +67,9 @@ class BlenderAdapter(AdapterRuntime):
         return highlight_object(ref, style, duration_ms)
 
     def make_client(self, url: str, token: str, heartbeat_s: float = 15.0) -> AdapterClient:
+        from . import highlight
+
+        highlight.set_core_url(url)  # label highlighting asks this Core's local OCR
         client = AdapterClient(
             manifest=observe.manifest(),
             url=url,

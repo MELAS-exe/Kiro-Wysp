@@ -17,6 +17,8 @@ from .contract import CONTRACT_VERSION
 from .gateway import AdapterRegistry, serve_adapter
 from .gateway.server import origin_allowed
 from .llm import LLMProvider
+from .ocr import MAX_IMAGE_BYTES, is_png
+from .ocr import from_env as ocr_from_env
 from .session.bus import EventBus
 from .session.session import Session
 from .store import ensure_home, load_or_create_token, register_env_secrets, register_secret, wysp_home
@@ -112,6 +114,30 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
         return JSONResponse(tm.metrics())
 
     app.state.tts = tts_from_env()  # replaceable (tests use a fake; they never call a real voice)
+    app.state.ocr = ocr_from_env()  # replaceable, like tts
+
+    @app.post("/api/ocr")
+    async def recognize(request: Request) -> Response:
+        """Where is text on an interface screenshot? Local recognition only; the image is not kept."""
+        if not origin_allowed(request.headers.get("origin"), allowed):
+            return JSONResponse({"error": "origin not allowed"}, status_code=403)
+        engine = request.app.state.ocr
+        if engine is None:
+            return JSONResponse({"error": "no text recognition on this machine"}, status_code=503)
+        image = await request.body()
+        if len(image) > MAX_IMAGE_BYTES:
+            return JSONResponse({"error": "image too large"}, status_code=413)
+        if not is_png(image):
+            return JSONResponse({"error": "expected a PNG image"}, status_code=415)
+        with tm.span("ocr.recognize", provider=engine.name, bytes=len(image)) as extra:
+            try:
+                result = await engine.recognize(image)
+            except Exception as exc:  # noqa: BLE001 - report, never crash the server
+                extra["ok"] = False
+                extra["error"] = f"{type(exc).__name__}: {exc}"[:200]
+                return JSONResponse({"error": "text recognition failed"}, status_code=500)
+            extra["lines"] = len(result.get("lines", []))
+        return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
     @app.post("/api/tts")
     async def speak(request: Request) -> Response:
@@ -148,6 +174,7 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
                 "contract_version": CONTRACT_VERSION,
                 "llm": getattr(llm, "name", "?"),
                 "tts": getattr(app.state.tts, "name", None),
+                "ocr": getattr(app.state.ocr, "name", None),
                 "adapters": registry.describe(),
                 "panels": hub.count,
             }

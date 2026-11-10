@@ -50,7 +50,7 @@ def spec() -> dict:
             },
             {
                 "text": "Click Add Modifier, pick the category, then choose ${params.type}",
-                "target": "blender://ui/area/PROPERTIES",
+                "target": "blender://ui/label/PROPERTIES/Add%20Modifier",
             },
         ],
     )

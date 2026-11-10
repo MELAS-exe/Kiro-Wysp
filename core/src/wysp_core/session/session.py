@@ -89,6 +89,7 @@ class Session:
         self._tour_task: asyncio.Task | None = None
         self.current_user_text: str | None = None  # text that started the current turn
         self.last_highlight_error: str | None = None
+        self.last_highlight_result: dict[str, Any] = {}  # what the adapter said it pointed at
 
     # ------------------------------------------------------------------------ wiring
     def start(self) -> None:
@@ -285,15 +286,16 @@ class Session:
     async def highlight_ref(self, ref: str, style: str = "pulse", duration_ms: int = 2500) -> bool:
         conn = self.conn
         self.last_highlight_error = None
+        self.last_highlight_result = {}
         if conn is None or not conn.manifest.has("highlight"):
             self.last_highlight_error = "the connected application cannot highlight"
             return False
         try:
-            await conn.highlight(ref, style, duration_ms)
+            self.last_highlight_result = await conn.highlight(ref, style, duration_ms)
             return True
         except WyspError as exc:
             log.debug("highlight failed: %s", exc.message)
-            self.last_highlight_error = exc.message[:200]
+            self.last_highlight_error = exc.message[:600]  # may list what is visible instead
             return False
 
     # ---------------------------------------------------------------------------- turns

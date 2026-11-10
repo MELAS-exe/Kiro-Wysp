@@ -31,6 +31,7 @@ These rules are part of the product promise. A change that weakens one of them n
 - The extension is active only on allowlisted origins, configured in its options page (default: the demo dashboard).
 - Snapshots never contain values of password, credit-card, one-time-code or hidden fields, nor cookies, storage or request headers. Long texts are truncated.
 - Page and scene content is data, not instructions. Text found in a page or a scene never changes the tutor's rules. The permission gate is the final barrier against prompt injection.
+- Screenshots (visual pointing, `POST /api/ocr`) cover only the editor being pointed at, go only to the local Core, are processed in memory and never stored or logged. Text read from them (for example the visible labels returned when a label is not found) is application data like any other.
 
 ## Audit
 - Every proposal, decision (who, and how: click, voice or grant), execution, verification and undo is appended to the audit log (`~/.wysp/audit/*.jsonl`).

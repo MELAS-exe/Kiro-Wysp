@@ -47,11 +47,23 @@ Every action is declared in `adapter/actions/<id>.py`. The LLM can only *propose
 | `blender://ui/region/VIEW_3D/<HEADER\|TOOLBAR\|SIDEBAR\|GIZMO>` | a frame around that part of the viewport and a label |
 | `blender://ui/properties/tab/<TAB>` | opens the tab, frames the tab column and marks the tab |
 
-Limits: Blender's Python API does not expose button rectangles. Editor and region frames are exact; the tab
-marker and the gizmo box are computed from Blender 5.2's layout (40 px tabs, scaled by the UI scale) and may
-be slightly off with other versions or themes. Single buttons cannot be targeted: Wysp points at the closest
-region and names the button. The top bar and the status bar cannot be drawn on. Guided steps carry these refs,
-so starting a guide walks through each step's target in turn.
+| `blender://ui/label/<EDITOR>/<text>` | frames the button, menu or field showing that text (hybrid, below) |
+
+**Hybrid native + visual.** Blender's Python API knows where each editor and region is, but not where its
+buttons are (checked on 5.2: regions and areas have rectangles, panels and layouts have none). So for labels the
+extension screenshots that one editor (`screen.screenshot_area`), sends the PNG to the local Core's
+`POST /api/ocr` (Windows' built-in OCR, offline), and frames the words that match: exact text, Blender's
+truncated labels (`Level…` for Levels), RNA identifiers (`segments` → "Segments"), and the right word among
+menus that OCR reads as one line ("Add Object Global"). The whole round trip takes about 100 to 150 ms. For
+Properties tabs, which are icons, the same screenshot is scanned for the icons of the tab column, so the marker
+follows any UI scale, DPI or theme (checked at Resolution Scale 0.85, 1.0 and 1.25); a fitted estimate is used
+only if that fails. If a label is not visible, the tool tells the tutor which labels are, or that the editor is
+too narrow to read; if a tab is scrolled out of the column, it says so.
+
+Privacy: only the editor being pointed at is captured, only the local Core receives it, nothing is stored (the
+file is deleted at once; `WYSP_DEBUG_SHOTS=<dir>` keeps copies for debugging) and the image is never logged.
+Icons without text, the top bar and the status bar cannot be targeted. Guided steps carry these refs, so
+starting a guide walks through each step's target in turn (object, tab, then the button).
 
 ## Inside Blender: chat and board
 
