@@ -10,6 +10,7 @@ progress and cues), so the network layer stays dumb and this module is easy to t
 from __future__ import annotations
 
 import copy
+import re
 import time
 from collections import deque
 from typing import Any
@@ -140,6 +141,10 @@ class UiState:
 
     def node(self, node_id: str) -> dict[str, Any] | None:
         return next((n for n in self.board["nodes"] if n["id"] == node_id), None)
+
+    def queued_segments(self) -> int:
+        """Sentences received but not finished yet (playing or waiting)."""
+        return len(self._queue) + (1 if self._current is not None else 0)
 
     def visible_transcript(self) -> list[dict[str, Any]]:
         """What the chat shows: Wysp's sentences appear as they are spoken, not all at once.
@@ -306,3 +311,35 @@ class UiState:
     def interrupt(self) -> dict[str, Any]:
         self.cancel_narration()
         return {"type": "user.interrupt"}
+
+    def route_transcript(self, text: str) -> list[dict[str, Any]]:
+        """What a spoken sentence becomes, exactly like the browser Panel's voice input.
+
+        While an approval is pending, "yes"/"go ahead" approves and "no"/"cancel" denies (by voice: the Core
+        refuses voice for irreversible actions and says why). Anything else is a message to Wysp.
+        """
+        t = text.strip()
+        if not t:
+            return []
+        perm = self.permission
+        if perm:
+            if _YES.match(t):
+                return [
+                    {
+                        "type": "permission.respond",
+                        "request_id": perm["request_id"],
+                        "decision": "approve",
+                        "via": "voice",
+                    }
+                ]
+            if _NO.match(t):
+                return [
+                    {"type": "permission.respond", "request_id": perm["request_id"], "decision": "deny", "via": "voice"}
+                ]
+        self.cancel_narration()
+        self.add_user(t, "voice")
+        return [{"type": "user.message", "text": t[:4000], "source": "voice"}]
+
+
+_YES = re.compile(r"^(yes|yeah|yep|ok|okay|approve|approved|go ahead|do it|sure|confirm)\b", re.IGNORECASE)
+_NO = re.compile(r"^(no|nope|deny|cancel|stop|don't|do not|refuse)\b", re.IGNORECASE)

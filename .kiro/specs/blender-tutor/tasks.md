@@ -116,3 +116,9 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - Tests on OCR output recorded from real screenshots (`tests/fixtures/`), synthetic tab columns, GUI runs at Resolution Scale 0.85, 1.0 and 1.25
   - _Owner: C (Core endpoint: A)_ · _Gate: J2_
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
+
+- [x] 19. Push-to-talk and message field
+  - Core `POST /api/listen/{start,stop,cancel}` (`wysp_core/listen.py`: `sounddevice` recording, Whisper on Groq); `adapter/ui_listen.py`; `wysp.talk` operator with Alt+Space keymap and Talk button; voice approvals in `ui_state.route_transcript`; deferred clearing of the message field
+  - Tests: endpoints with a fake recorder and transcriber, client against a stand-in Core, GUI runs with `tests/fake_voice_core.py` (button and simulated Alt+Space hold with auto-repeat); never the real microphone in tests
+  - _Owner: C (Core endpoints: A)_ · _Gate: J2_
+  - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_

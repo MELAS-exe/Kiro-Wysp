@@ -83,7 +83,13 @@ def connect() -> str:
     client.start()
     _adapter.watcher.start()
     if prefs.in_blender_ui:
-        ui_panel.start(prefs.core_url, narrate=prefs.narrate_silently, speak=prefs.speak_in_blender)
+        ui_panel.start(
+            prefs.core_url,
+            narrate=prefs.narrate_silently,
+            speak=prefs.speak_in_blender,
+            listen=prefs.listen_in_blender,
+            token=token,
+        )
     if not _timer_running:
         bpy.app.timers.register(_pump, first_interval=0.05, persistent=True)
         _timer_running = True
@@ -122,6 +128,12 @@ class WYSP_Preferences(AddonPreferences):
         default=True,
         description="Fire narration cues at reading pace. Turn off when the browser Panel speaks aloud",
     )
+    listen_in_blender: BoolProperty(  # type: ignore[valid-type]
+        name="Talk to Wysp in Blender",
+        default=True,
+        description="Push-to-talk (hold Alt+Space, or the Talk button). The Core records only while you hold it, "
+        "then transcribes the clip with its speech service (Whisper on Groq by default)",
+    )
     speak_in_blender: BoolProperty(  # type: ignore[valid-type]
         name="Speak in Blender",
         default=True,
@@ -147,6 +159,7 @@ class WYSP_Preferences(AddonPreferences):
         col.prop(self, "in_blender_ui")
         col.prop(self, "narrate_silently")
         col.prop(self, "speak_in_blender")
+        col.prop(self, "listen_in_blender")
         col.prop(self, "log_level")
 
 
@@ -250,6 +263,7 @@ def register() -> None:
     for cls in _CLASSES + board_tree.CLASSES + ui_panel.CLASSES:
         bpy.utils.register_class(cls)
     ui_panel.register_props()
+    ui_panel.register_keymaps()
     for lst, fn in _HANDLERS:
         lst.append(fn)
     if bpy.app.timers.is_registered(_pump):
@@ -268,6 +282,7 @@ def unregister() -> None:
         board_tree.remove_tree()
     except Exception:  # noqa: BLE001
         pass
+    ui_panel.unregister_keymaps()
     ui_panel.unregister_props()
     for cls in reversed(_CLASSES + board_tree.CLASSES + ui_panel.CLASSES):
         bpy.utils.unregister_class(cls)

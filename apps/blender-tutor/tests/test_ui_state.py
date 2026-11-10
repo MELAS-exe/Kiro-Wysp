@@ -297,3 +297,21 @@ def test_without_pacing_sentences_show_on_arrival() -> None:
     s = ui_state.UiState(narrate=False)
     s.handle(_segment("hello", []))
     assert [t["text"] for t in s.visible_transcript()] == ["hello"]
+
+
+def test_spoken_yes_or_no_answers_a_pending_approval() -> None:
+    s = ui_state.UiState()
+    s.handle({"type": "permission.request", "request_id": "r1", "title": "Add a modifier", "risk": "reversible"})
+    assert s.route_transcript("Yes, go ahead") == [
+        {"type": "permission.respond", "request_id": "r1", "decision": "approve", "via": "voice"}
+    ]
+    assert s.route_transcript("no thanks")[0]["decision"] == "deny"
+    out = s.route_transcript("what does a bevel do?")  # anything else is a question, even while waiting
+    assert out == [{"type": "user.message", "text": "what does a bevel do?", "source": "voice"}]
+
+
+def test_spoken_message_is_shown_and_sent_as_voice() -> None:
+    s = ui_state.UiState()
+    assert s.route_transcript("   ") == []
+    assert s.route_transcript("add a cube") == [{"type": "user.message", "text": "add a cube", "source": "voice"}]
+    assert s.transcript[-1] == {"kind": "user", "text": "add a cube", "source": "voice"}

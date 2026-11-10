@@ -20,6 +20,7 @@ from bpy.types import Operator, Panel
 
 from . import board_tree
 from .ui_client import PanelClient
+from .ui_listen import VoiceInput
 from .ui_state import UiState
 from .ui_voice import VoicePlayer, tts_url
 
@@ -37,9 +38,13 @@ def ui_url(adapter_url: str) -> str:
 
 
 class PanelSession:
-    def __init__(self, url: str, narrate: bool = True, voice: VoicePlayer | None = None) -> None:
+    def __init__(
+        self, url: str, narrate: bool = True, voice: VoicePlayer | None = None, mic: VoiceInput | None = None
+    ) -> None:
         self.client = PanelClient(url)
         self.voice = voice
+        self.mic = mic  # push-to-talk through the Core
+        self._mic_state = "idle"
         self.state = UiState(narrate=narrate, voice=voice)
         self._had_permission = False
         self._voice_note_shown = False
@@ -82,6 +87,7 @@ class PanelSession:
                     self.voice.lang = self.state.session["lang"]
         for reply in self.state.tick():
             self.client.send(reply)
+        self._tick_mic()
         if self.voice is not None and not self.voice.available and not self._voice_note_shown:
             self._voice_note_shown = True
             self.state.note(f"No voice in Blender: {self.voice.last_error}. Captions only.", "info")
@@ -107,6 +113,49 @@ class PanelSession:
             self._seen_revision = self.state.revision
             _redraw_panels()
 
+    def talk_start(self) -> None:
+        """Push-to-talk pressed: stop Wysp talking (barge-in) and open the microphone."""
+        if self.mic is None:
+            self.state.note("Speech input is off (extension preferences).", "info")
+            return
+        if self.state.status != "idle" or self.state.queued_segments():
+            self.send(self.state.interrupt())  # barge-in: talking over Wysp stops it, as in the browser Panel
+        else:
+            self.state.cancel_narration()
+        if self.voice is not None:
+            self.voice.stop()
+        self.mic.start()
+        self._mic_changed()
+
+    def talk_stop(self, cancel: bool = False) -> None:
+        if self.mic is None:
+            return
+        if cancel:
+            self.mic.cancel()
+        else:
+            self.mic.stop()
+        self._mic_changed()
+
+    def _mic_changed(self) -> None:
+        if self.mic is not None and self.mic.state != self._mic_state:
+            self._mic_state = self.mic.state
+            self.state.revision += 1
+            _redraw_viewports()
+
+    def _tick_mic(self) -> None:
+        if self.mic is None:
+            return
+        for r in self.mic.poll():
+            if not r["ok"]:
+                self.state.note(f"Microphone: {r['error']}", "error")
+            elif r["kind"] == "stop":
+                text = str(r.get("text", "")).strip()
+                if not text:
+                    self.state.note("I did not hear anything. Hold the key, speak, then release it.", "info")
+                for message in self.state.route_transcript(text):
+                    self.client.send(message)
+        self._mic_changed()
+
     def _sync_logging_prop(self) -> None:
         level = self.state.session.get("logging")
         wm = bpy.context.window_manager
@@ -125,11 +174,12 @@ def get() -> PanelSession | None:
     return _session
 
 
-def start(adapter_url: str, narrate: bool, speak: bool = True) -> None:
+def start(adapter_url: str, narrate: bool, speak: bool = True, listen: bool = True, token: str = "") -> None:
     global _session
     stop()
     voice = VoicePlayer(tts_url(adapter_url)) if speak else None
-    _session = PanelSession(ui_url(adapter_url), narrate=narrate or speak, voice=voice)
+    mic = VoiceInput(adapter_url, token) if listen and token else None
+    _session = PanelSession(ui_url(adapter_url), narrate=narrate or speak, voice=voice, mic=mic)
     _session.start()
     _add_banner()
 
@@ -172,9 +222,29 @@ _banner: dict = {"handle": None}
 
 def _draw_banner() -> None:
     s = _session
-    req = s.state.permission if s is not None else None
     region = bpy.context.region
-    if not req or region is None:
+    if s is None or region is None:
+        return
+    mic = s.mic.state if s.mic is not None else "idle"
+    if mic in ("starting", "listening", "transcribing"):
+        text = {
+            "starting": "Opening the microphone…",
+            "listening": "Listening… release Alt+Space (or click the red button) to send",
+            "transcribing": "Understanding what you said…",
+        }[mic]
+        try:
+            import gpu
+
+            from .highlight import draw_callout
+
+            gpu.state.blend_set("ALPHA")
+            scale = bpy.context.preferences.system.ui_scale
+            draw_callout(region, text, x=16 * scale, top=110 * scale)
+            gpu.state.blend_set("NONE")
+        except Exception:  # noqa: BLE001
+            pass
+    req = s.state.permission
+    if not req:
         return
     try:
         import gpu
@@ -223,10 +293,21 @@ def _on_input(self, context) -> None:
     text = (self.wysp_input or "").strip()
     if not text or _session is None:
         return
-    self["wysp_input"] = ""  # direct assignment: does not re-trigger this callback
+    # Blender writes the edited text back into the field after this callback returns, so clear it just after.
+    bpy.app.timers.register(_clear_input, first_interval=0.01)
     _session.state.cancel_narration()  # like the browser Panel: a new message stops what Wysp was saying
     if _session.send({"type": "user.message", "text": text[:4000], "source": "typed"}):
         _session.state.add_user(text)
+
+
+def _clear_input() -> None:
+    wm = bpy.context.window_manager
+    if getattr(wm, "wysp_input", ""):
+        # Plain assignment: WindowManager properties are not stored as ID properties, so wm["..."] = "" does
+        # nothing. It runs the update callback again, which returns at once for an empty text.
+        wm.wysp_input = ""
+        _redraw_panels()
+    return None
 
 
 def _on_logging(self, context) -> None:
@@ -463,6 +544,19 @@ def draw_chat(layout, context) -> None:
             box.operator("wysp.say", text=opt[:60]).text = opt
     row = layout.row()
     row.label(text=st.activity or st.status, icon=STATUS_ICONS.get(st.status, "DOT"))
+    mic = s.mic.state if s.mic is not None else None
+    if mic is not None:
+        talk = layout.row(align=True)
+        talk.scale_y = 1.4
+        if mic in ("starting", "listening"):
+            talk.alert = True
+            talk.operator("wysp.talk", text="Listening… click to send", icon="REC")
+            talk.operator("wysp.talk_cancel", text="", icon="X")
+        elif mic == "transcribing":
+            talk.enabled = False
+            talk.operator("wysp.talk", text="Understanding…", icon="SORTTIME")
+        else:
+            talk.operator("wysp.talk", text="Talk (hold Alt+Space)", icon="OUTLINER_OB_SPEAKER")
     col = layout.column(align=True)
     col.prop(context.window_manager, "wysp_input", text="", icon="OUTLINER_OB_FONT")
     row = col.row(align=True)
@@ -514,7 +608,86 @@ class WYSP_PT_board_side(Panel):
         draw_chat(self.layout, context)
 
 
+class WYSP_OT_talk(_SessionOperator):
+    """Push-to-talk. From the keyboard: hold the key while speaking. From the button: click, speak, click."""
+
+    bl_idname = "wysp.talk"
+    bl_label = "Talk to Wysp"
+    bl_description = "Speak to Wysp: hold Alt+Space while talking, or click to start and click again to send"
+
+    _key: str | None = None
+
+    def invoke(self, context, event):
+        if getattr(event, "is_repeat", False):
+            return {"CANCELLED"}  # keyboard auto-repeat while the key is held is not a second press
+        mic = _session.mic
+        if mic is not None and mic.active:  # second click: send what was said
+            _session.talk_stop()
+            return {"FINISHED"}
+        _session.talk_start()
+        if event.type in ("LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE") or mic is None:
+            return {"FINISHED"}  # button: toggle mode
+        self._key = event.type
+        context.window_manager.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        if _session is None or _session.mic is None or not _session.mic.active:
+            return {"FINISHED"}
+        if event.type == "ESC" and event.value == "PRESS":
+            _session.talk_stop(cancel=True)
+            return {"CANCELLED"}
+        if event.type == self._key and event.value == "RELEASE":
+            _session.talk_stop()
+            return {"FINISHED"}
+        if event.type == self._key:
+            return {"RUNNING_MODAL"}  # swallow auto-repeat presses so they do not reach the keymap again
+        return {"PASS_THROUGH"}
+
+    def execute(self, context):  # from a script or the F3 search: toggle
+        mic = _session.mic
+        if mic is not None and mic.active:
+            _session.talk_stop()
+        else:
+            _session.talk_start()
+        return {"FINISHED"}
+
+
+class WYSP_OT_talk_cancel(_SessionOperator):
+    bl_idname = "wysp.talk_cancel"
+    bl_label = "Cancel"
+    bl_description = "Stop listening and send nothing"
+
+    def execute(self, context):
+        _session.talk_stop(cancel=True)
+        return {"FINISHED"}
+
+
+_keymaps: list = []
+
+
+def register_keymaps() -> None:
+    kc = bpy.context.window_manager.keyconfigs.addon
+    if kc is None:  # background mode
+        return
+    for name, space in (("3D View", "VIEW_3D"), ("Node Editor", "NODE_EDITOR")):
+        km = kc.keymaps.new(name=name, space_type=space)
+        kmi = km.keymap_items.new("wysp.talk", "SPACE", "PRESS", alt=True)
+        _keymaps.append((km, kmi))
+
+
+def unregister_keymaps() -> None:
+    for km, kmi in _keymaps:
+        try:
+            km.keymap_items.remove(kmi)
+        except (ReferenceError, RuntimeError):
+            pass
+    _keymaps.clear()
+
+
 CLASSES = (
+    WYSP_OT_talk,
+    WYSP_OT_talk_cancel,
     WYSP_OT_send,
     WYSP_OT_say,
     WYSP_OT_interrupt,

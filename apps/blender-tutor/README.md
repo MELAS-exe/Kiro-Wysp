@@ -85,6 +85,19 @@ message box, the guided steps, and the conversation newest first (Blender panels
 script). While an approval is pending, the sidebar is opened and a banner at the bottom of the viewport
 points to the Wysp tab.
 
+## Speaking to Wysp
+
+Hold **Alt+Space** over the 3D Viewport (or the board) and speak, then release; or click **Talk**, speak, and
+click the red button. Talking stops Wysp's narration. While an approval is pending, "yes" / "go ahead" approves and
+"no" denies (irreversible actions still need a click). The shortcut can be changed in Blender's Keymap preferences
+("wysp.talk").
+
+Blender's Python API cannot capture audio, so the local Core records the default microphone (`POST /api/listen`,
+with the pairing token), only while you hold the key, at most 30 s, and transcribes the clip with Whisper on
+Groq by default (about 0.5 s). **The audio clip is sent to Groq**, like the conversation text when Groq is the
+LLM. Silence is detected locally and never sent; audio is never stored or logged. Turn it off with
+`WYSP_STT_PROVIDER=none` or the "Talk to Wysp in Blender" preference.
+
 ## Logs
 
 The extension writes `~/.wysp/logs/blender-<date>-<pid>.jsonl`: per-request main-thread queue wait and run

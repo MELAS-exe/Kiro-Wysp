@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -16,6 +17,9 @@ from . import __version__
 from .contract import CONTRACT_VERSION
 from .gateway import AdapterRegistry, serve_adapter
 from .gateway.server import origin_allowed
+from .listen import MAX_SECONDS as MAX_LISTEN_SECONDS
+from .listen import ListenError
+from .listen import from_env as listen_from_env
 from .llm import LLMProvider
 from .ocr import MAX_IMAGE_BYTES, is_png
 from .ocr import from_env as ocr_from_env
@@ -115,6 +119,62 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
 
     app.state.tts = tts_from_env()  # replaceable (tests use a fake; they never call a real voice)
     app.state.ocr = ocr_from_env()  # replaceable, like tts
+    app.state.listener = listen_from_env()  # push-to-talk (records the microphone only between start and stop)
+
+    def _may_listen(request: Request) -> JSONResponse | None:
+        """Turning the microphone on needs the pairing token, not just a local connection."""
+        if not origin_allowed(request.headers.get("origin"), allowed):
+            return JSONResponse({"error": "origin not allowed"}, status_code=403)
+        if not hmac.compare_digest(request.headers.get("x-wysp-token", ""), token):
+            return JSONResponse({"error": "pairing token required"}, status_code=401)
+        if request.app.state.listener is None:
+            return JSONResponse({"error": "no speech recognition configured"}, status_code=503)
+        return None
+
+    @app.post("/api/listen/start")
+    async def listen_start(request: Request) -> JSONResponse:
+        if (refused := _may_listen(request)) is not None:
+            return refused
+        try:
+            request.app.state.listener.start()
+        except ListenError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=exc.status)
+        except Exception as exc:  # noqa: BLE001 - no microphone, device busy...
+            tm.emit("listen.start", ok=False, error=f"{type(exc).__name__}: {exc}"[:200])
+            return JSONResponse({"error": "cannot open the microphone"}, status_code=500)
+        tm.emit("listen.start", ok=True, provider=request.app.state.listener.name)
+        return JSONResponse({"ok": True, "max_s": MAX_LISTEN_SECONDS})
+
+    @app.post("/api/listen/stop")
+    async def listen_stop(request: Request) -> JSONResponse:
+        if (refused := _may_listen(request)) is not None:
+            return refused
+        listener = request.app.state.listener
+        try:
+            result = await listener.stop(session.lang)
+        except ListenError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=exc.status)
+        except Exception as exc:  # noqa: BLE001
+            tm.emit("listen.stop", ok=False, error=f"{type(exc).__name__}: {exc}"[:200])
+            return JSONResponse({"error": "speech recognition failed"}, status_code=502)
+        tm.emit(
+            "listen.stop",
+            full={"text": result.get("text")},
+            ok=True,
+            seconds=result.get("seconds"),
+            duration_ms=result.get("ms"),
+            silent=bool(result.get("silent")),
+            chars=len(result.get("text", "")),
+        )
+        return JSONResponse(result)
+
+    @app.post("/api/listen/cancel")
+    async def listen_cancel(request: Request) -> JSONResponse:
+        if (refused := _may_listen(request)) is not None:
+            return refused
+        request.app.state.listener.cancel()
+        tm.emit("listen.cancel")
+        return JSONResponse({"ok": True})
 
     @app.post("/api/ocr")
     async def recognize(request: Request) -> Response:
@@ -175,6 +235,7 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
                 "llm": getattr(llm, "name", "?"),
                 "tts": getattr(app.state.tts, "name", None),
                 "ocr": getattr(app.state.ocr, "name", None),
+                "stt": getattr(app.state.listener, "name", None),
                 "adapters": registry.describe(),
                 "panels": hub.count,
             }

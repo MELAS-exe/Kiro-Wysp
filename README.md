@@ -58,7 +58,8 @@ Everything also works from inside Blender: the **Wysp** sidebar tab has the chat
 (Approve / Deny / Allow for this lesson) and the guided steps, and **Open Board** shows the board as a node
 tree in its own window (or in the Timeline area). Wysp can point at the interface itself: editors, viewport
 regions and Properties tabs (`blender://ui/...` refs). Wysp speaks in Blender with the voices installed in
-Windows (offline); the browser Panel (http://127.0.0.1:8765) also has voice input.
+Windows (offline), and you can talk to it: hold Alt+Space and speak (transcribed by Whisper on Groq; the clip is sent
+to Groq, `WYSP_STT_PROVIDER=none` turns it off). The browser Panel (http://127.0.0.1:8765) has voice too.
 
 **Logs and performance.** Each Core session and each Blender session writes a JSONL log to `~/.wysp/logs/`
 (level `full` by default, `WYSP_LOG=off|basic|full`, `wysp serve --log ...`, or live from either Panel).

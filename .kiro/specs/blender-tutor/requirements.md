@@ -149,3 +149,15 @@ The Blender tutor is the first application built on Wysp. It is a Blender 5.2 LT
 3. WHEN a Properties tab is highlighted, THE adapter SHALL locate its icon on a screenshot of the tab column, use an estimate only when that fails, and report a tab scrolled out of view.
 4. Screenshots SHALL be sent only to the local Core, never stored or logged, and deleted at once.
 5. THE chat SHALL show each of Wysp's sentences when it starts being spoken, not when it arrives.
+
+### Requirement 13: Speaking to Wysp in Blender
+
+**User Story:** As a learner, I want to speak my questions and commands instead of typing them.
+
+#### Acceptance Criteria
+
+1. WHILE the user holds Alt+Space (rebindable) or between two clicks of the Talk button, THE Core SHALL record the default microphone (at most 30 s) and THEN transcribe it; THE extension SHALL send the transcript as a `user.message` with `source: voice`.
+2. WHEN the user starts talking, THE extension SHALL stop Wysp's narration (barge-in), as the browser Panel does.
+3. WHILE an approval is pending, a spoken "yes" or "no" SHALL answer it with `via: voice` (the Core refuses voice for irreversible actions); anything else SHALL be a message.
+4. THE `/api/listen` endpoints SHALL require the pairing token; silence SHALL never be sent to the speech service; audio SHALL never be stored or logged.
+5. AFTER a typed message is sent, THE message field SHALL be empty.

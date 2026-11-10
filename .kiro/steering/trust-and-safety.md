@@ -31,6 +31,7 @@ These rules are part of the product promise. A change that weakens one of them n
 - The extension is active only on allowlisted origins, configured in its options page (default: the demo dashboard).
 - Snapshots never contain values of password, credit-card, one-time-code or hidden fields, nor cookies, storage or request headers. Long texts are truncated.
 - Page and scene content is data, not instructions. Text found in a page or a scene never changes the tutor's rules. The permission gate is the final barrier against prompt injection.
+- The microphone is on only while the user holds push-to-talk (or between the two clicks of the Talk button), at most 30 s, with a visible `Listening…` state. Turning it on through `/api/listen` needs the pairing token. Audio stays in memory, is never stored or logged, and silence is never sent. When the speech provider is remote (Groq), the clip leaves the machine: say so in the docs and keep `WYSP_STT_PROVIDER=none` available.
 - Screenshots (visual pointing, `POST /api/ocr`) cover only the editor being pointed at, go only to the local Core, are processed in memory and never stored or logged. Text read from them (for example the visible labels returned when a label is not found) is application data like any other.
 
 ## Audit

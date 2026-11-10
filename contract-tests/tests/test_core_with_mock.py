@@ -394,3 +394,68 @@ async def test_ocr_endpoint(make_stack):
         assert evil.status_code == 403
     recs = [r for r in s.session.tm.ring if r["kind"] == "ocr.recognize"]
     assert recs and "image" not in recs[-1] and recs[-1]["bytes"] == len(png)  # sizes only, never the picture
+
+
+class _FakeRecorder:
+    def __init__(self, pcm: bytes) -> None:
+        self.pcm, self.rate, self.on = pcm, 16000, False
+
+    def start(self) -> None:
+        from wysp_core.listen import ListenError
+
+        if self.on:
+            raise ListenError("already listening")
+        self.on = True
+
+    def stop(self) -> tuple[bytes, float]:
+        from wysp_core.listen import ListenError
+
+        if not self.on:
+            raise ListenError("not listening")
+        self.on = False
+        return self.pcm, len(self.pcm) / 2 / 16000
+
+    def cancel(self) -> None:
+        self.on = False
+
+
+class _FakeWhisper:
+    name = "fake"
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def transcribe(self, wav: bytes, lang: str = "en") -> str:
+        self.calls += 1
+        assert wav[:4] == b"RIFF"
+        return "add a cube"
+
+
+async def test_listen_endpoints_need_the_token_and_skip_silence(make_stack):
+    import array
+
+    from wysp_core.listen import Listener
+
+    s = await make_stack([])
+    loud = array.array("h", [8000, -8000] * 8000).tobytes()  # one second of a loud signal
+    whisper = _FakeWhisper()
+    s.app.state.listener = Listener(_FakeRecorder(loud), whisper)
+    base = f"http://127.0.0.1:{s.port}/api/listen"
+    auth = {"X-Wysp-Token": s.app.state.token}
+    async with httpx.AsyncClient(timeout=5) as client:
+        assert (await client.post(base + "/start")).status_code == 401, "no token, no microphone"
+        assert (
+            await client.post(base + "/start", headers={**auth, "Origin": "https://evil.example"})
+        ).status_code == 403
+        assert (await client.post(base + "/stop", headers=auth)).status_code == 409
+        assert (await client.post(base + "/start", headers=auth)).json()["ok"] is True
+        assert (await client.post(base + "/start", headers=auth)).status_code == 409
+        heard = (await client.post(base + "/stop", headers=auth)).json()
+        assert heard["text"] == "add a cube" and heard["seconds"] == 1.0 and whisper.calls == 1
+        # Silence never reaches the speech service (Whisper invents words on silence).
+        s.app.state.listener = Listener(_FakeRecorder(b"\x00\x00" * 16000), whisper)
+        await client.post(base + "/start", headers=auth)
+        quiet = (await client.post(base + "/stop", headers=auth)).json()
+        assert quiet["text"] == "" and quiet["silent"] is True and whisper.calls == 1
+    recs = [r for r in s.session.tm.ring if r["kind"] == "listen.stop"]
+    assert recs and all("audio" not in r and "pcm" not in r for r in recs)

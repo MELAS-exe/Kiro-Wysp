@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "wysp_tutor"
-version = "0.4.0"
+version = "0.5.0"
 name = "Wysp Tutor"
 tagline = "An AI tutor that sees your scene and teaches you Blender"
 maintainer = "Wysp contributors <noreply@users.noreply.github.com>"
