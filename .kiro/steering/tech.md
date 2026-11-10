@@ -29,7 +29,7 @@ inclusion: always
 
 ## External services (pluggable, configured by environment variables)
 - LLM with tool calling: `WYSP_LLM_PROVIDER`, `WYSP_LLM_MODEL`, `WYSP_LLM_API_KEY`. A deterministic `scripted` provider exists for tests and as a demo fallback.
-- Speech: `WYSP_TTS_PROVIDER`, `WYSP_TTS_API_KEY`, `WYSP_STT_PROVIDER` (default `browser`).
+- Speech: `WYSP_TTS_PROVIDER` (`auto` = local Windows voices through `comtypes`, `none`), `WYSP_TTS_VOICE`, `WYSP_STT_PROVIDER` (default `browser`). `POST /api/tts` serves WAV to Panels without their own voice (the Blender Panel plays it with `aud`).
 - Secrets live in a local `.env` (git-ignored). Never commit keys, never log them.
 
 ## Common commands

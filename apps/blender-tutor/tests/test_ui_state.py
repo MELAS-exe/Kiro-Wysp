@@ -181,3 +181,95 @@ def test_layout_survives_cycles() -> None:
     board["nodes"] = [_node("a", "observed", None), _node("b", "observed", None)]
     board["edges"] = [{"id": "e1", "source": "a", "target": "b"}, {"id": "e2", "source": "b", "target": "a"}]
     assert set(board_layout.layout(board)) == {"a", "b"}
+
+
+class FakeVoice:
+    """Stands in for ui_voice.VoicePlayer: audio is 'ready' once `deliver` is called."""
+
+    def __init__(self) -> None:
+        self.prepared: list[str] = []
+        self.audio: dict[str, float | bool] = {}
+        self.played: list[str] = []
+        self.stopped = 0
+        self.forgotten: list[str] = []
+        self.playing = False
+
+    def prepare(self, seg: dict) -> None:
+        self.prepared.append(seg["id"])
+
+    def deliver(self, sid: str, seconds: float | bool) -> None:
+        self.audio[sid] = seconds
+
+    def ready(self, sid: str):
+        return self.audio.get(sid)
+
+    def play(self, sid: str) -> bool:
+        self.played.append(sid)
+        self.playing = True
+        return True
+
+    def is_playing(self) -> bool:
+        return self.playing
+
+    def stop(self) -> None:
+        self.stopped += 1
+        self.playing = False
+
+    def forget(self, sid: str) -> None:
+        self.forgotten.append(sid)
+
+
+def test_voiced_narration_waits_for_audio_and_follows_its_length() -> None:
+    clock, voice = Clock(), FakeVoice()
+    s = ui_state.UiState(narrate=True, clock=clock, voice=voice)
+    s.handle(_segment("one two three four", [{"at_word": 2, "op": "highlight", "target": "x"}]))
+    assert voice.prepared == ["g1"]
+    assert s.tick() == []  # audio not there yet: wait
+    voice.deliver("g1", 4.0)
+    clock.t = 0.5
+    assert s.tick() == [] and voice.played == ["g1"]
+    clock.t = 2.6  # the cue is halfway through the words, so halfway through the 4 s of audio
+    assert s.tick() == [{"type": "narration.cue", "segment_id": "g1", "index": 0}]
+    clock.t = 4.6
+    assert s.tick() == []  # audio still playing
+    voice.playing = False
+    assert s.tick() == [{"type": "narration.progress", "segment_id": "g1", "played": True}]
+    assert voice.forgotten == ["g1"]
+
+
+def test_voice_failure_falls_back_to_reading_pace() -> None:
+    clock, voice = Clock(), FakeVoice()
+    s = ui_state.UiState(narrate=True, clock=clock, voice=voice)
+    s.handle(_segment("hello there", []))
+    voice.deliver("g1", False)
+    s.tick()
+    assert voice.played == []
+    clock.t = ui_state.MIN_SEGMENT_S + 0.1
+    assert s.tick() == [{"type": "narration.progress", "segment_id": "g1", "played": True}]
+
+
+def test_slow_voice_does_not_block_narration_forever() -> None:
+    clock, voice = Clock(), FakeVoice()
+    s = ui_state.UiState(narrate=True, clock=clock, voice=voice)
+    s.handle(_segment("hello there", []))
+    assert s.tick() == []
+    clock.t = ui_state.VOICE_WAIT_S + 0.1
+    s.tick()  # gives up waiting and shows it silently
+    clock.t += ui_state.MIN_SEGMENT_S + 0.1
+    assert s.tick()[-1]["type"] == "narration.progress"
+
+
+def test_interrupt_stops_the_voice() -> None:
+    clock, voice = Clock(), FakeVoice()
+    s = ui_state.UiState(narrate=True, clock=clock, voice=voice)
+    s.handle(_segment("hello there", []))
+    voice.deliver("g1", 3.0)
+    s.tick()
+    s.interrupt()
+    assert voice.stopped >= 1 and "g1" in voice.forgotten
+
+
+def test_tts_url_follows_the_core_address() -> None:
+    ui_voice = _load("ui_voice")
+    assert ui_voice.tts_url("ws://127.0.0.1:8765/ws/adapter") == "http://127.0.0.1:8765/api/tts"
+    assert ui_voice.tts_url("ws://localhost:8799/ws/adapter") == "http://localhost:8799/api/tts"

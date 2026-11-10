@@ -34,7 +34,7 @@ adapter = BlenderAdapter()
 adapter.make_client(URL, Path(TOKEN_FILE).read_text(encoding="utf-8").strip()).start()
 adapter.watcher.start()
 pkg._adapter = adapter
-ui_panel.start(URL, narrate=True)
+ui_panel.start(URL, narrate=True, speak=True)
 bpy.app.timers.register(pkg._pump, first_interval=0.05, persistent=True)
 
 for area in bpy.context.screen.areas:
@@ -94,6 +94,7 @@ def step():
         if phase["name"] == "wait_answer":
             if len(MESSAGES) > 1 and now - phase["t"] > 8:
                 nxt = MESSAGES.pop(1)
+                s.state.cancel_narration()  # what the sidebar's Send does
                 s.send({"type": "user.message", "text": nxt, "source": "typed"})
                 s.state.add_user(nxt)
                 phase["t"] = now

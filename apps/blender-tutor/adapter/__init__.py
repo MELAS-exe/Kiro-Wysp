@@ -83,7 +83,7 @@ def connect() -> str:
     client.start()
     _adapter.watcher.start()
     if prefs.in_blender_ui:
-        ui_panel.start(prefs.core_url, narrate=prefs.narrate_silently)
+        ui_panel.start(prefs.core_url, narrate=prefs.narrate_silently, speak=prefs.speak_in_blender)
     if not _timer_running:
         bpy.app.timers.register(_pump, first_interval=0.05, persistent=True)
         _timer_running = True
@@ -122,6 +122,12 @@ class WYSP_Preferences(AddonPreferences):
         default=True,
         description="Fire narration cues at reading pace. Turn off when the browser Panel speaks aloud",
     )
+    speak_in_blender: BoolProperty(  # type: ignore[valid-type]
+        name="Speak in Blender",
+        default=True,
+        description="Read Wysp's narration aloud in Blender (local Windows voices through the Core). "
+        "Turn off the browser Panel's voice to avoid hearing it twice",
+    )
     log_level: bpy.props.EnumProperty(  # type: ignore[valid-type]
         name="Blender-side logs",
         description="Adapter telemetry written to ~/.wysp/logs (merged with the Core's by `wysp logs summary`)",
@@ -140,6 +146,7 @@ class WYSP_Preferences(AddonPreferences):
         col.prop(self, "auto_connect")
         col.prop(self, "in_blender_ui")
         col.prop(self, "narrate_silently")
+        col.prop(self, "speak_in_blender")
         col.prop(self, "log_level")
 
 
@@ -192,7 +199,9 @@ class WYSP_PT_panel(Panel):
             row = layout.row(align=True)
             row.operator("wysp.board_open", icon="NODETREE")
             row.operator("wysp.board_here", text="", icon="SEQ_STRIP_DUPLICATE")
-        layout.label(text="Voice: http://127.0.0.1:8765")
+        session = ui_panel.get()
+        if session is not None and session.voice is not None and not session.voice.available:
+            layout.label(text="Voice off: no voice on the Core", icon="MUTE_IPO_OFF")
 
 
 _CLASSES = (WYSP_Preferences, WYSP_OT_connect, WYSP_OT_disconnect, WYSP_PT_panel)

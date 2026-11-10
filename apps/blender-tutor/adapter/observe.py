@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import uuid
 from datetime import UTC, datetime
 
@@ -99,6 +100,8 @@ def build_entities(scene) -> tuple[list[dict], list[dict], bool]:
             "type": obj.type,
             "modifiers_count": len(obj.modifiers),
             "location": _vec(obj.location),
+            "rotation": [round(math.degrees(float(a)), 1) for a in obj.rotation_euler],
+            "scale": _vec(obj.scale),
             "dimensions": _vec(obj.dimensions),
             "hide_viewport": bool(obj.hide_viewport),
         }

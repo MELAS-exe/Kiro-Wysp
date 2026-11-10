@@ -117,3 +117,11 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
 - [ ] 14. Checkpoint: Core ready for both tutors
   - All required tasks done, scenario tests green, boundary check clean, no application vocabulary in `core/`
   - Ask the user if questions arise
+
+- [x] 15. Fewer LLM requests and visible approvals (from the session log of 2026-11-10)
+  - A turn ends after a round that narrated using display tools only (`DISPLAY_TOOLS` in `orchestrator/turn.py`); the prompt asks for board and narration in one response, and to offer exercises rather than start them
+  - Approvals that need the user are announced aloud; a message identical to the one that started the turn does not cancel a pending approval (`Session.user_message`), any other message still does
+  - Every UI protocol message is recorded (`ui.message`, with `client` browser or native)
+  - `POST /api/tts` with local voices, origin-checked like the WebSockets, no CORS headers
+  - Tests: `contract-tests/tests/test_core_with_mock.py` (turn end, announced approval, repeat vs. new message, UI message log, TTS endpoint with a fake provider)
+  - _Owner: A_ · _Gate: J2_

@@ -357,3 +357,6 @@ def _highlight_object(ref: str, duration_ms: int) -> dict:
 
 # Backwards-compatible name used by earlier code and tests.
 highlight_object = highlight
+
+# Public name for other modules of the add-on (the approval banner).
+draw_callout = _draw_callout

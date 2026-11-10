@@ -9,12 +9,14 @@ from . import (
     remove_modifier,
     select_object,
     set_modifier_property,
+    set_object_transform,
     show_properties_tab,
 )
 
 ALL = [
     select_object,
     show_properties_tab,
+    set_object_transform,
     add_modifier,
     set_modifier_property,
     move_modifier,

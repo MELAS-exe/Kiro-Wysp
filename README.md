@@ -57,7 +57,8 @@ uv run wysp serve                                            # then in Blender: 
 Everything also works from inside Blender: the **Wysp** sidebar tab has the chat, permission prompts
 (Approve / Deny / Allow for this lesson) and the guided steps, and **Open Board** shows the board as a node
 tree in its own window (or in the Timeline area). Wysp can point at the interface itself: editors, viewport
-regions and Properties tabs (`blender://ui/...` refs). Voice is in the browser Panel (http://127.0.0.1:8765).
+regions and Properties tabs (`blender://ui/...` refs). Wysp speaks in Blender with the voices installed in
+Windows (offline); the browser Panel (http://127.0.0.1:8765) also has voice input.
 
 **Logs and performance.** Each Core session and each Blender session writes a JSONL log to `~/.wysp/logs/`
 (level `full` by default, `WYSP_LOG=off|basic|full`, `wysp serve --log ...`, or live from either Panel).
@@ -74,7 +75,7 @@ Pollinations (works, but stalls on about every second request). `--llm scripted`
 ## Tests
 
 ```powershell
-uv run pytest                                              # 48 tests: contract, Core, telemetry, end-to-end with the mock adapter, Blender Panel state
+uv run pytest                                              # 58 tests: contract, Core, telemetry, end-to-end with the mock adapter, Blender Panel state
 uv run pytest -m live -o addopts="" apps\blender-tutor\tests   # 4 tests inside a real headless Blender
 npm test -w panel                                          # Panel unit and property tests
 uv run python scripts\kiro\hook.py boundaries              # the Core must stay application-agnostic

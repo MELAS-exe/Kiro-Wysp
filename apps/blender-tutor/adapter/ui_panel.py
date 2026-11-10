@@ -21,6 +21,7 @@ from bpy.types import Operator, Panel
 from . import board_tree
 from .ui_client import PanelClient
 from .ui_state import UiState
+from .ui_voice import VoicePlayer, tts_url
 
 log = logging.getLogger("wysp.blender.ui")
 
@@ -36,9 +37,12 @@ def ui_url(adapter_url: str) -> str:
 
 
 class PanelSession:
-    def __init__(self, url: str, narrate: bool = True) -> None:
+    def __init__(self, url: str, narrate: bool = True, voice: VoicePlayer | None = None) -> None:
         self.client = PanelClient(url)
-        self.state = UiState(narrate=narrate)
+        self.voice = voice
+        self.state = UiState(narrate=narrate, voice=voice)
+        self._had_permission = False
+        self._voice_note_shown = False
         self._seen_revision = -1
         self._seen_board = -1
         self._last_active: str | None = None
@@ -50,6 +54,8 @@ class PanelSession:
 
     def stop(self) -> None:
         self.client.stop()
+        if self.voice is not None:
+            self.voice.close()
 
     def send(self, message: dict) -> bool:
         ok = self.client.send(message)
@@ -72,8 +78,19 @@ class PanelSession:
                 self.client.send(reply)
             if t == "session.state":
                 self._sync_logging_prop()
+                if self.voice is not None and self.state.session.get("lang"):
+                    self.voice.lang = self.state.session["lang"]
         for reply in self.state.tick():
             self.client.send(reply)
+        if self.voice is not None and not self.voice.available and not self._voice_note_shown:
+            self._voice_note_shown = True
+            self.state.note(f"No voice in Blender: {self.voice.last_error}. Captions only.", "info")
+        has_permission = self.state.permission is not None
+        if has_permission and not self._had_permission:
+            _reveal_sidebar()
+        if has_permission != self._had_permission:
+            _redraw_viewports()
+        self._had_permission = has_permission
         if self.state.board_revision != self._seen_board:
             self._seen_board = self.state.board_revision
             try:
@@ -108,15 +125,18 @@ def get() -> PanelSession | None:
     return _session
 
 
-def start(adapter_url: str, narrate: bool) -> None:
+def start(adapter_url: str, narrate: bool, speak: bool = True) -> None:
     global _session
     stop()
-    _session = PanelSession(ui_url(adapter_url), narrate=narrate)
+    voice = VoicePlayer(tts_url(adapter_url)) if speak else None
+    _session = PanelSession(ui_url(adapter_url), narrate=narrate or speak, voice=voice)
     _session.start()
+    _add_banner()
 
 
 def stop() -> None:
     global _session
+    _remove_banner()
     if _session is not None:
         _session.stop()
         _session = None
@@ -125,6 +145,67 @@ def stop() -> None:
 def tick() -> None:
     if _session is not None:
         _session.tick()
+
+
+def _reveal_sidebar() -> None:
+    """An approval is waiting: make sure the 3D Viewport sidebar (where the Wysp tab lives) is open."""
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == "VIEW_3D":
+                space = area.spaces.active
+                if not space.show_region_ui:
+                    space.show_region_ui = True
+                    area.tag_redraw()
+
+
+def _redraw_viewports() -> None:
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
+
+
+# A banner in the viewport while an approval is pending: the Wysp sidebar tab may not be the one shown,
+# and scripts cannot switch sidebar tabs.
+_banner: dict = {"handle": None}
+
+
+def _draw_banner() -> None:
+    s = _session
+    req = s.state.permission if s is not None else None
+    region = bpy.context.region
+    if not req or region is None:
+        return
+    try:
+        import gpu
+
+        from .highlight import draw_callout
+
+        gpu.state.blend_set("ALPHA")
+        scale = bpy.context.preferences.system.ui_scale  # bottom of the viewport: never over the header menus
+        draw_callout(
+            region,
+            f"Wysp asks your approval: {req.get('title', '')}. Answer in the Wysp tab (N).",
+            x=16 * scale,
+            top=64 * scale,
+        )
+        gpu.state.blend_set("NONE")
+    except Exception:  # noqa: BLE001 - drawing must never break Blender
+        pass
+
+
+def _add_banner() -> None:
+    if _banner["handle"] is None and not bpy.app.background:
+        _banner["handle"] = bpy.types.SpaceView3D.draw_handler_add(_draw_banner, (), "WINDOW", "POST_PIXEL")
+
+
+def _remove_banner() -> None:
+    handle, _banner["handle"] = _banner["handle"], None
+    if handle is not None:
+        try:
+            bpy.types.SpaceView3D.draw_handler_remove(handle, "WINDOW")
+        except (ValueError, RuntimeError):
+            pass
 
 
 def _redraw_panels() -> None:
@@ -143,6 +224,7 @@ def _on_input(self, context) -> None:
     if not text or _session is None:
         return
     self["wysp_input"] = ""  # direct assignment: does not re-trigger this callback
+    _session.state.cancel_narration()  # like the browser Panel: a new message stops what Wysp was saying
     if _session.send({"type": "user.message", "text": text[:4000], "source": "typed"}):
         _session.state.add_user(text)
 
@@ -203,6 +285,7 @@ class WYSP_OT_say(_SessionOperator):
     text: StringProperty()  # type: ignore[valid-type]
 
     def execute(self, context):
+        _session.state.cancel_narration()
         if _session.send({"type": "user.message", "text": self.text[:4000], "source": "typed"}):
             _session.state.add_user(self.text)
             _session.state.clarification = None
@@ -338,7 +421,10 @@ def draw_steps(layout, context, steps: list[dict]) -> None:
 
 def draw_transcript(layout, context, state: UiState) -> None:
     box = layout.box()
-    items = list(state.transcript)[-TRANSCRIPT_LINES:]
+    # Newest first: Blender panels cannot be scrolled from a script, so the latest message must be on top.
+    items = list(state.transcript)[-TRANSCRIPT_LINES:][::-1]
+    if items:
+        box.label(text="Newest first", icon="SORT_DESC")
     if not items:
         box.label(text="Ask Wysp about your scene.", icon="LIGHT_SUN")
     for it in items:
@@ -368,8 +454,6 @@ def draw_chat(layout, context) -> None:
         if s.client.last_error:
             layout.label(text=s.client.last_error[:60])
         return
-    row = layout.row()
-    row.label(text=st.activity or st.status, icon=STATUS_ICONS.get(st.status, "DOT"))
     if st.permission:
         draw_permission(layout, context, st.permission)
     if st.clarification:
@@ -377,15 +461,18 @@ def draw_chat(layout, context) -> None:
         _draw_text(box, st.clarification["question"], context, "QUESTION")
         for opt in st.clarification["options"][:6]:
             box.operator("wysp.say", text=opt[:60]).text = opt
-    draw_steps(layout, context, st.steps)
-    draw_transcript(layout, context, st)
+    row = layout.row()
+    row.label(text=st.activity or st.status, icon=STATUS_ICONS.get(st.status, "DOT"))
     col = layout.column(align=True)
     col.prop(context.window_manager, "wysp_input", text="", icon="OUTLINER_OB_FONT")
     row = col.row(align=True)
     row.operator("wysp.send", icon="EXPORT")
     row.operator("wysp.interrupt", icon="PAUSE")
     row.operator("wysp.resume", text="", icon="PLAY")
-    row.operator("wysp.undo_last", text="", icon="LOOP_BACK")
+    row.separator()
+    row.operator("wysp.undo_last", text="Undo Wysp", icon="LOOP_BACK")
+    draw_steps(layout, context, st.steps)
+    draw_transcript(layout, context, st)
 
 
 def draw_board_legend(layout) -> None:

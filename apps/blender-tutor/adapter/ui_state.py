@@ -17,6 +17,7 @@ from typing import Any
 MAX_TRANSCRIPT = 200
 WORDS_PER_SECOND = 2.6  # reading pace used to time narration cues when no voice plays them
 MIN_SEGMENT_S = 1.2
+VOICE_WAIT_S = 8.0  # how long a segment waits for its audio before being shown silently
 
 
 def empty_board() -> dict[str, Any]:
@@ -100,8 +101,9 @@ def apply_patch(board: dict[str, Any], patch: dict[str, Any]) -> tuple[dict[str,
 
 
 class UiState:
-    def __init__(self, narrate: bool = True, clock=time.monotonic) -> None:
+    def __init__(self, narrate: bool = True, clock=time.monotonic, voice=None) -> None:
         self.narrate = narrate  # time segments and fire their cues (when no browser voice does it)
+        self.voice = voice  # optional VoicePlayer-like object: prepare / ready / play / is_playing / stop / forget
         self.clock = clock
         self.connected = False
         self.session: dict[str, Any] = {}
@@ -118,6 +120,9 @@ class UiState:
         self._current: dict[str, Any] | None = None
         self._started = 0.0
         self._cues_sent = 0
+        self._duration = 0.0
+        self._waiting_since = 0.0
+        self._pending_start = False
 
     # ----------------------------------------------------------------------- helpers
     def _touch(self, board: bool = False) -> None:
@@ -181,6 +186,8 @@ class UiState:
             self.transcript.append({"kind": "wysp", "segment": seg, "text": seg.get("text", ""), "state": "queued"})
             if self.narrate:
                 self._queue.append(seg)
+                if self.voice is not None:
+                    self.voice.prepare(seg)
         elif t == "narration.cancel":
             self.cancel_narration(m.get("from_index"))
         elif t == "clarification":
@@ -216,9 +223,16 @@ class UiState:
         for item in self.transcript:
             if item["kind"] == "wysp" and item["state"] in ("queued", "playing") and cut(item["segment"]):
                 item["state"] = "cancelled"
+        dropped = [s for s in self._queue if cut(s)]
         self._queue = deque(s for s in self._queue if not cut(s))
         if self._current is not None and cut(self._current):
+            dropped.append(self._current)
             self._current = None
+            if self.voice is not None:
+                self.voice.stop()
+        if self.voice is not None:
+            for seg in dropped:
+                self.voice.forget(seg["id"])
         self._touch()
 
     @staticmethod
@@ -226,29 +240,54 @@ class UiState:
         words = len(str(seg.get("text", "")).split())
         return max(MIN_SEGMENT_S, words / WORDS_PER_SECOND)
 
+    def _start_segment(self, seg: dict[str, Any], now: float) -> bool:
+        """Begin a segment. Returns False while its audio is still being fetched."""
+        duration = None
+        if self.voice is not None:
+            ready = self.voice.ready(seg["id"])
+            if ready is None and now - self._waiting_since < VOICE_WAIT_S:
+                return False  # audio on its way: wait a little rather than speak out of sync
+            if isinstance(ready, (int, float)) and not isinstance(ready, bool) and self.voice.play(seg["id"]):
+                duration = float(ready)
+        self._duration = duration if duration is not None else self.segment_duration(seg)
+        self._started, self._cues_sent = now, 0
+        self._mark(seg["id"], "playing")
+        self._touch()
+        return True
+
     def tick(self) -> list[dict[str, Any]]:
-        """Advance silent narration: fire due cues, then report the segment as played."""
+        """Advance narration (voiced or silent): fire due cues, then report the segment as played."""
         out: list[dict[str, Any]] = []
         now = self.clock()
         if self._current is None:
             if not self._queue:
                 return out
             self._current = self._queue.popleft()
-            self._started, self._cues_sent = now, 0
-            self._mark(self._current["id"], "playing")
-            self._touch()
+            self._waiting_since = now
+            self._pending_start = True
         seg = self._current
+        if self._pending_start:
+            if not self._start_segment(seg, now):
+                return out
+            self._pending_start = False
         elapsed = now - self._started
         cues = seg.get("cues", [])
-        while self._cues_sent < len(cues) and elapsed >= cues[self._cues_sent].get("at_word", 0) / WORDS_PER_SECOND:
+        words = max(1, len(str(seg.get("text", "")).split()))
+        while self._cues_sent < len(cues):
+            at = min(cues[self._cues_sent].get("at_word", 0), words) / words * self._duration
+            if elapsed < at:
+                break
             out.append({"type": "narration.cue", "segment_id": seg["id"], "index": self._cues_sent})
             self._cues_sent += 1
-        if elapsed >= self.segment_duration(seg):
+        still_playing = self.voice is not None and self.voice.is_playing() and elapsed < self._duration + 2.0
+        if elapsed >= self._duration and not still_playing:
             while self._cues_sent < len(cues):  # never drop a cue, even on a short segment
                 out.append({"type": "narration.cue", "segment_id": seg["id"], "index": self._cues_sent})
                 self._cues_sent += 1
             out.append({"type": "narration.progress", "segment_id": seg["id"], "played": True})
             self._mark(seg["id"], "played")
+            if self.voice is not None:
+                self.voice.forget(seg["id"])
             self._current = None
             self._touch()
         return out

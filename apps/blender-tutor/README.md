@@ -20,6 +20,7 @@ Every action is declared in `adapter/actions/<id>.py`. The LLM can only *propose
 |---|---|---|---|
 | `select_object` | ui_state | no (UI only) | Select an object and make it active |
 | `show_properties_tab` | ui_state | no (UI only) | Switch the Properties editor to MODIFIER, MATERIAL, OBJECT or DATA (needs a window) |
+| `set_object_transform` | reversible | yes | Set an object's location, rotation (degrees) or scale to exact values; verified on the observation |
 | `add_modifier` | reversible | yes | Add a modifier (any type of the running Blender) to an object |
 | `set_modifier_property` | reversible | yes | Set one scalar property of a modifier (generic RNA, no per-type code) |
 | `move_modifier` | reversible | yes | Reorder a modifier in the stack (evaluation order) |
@@ -61,8 +62,16 @@ steps. **Open Board** shows the board as a node tree (`.Wysp Board`) in a new wi
 inferred ones say "likely", examples are grey. Clicking a node highlights it in the scene; **Why?** asks Wysp.
 The board tree is a view: it is rebuilt from the Core's board and removed before the file is saved.
 
-Without the browser Panel, narration is paced at reading speed so its cues still fire. Turn off
-"Pace narration in Blender" in the extension preferences when the browser Panel speaks.
+Wysp speaks inside Blender: the Core synthesises each segment with the voices installed in Windows
+(`POST /api/tts`, offline, no key) and the extension plays it with Blender's `aud` module; cues fire in step
+with the audio. Without a voice on the Core, narration falls back to captions paced at reading speed. If the
+browser Panel is open with its voice on, turn one of them off ("Speak in Blender" in the extension
+preferences) to avoid hearing Wysp twice.
+
+The chat puts what needs an answer first: approval requests (Approve / Deny / Allow for this lesson), then the
+message box, the guided steps, and the conversation newest first (Blender panels cannot be scrolled by a
+script). While an approval is pending, the sidebar is opened and a banner at the bottom of the viewport
+points to the Wysp tab.
 
 ## Logs
 

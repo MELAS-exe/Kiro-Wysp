@@ -8,19 +8,22 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, WebSocket
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .contract import CONTRACT_VERSION
 from .gateway import AdapterRegistry, serve_adapter
+from .gateway.server import origin_allowed
 from .llm import LLMProvider
 from .session.bus import EventBus
 from .session.session import Session
 from .store import ensure_home, load_or_create_token, register_env_secrets, register_secret, wysp_home
 from .telemetry import TelemetryLogHandler, from_env
 from .trust import AuditLog
+from .tts import clean_for_speech
+from .tts import from_env as tts_from_env
 from .ui_api import UiHub
 from .ui_api.server import serve_ui
 
@@ -108,6 +111,34 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
     async def metrics() -> JSONResponse:
         return JSONResponse(tm.metrics())
 
+    app.state.tts = tts_from_env()  # replaceable (tests use a fake; they never call a real voice)
+
+    @app.post("/api/tts")
+    async def speak(request: Request) -> Response:
+        """Speech for Panels that cannot synthesise it themselves. Local voices only, no proxying."""
+        if not origin_allowed(request.headers.get("origin"), allowed):
+            return JSONResponse({"error": "origin not allowed"}, status_code=403)
+        tts = request.app.state.tts
+        if tts is None:
+            return JSONResponse({"error": "no text-to-speech provider on this machine"}, status_code=503)
+        try:
+            body = await request.json()
+        except ValueError:
+            return JSONResponse({"error": "expected a JSON body"}, status_code=400)
+        text = clean_for_speech(str(body.get("text", ""))) if isinstance(body, dict) else ""
+        if not text:
+            return JSONResponse({"error": "empty text"}, status_code=400)
+        lang = str(body.get("lang") or session.lang)[:8]
+        with tm.span("tts.synth", provider=tts.name, chars=len(text)) as extra:
+            try:
+                audio = await tts.synth(text, lang)
+            except Exception as exc:  # noqa: BLE001 - report, never crash the server
+                extra["ok"] = False
+                extra["error"] = f"{type(exc).__name__}: {exc}"[:200]
+                return JSONResponse({"error": "speech synthesis failed"}, status_code=500)
+            extra["bytes"] = len(audio)
+        return Response(content=audio, media_type=tts.mime, headers={"Cache-Control": "no-store"})
+
     @app.get("/api/health")
     async def health() -> JSONResponse:
         return JSONResponse(
@@ -116,6 +147,7 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
                 "version": __version__,
                 "contract_version": CONTRACT_VERSION,
                 "llm": getattr(llm, "name", "?"),
+                "tts": getattr(app.state.tts, "name", None),
                 "adapters": registry.describe(),
                 "panels": hub.count,
             }

@@ -126,3 +126,14 @@ The Blender tutor is the first application built on Wysp. It is a Blender 5.2 LT
 3. THE board SHALL be shown as a node tree with the same provenance language as the browser Panel; selecting a node SHALL send `board.select`, and every node SHALL offer "Why?".
 4. THE board node tree SHALL NOT be written into the user's .blend file.
 5. THE extension SHALL write its own telemetry (request queue and run times, slow ticks, observation time, warnings) to `~/.wysp/logs/`, with the same record format as the Core's, at a level the user can switch off.
+6. THE extension SHALL read narration aloud with audio from the Core's `POST /api/tts` (local voices only), fire cues in step with the audio, stop speaking when the user sends a message or interrupts, and fall back to captions when no voice is available.
+7. THE sidebar SHALL show pending approvals and the message box before the conversation, show the conversation newest first, open the sidebar and show a viewport banner while an approval is pending.
+
+### Requirement 11: Transforms
+
+**User Story:** As a learner, I want to move, rotate or resize an object with Wysp's help, and have the result checked.
+
+#### Acceptance Criteria
+
+1. THE catalog SHALL include `set_object_transform` (reversible) setting location, rotation in degrees or scale to exact values, with a postcondition on the observed value and an undo that restores the state digest.
+2. THE observation SHALL expose each object's `location`, `rotation` (degrees) and `scale`.

@@ -27,6 +27,17 @@ REFRESH_DEBOUNCE_S = 0.4
 HISTORY_LIMIT = 12
 
 
+def _same_request(a: str | None, b: str | None) -> bool:
+    """Case, punctuation and spacing aside, is this the same message?"""
+    if not a or not b:
+        return False
+
+    def norm(s: str) -> str:
+        return " ".join("".join(ch for ch in s.lower() if ch.isalnum() or ch.isspace()).split())
+
+    return norm(a) == norm(b)
+
+
 @dataclass
 class Watch:
     """A guided step the user is performing; verified when the application reports a user change."""
@@ -76,6 +87,7 @@ class Session:
         self._cancel: CancelToken | None = None
         self._refresh_task: asyncio.Task | None = None
         self._tour_task: asyncio.Task | None = None
+        self.current_user_text: str | None = None  # text that started the current turn
         self.last_highlight_error: str | None = None
 
     # ------------------------------------------------------------------------ wiring
@@ -286,9 +298,17 @@ class Session:
 
     # ---------------------------------------------------------------------------- turns
     async def user_message(self, text: str, source: str = "typed") -> None:
+        pending = self.gate.pending()
+        if pending and _same_request(text, self.current_user_text):
+            # The user repeated themselves because they did not notice the approval prompt. Cancelling the
+            # request (as any new message does) would make them start over; remind them instead.
+            self.tm.emit("user.repeat_while_waiting", chars=len(text), action_id=pending[0].action_id)
+            await self.narrate(f"I am still waiting for your approval: {pending[0].title}. Approve or deny it.")
+            return
         await self.interrupt(quiet=True)
         from ..orchestrator import TurnRunner  # local import: orchestrator depends on Session
 
+        self.current_user_text = text
         self.tm.emit("user.message", full={"text": text}, chars=len(text), source=source)
         self._cancel = CancelToken()
         runner = TurnRunner(self, self._cancel)

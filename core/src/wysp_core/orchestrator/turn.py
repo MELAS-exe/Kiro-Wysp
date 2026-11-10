@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..llm import CancelToken, LLMError, LLMResult
 from .context import build_system_prompt
-from .tools import ToolBox, recover_tool_call
+from .tools import ToolBox, normalize_tool_name, recover_tool_call
 
 if TYPE_CHECKING:
     from ..session.session import Session
@@ -24,6 +24,8 @@ log = logging.getLogger("wysp.turn")
 MAX_ROUNDS = 8
 HISTORY_LIMIT = 12
 LLM_RETRY_DELAY_S = 1.5
+# Tools whose result the model does not need to see before finishing its turn.
+DISPLAY_TOOLS = {"narrate", "show_entities", "add_concept", "annotate", "highlight"}
 
 
 class TurnRunner:
@@ -112,6 +114,11 @@ class TurnRunner:
                         }
                     )
                 if toolbox.turn_ended:
+                    break
+                names = {normalize_tool_name(tc.name) for tc in result.tool_calls}
+                if "narrate" in names and names <= DISPLAY_TOOLS:
+                    # Wysp has spoken and nothing in this round needs a reaction: one more LLM request would
+                    # only add a sentence, and on rate-limited free tiers it costs seconds.
                     break
             else:
                 outcome = "max_rounds"

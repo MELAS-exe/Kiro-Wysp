@@ -216,6 +216,10 @@ async def _do_action(
         target_label=target_label(spec, params, obs),
         preview=preview,
     )
+    if session.gate.needs_user(proposal, conn.manifest.integration_level):
+        # Say it out loud: a silent prompt is easy to miss, and a repeated request would cancel it.
+        where = f" on {proposal.target_label}" if proposal.target_label else ""
+        await session.narrate(f"I need your approval to {title[:1].lower()}{title[1:]}{where}. Approve or deny it.")
     approval = await session.gate.request(proposal, conn.manifest.integration_level)
     if not approval.approved:
         return {

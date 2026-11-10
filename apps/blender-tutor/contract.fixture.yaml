@@ -25,6 +25,7 @@ expect:
   actions:
     - select_object
     - show_properties_tab
+    - set_object_transform
     - add_modifier
     - set_modifier_property
     - move_modifier
@@ -32,6 +33,8 @@ expect:
     - apply_modifier
 safe_calls:
   - {action_id: select_object, params: {target: "blender://object/Candle"}}
+  - {action_id: set_object_transform, params: {target: "blender://object/Candle", property: scale, value: [1.5, 1.5, 1.5]}}
+  - {action_id: set_object_transform, params: {target: "blender://object/Candle", property: rotation, value: [0, 0, 45]}}
   - {action_id: add_modifier, params: {target: "blender://object/Candle", type: BEVEL}}
   - {action_id: set_modifier_property, params: {target: "blender://object/Pumpkin/modifier/Subdivision", property: levels, value: 1}}
   - {action_id: move_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify", index: 0}}
@@ -45,6 +48,9 @@ invalid_calls:
   - {action_id: set_modifier_property, params: {target: "blender://object/Pumpkin/modifier/Subdivision", property: levels, value: "many"}, expect_error: -32602}
   - {action_id: move_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify", index: 40}, expect_error: -32013}
   - {action_id: remove_modifier, params: {target: "blender://object/Pumpkin/modifier/Nope"}, expect_error: -32012}
+  - {action_id: set_object_transform, params: {target: "blender://object/DoesNotExist", property: scale, value: [2, 2, 2]}, expect_error: -32012}
+  - {action_id: set_object_transform, params: {target: "blender://object/Candle", property: scale, value: [2, 2]}, expect_error: -32602}
+  - {action_id: set_object_transform, params: {target: "blender://object/Candle", property: scale, value: [0, 1, 1]}, expect_error: -32602}
   - {action_id: no_such_action, params: {}, expect_error: -32011}
 skip:
   - {check: highlight, reason: "no 3D viewport in background mode"}

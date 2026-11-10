@@ -172,7 +172,7 @@ async def test_failed_verification_triggers_automatic_undo(make_stack):
     await s.ui.send(type="user.message", text="move it")
     req = await s.ui.wait_for(lambda m: m.get("type") == "permission.request")
     await s.ui.send(type="permission.respond", request_id=req["request_id"], decision="approve")
-    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment" and "did not work" in m["segment"]["text"])
     assert undone == [1]
     assert [r for r in s.audit if r["kind"] == "verification" and r["ok"] is False]
     assert [r for r in s.audit if r["kind"] == "undo" and r["by"] == "auto"]
@@ -278,3 +278,89 @@ async def test_undo_last_restores_the_state(make_stack):
     await s.ui.send(type="undo.last")
     await s.ui.wait_for(lambda m: m.get("type") == "narration.segment" and "Undone" in m["segment"]["text"])
     assert s.mock.snapshot() == before
+
+
+async def test_turn_ends_once_wysp_has_spoken(make_stack):
+    """After show_entities + narrate in one response, no further LLM request is made (rate-limited tiers)."""
+    s = await make_stack(
+        [
+            {"when": "explain", "calls": [
+                {"name": "show_entities", "arguments": {"refs": CARDS[:1], "layout": "tree"}},
+                {"name": "narrate", "arguments": {"segments": [{"text": "This is your first card."}]}}]},
+            {"after_tool": "narrate", "say": "EXTRA ROUND"},
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="explain the card")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment")
+    await s.session.wait_for_turn()
+    texts = [m["segment"]["text"] for m in s.ui.of_type("narration.segment")]
+    assert texts == ["This is your first card."]
+    assert len(s.session.board.nodes) == 1
+
+
+async def test_permission_is_announced_and_survives_a_repeated_request(make_stack):
+    """A repeated message while an approval is pending reminds the user instead of cancelling the request."""
+    s = await make_stack(
+        [
+            {"when": "move", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "move_card", "params": {"card": card_ref("c3"), "column": "doing"}, "mode": "do"}}]},
+            say("Moved."),
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="Can you move it for me?")
+    req = await s.ui.wait_for(lambda m: m.get("type") == "permission.request")
+    spoken = [m["segment"]["text"] for m in s.ui.of_type("narration.segment")]
+    assert any("approval" in t for t in spoken), spoken
+    await s.ui.send(type="user.message", text="can you move it for me")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment" and "still waiting" in m["segment"]["text"])
+    assert not s.ui.of_type("permission.resolved"), "the pending request must not be cancelled"
+    await s.ui.send(type="permission.respond", request_id=req["request_id"], decision="approve")
+    await s.ui.wait_for(lambda m: m.get("type") == "evidence.added")
+    assert s.mock.cards["c3"]["column"] == "doing"
+
+
+async def test_a_different_message_still_cancels_a_pending_request(make_stack):
+    s = await make_stack(
+        [
+            {"when": "move", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "move_card", "params": {"card": card_ref("c3"), "column": "doing"}, "mode": "do"}}]},
+            say("Moved."),
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="move it")
+    await s.ui.wait_for(lambda m: m.get("type") == "permission.request")
+    await s.ui.send(type="user.message", text="actually, never mind")
+    resolved = await s.ui.wait_for(lambda m: m.get("type") == "permission.resolved")
+    assert resolved["approved"] is False and resolved["by"] == "cancelled"
+    assert s.mock.cards["c3"]["column"] == "todo"
+
+
+async def test_ui_messages_are_logged_with_their_client(make_stack):
+    s = await make_stack([])
+    await s.ui.send(type="undo.last")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment")
+    recs = [r for r in s.session.tm.ring if r["kind"] == "ui.message"]
+    assert recs and recs[-1]["type"] == "undo.last" and recs[-1]["client"] in ("browser", "native")
+
+
+async def test_tts_endpoint(make_stack):
+    """No real voice in tests: a fake provider stands in for the local one."""
+    s = await make_stack([])
+
+    class FakeTTS:
+        name, mime = "fake", "audio/wav"
+
+        async def synth(self, text: str, lang: str = "en") -> bytes:
+            return b"RIFF" + text.encode()
+
+    s.app.state.tts = FakeTTS()
+    url = f"http://127.0.0.1:{s.port}/api/tts"
+    async with httpx.AsyncClient(timeout=5) as client:
+        ok = await client.post(url, json={"text": "Hello\x00 there"})
+        assert ok.status_code == 200 and ok.content == b"RIFFHello there"
+        assert ok.headers["content-type"].startswith("audio/wav")
+        assert "access-control-allow-origin" not in ok.headers
+        evil = await client.post(url, json={"text": "hi"}, headers={"Origin": "https://evil.example"})
+        assert evil.status_code == 403
+        empty = await client.post(url, json={"text": "   "})
+        assert empty.status_code == 400

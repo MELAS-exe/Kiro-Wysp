@@ -30,6 +30,9 @@ from .hub import UiHub
 
 log = logging.getLogger("wysp.ui")
 
+# High-frequency bookkeeping messages, already covered by narration telemetry.
+QUIET_UI_MESSAGES = {"narration.progress", "narration.cue", "board.snapshot_request"}
+
 
 async def serve_ui(ws: WebSocket, session: Session, hub: UiHub, allowed_origins: set[str]) -> None:
     if not origin_allowed(ws.headers.get("origin"), allowed_origins):
@@ -37,6 +40,8 @@ async def serve_ui(ws: WebSocket, session: Session, hub: UiHub, allowed_origins:
         return
     await ws.accept()
     hub.add(ws)
+    # Browsers send an Origin header; native Panels (the one inside the application) do not.
+    client = "browser" if ws.headers.get("origin") else "native"
     try:
         for message in session.snapshot_messages():
             await hub.send_to(ws, message)
@@ -47,6 +52,9 @@ async def serve_ui(ws: WebSocket, session: Session, hub: UiHub, allowed_origins:
             except (json.JSONDecodeError, ValidationError) as exc:
                 await hub.send_to(ws, {"type": "error", "code": "bad_message", "message": str(exc)[:200]})
                 continue
+            if msg.type not in QUIET_UI_MESSAGES:
+                # Who clicked what, from which window: makes "something pressed undo" traceable.
+                session.tm.emit("ui.message", full={"message": msg.model_dump()}, type=msg.type, client=client)
             await handle_ui_message(session, hub, ws, msg)
     except WebSocketDisconnect:
         pass

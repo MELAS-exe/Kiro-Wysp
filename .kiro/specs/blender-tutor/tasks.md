@@ -99,3 +99,14 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - `adapter/telemetry.py`, SDK `AdapterClient(on_request_done=...)` with queue and run times
   - _Owner: C_ · _Gate: J2_
   - _Requirements: 10.5_
+
+- [x] 16. Voice and approval-first chat in Blender
+  - Core `POST /api/tts` (`wysp_core/tts.py`, local Windows voices); `adapter/ui_voice.py`; voiced timing in `ui_state.py`; chat order and approval banner in `ui_panel.py`
+  - Tested with a fake voice (`tests/test_ui_state.py`) and in a GUI Blender against a test Core
+  - _Owner: C (Core endpoint: A)_ · _Gate: J2_
+  - _Requirements: 10.6, 10.7_
+
+- [x] 17. `set_object_transform` action
+  - `adapter/actions/set_object_transform.py`, observation props `rotation` and `scale`, fixture calls, README row; `tests/probe_transform.py` checks postconditions and undo digests in Blender
+  - _Owner: C_ · _Gate: J2_
+  - _Requirements: 11.1, 11.2_

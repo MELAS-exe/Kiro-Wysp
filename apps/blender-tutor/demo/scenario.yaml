@@ -34,8 +34,7 @@ steps:
                 - {at_word: 2, op: highlight, target: "blender://object/Pumpkin/modifier/Solidify"}
             - text: "Order matters. If Solidify came first, Subdivision would round off its walls as well."
               provenance: illustrative
-  - after_tool: narrate
-    say: "Want to try one yourself? Ask me to round the candle's edges with a Bevel."
+            - text: "Want to try one yourself? Ask me to round the candle's edges with a Bevel."
 
   # 2. Guided: the user does it, Wysp verifies.
   - when: "bevel|candle|round"

@@ -63,6 +63,14 @@ class PermissionGate:
         self.grants.clear()
 
     # ----------------------------------------------------------------- requests
+    def needs_user(self, proposal: Proposal, integration_level: str = "native") -> bool:
+        """True when `request` will ask the user (no policy denial, no automatic approval)."""
+        decision = decide(proposal.risk, integration_level, self.grant_covers(proposal))
+        return decision in (Decision.ASK, Decision.ASK_CLICK)
+
+    def pending(self) -> list[Proposal]:
+        return [p for fut, p in self._pending.values() if not fut.done()]
+
     async def request(self, proposal: Proposal, integration_level: str = "native") -> Approval:
         decision = decide(proposal.risk, integration_level, self.grant_covers(proposal))
         self.audit.append(
