@@ -18,6 +18,7 @@ log = logging.getLogger("wysp.blender")
 
 _adapter = None  # BlenderAdapter, created on first connect
 _timer_running = False
+MIN_SDK = (0, 2)  # AdapterClient(on_request_done=...) appeared in SDK 0.2
 
 
 def _prefs():
@@ -46,11 +47,28 @@ def _pump() -> float | None:
     return 0.05
 
 
+def _sdk_problem() -> str | None:
+    """A readable message when Blender loaded an older SDK wheel than this add-on needs."""
+    import wysp_adapter_sdk
+
+    have = getattr(wysp_adapter_sdk, "__version__", "0.1.0")
+    if tuple(int(x) for x in have.split(".")[:2]) < MIN_SDK:
+        return (
+            f"Blender is using an old Wysp SDK ({have}). Rebuild and reinstall the extension "
+            "(scripts/build_blender_extension.py --install), then restart Blender."
+        )
+    return None
+
+
 def connect() -> str:
     global _adapter, _timer_running
     from . import telemetry, ui_panel
     from .runtime import BlenderAdapter
 
+    problem = _sdk_problem()
+    if problem:
+        log.error(problem)
+        return problem
     prefs = _prefs()
     try:
         token = read_token(prefs.token_path)
