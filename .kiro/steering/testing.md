@@ -20,7 +20,7 @@ inclusion: always
 | End-to-end smoke | ScriptedLLM + real adapters | `scripts/demo_smoke.py` *(planned)* |
 
 ## Rules
-- Property ids follow `<SPEC>-P<n>`: `CON` (adapter-contract), `CORE` (core-orchestrator), `PED` (pedagogy-verification), `PAN` (tutor-panel), `BLD` (blender-tutor), `WEB` (web-tutor).
+- Property ids follow `<SPEC>-P<n>`: `CON` (adapter-contract), `CORE` (core-orchestrator), `PED` (pedagogy-verification), `PAN` (tutor-panel), `BLD` (blender-tutor), `IJ` (intellij-tutor), `WEB` (web-tutor, deferred).
 - A bug fix starts with a failing test.
 - Do not mock the contract. Adapters are tested through the Kit; the Core is tested against the mock adapter over a real WebSocket.
 - Blender logic that does not need the UI is tested with `bpy` from PyPI. Code that depends on the main-thread dispatcher is tested with a manual dispatcher.

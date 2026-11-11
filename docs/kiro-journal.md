@@ -8,6 +8,9 @@ How Kiro helped us build Wysp. One entry per notable moment: what Kiro produced,
 | 2026-11-09 | team | Agent session + boundary hook | Togglable session telemetry and `wysp logs`; the boundary check flagged application words in the new log analyser, reworded to "adapter" | merged |
 | 2026-11-09 | team | Agent session + trust-review hook | Chat, permission prompts and a node-tree board inside Blender (a second UI protocol client), plus highlighting of Blender editors, regions and Properties tabs, checked with screenshots of a separate Blender instance | merged |
 | 2026-11-09 | team | Property test | BLD-P6: the Blender board mirror applies the Core's patches to exactly the Core's board | merged |
+| 2026-11-11 | team | Spec + steering + agent session | IntelliJ tutor replaces the web tutor as application 2: spec `intellij-tutor`, Kotlin plugin built against the local IDE (no SDK download), profile and demo project. Same Core, Panel and contract; the boundary hook got the new application words | merged |
+| 2026-11-11 | team | Property tests + live harness | IJ-P1..P4 (codec, refs, sensitive files, rename undo) in JUnit and platform tests; a live harness runs the contract fixture against a sandbox IDE and validates every reply with the Core's own models (42/42) | merged |
+| 2026-11-11 | team | Live run, trust rule | The IDE's slow-operation check caught PSI work on the EDT (fixed with resolve / change / refs phases). A live run found the Core crediting the student when Wysp did a guided step itself (selection events have no origin); reproduced with the mock adapter first, then fixed in the Core | bug found, fixed |
 
 ## Template
 

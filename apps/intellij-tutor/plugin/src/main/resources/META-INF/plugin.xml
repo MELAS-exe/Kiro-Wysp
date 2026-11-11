@@ -1,0 +1,33 @@
+<idea-plugin>
+    <id>dev.wysp.intellij</id>
+    <name>Wysp Tutor</name>
+    <vendor url="https://github.com/MELAS-exe/Kiro-Wysp">Wysp contributors</vendor>
+    <description><![CDATA[
+    An AI tutor for the IDE and your code. Wysp sees your project the way you do (files, code structure,
+    problems), explains the code under your caret, points at the exact IDE control to use, and guides you
+    through refactorings it verifies. Requires a local Wysp Core.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <!-- Embedded Panel (JCEF); without it the tool window offers a link to the Panel instead. -->
+    <depends optional="true" config-file="wysp-jcef.xml">com.intellij.modules.jcef</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Wysp" displayType="BALLOON"/>
+        <postStartupActivity implementation="dev.wysp.intellij.WyspStartup"/>
+        <applicationConfigurable parentId="tools" instance="dev.wysp.intellij.ui.WyspConfigurable"
+                                 id="dev.wysp.intellij.settings" displayName="Wysp Tutor"/>
+        <toolWindow id="Wysp" anchor="right" factoryClass="dev.wysp.intellij.ui.WyspToolWindowFactory"
+                    icon="AllIcons.Toolwindows.ToolWindowHierarchy"/>
+    </extensions>
+
+    <actions>
+        <group id="Wysp.Menu" text="Wysp" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="Wysp.Connect" class="dev.wysp.intellij.ui.ConnectAction" text="Connect to Wysp Core"
+                    description="Connect this IDE to the local Wysp Core"/>
+            <action id="Wysp.Disconnect" class="dev.wysp.intellij.ui.DisconnectAction" text="Disconnect from Wysp Core"
+                    description="Stop the connection to the Wysp Core"/>
+        </group>
+    </actions>
+</idea-plugin>

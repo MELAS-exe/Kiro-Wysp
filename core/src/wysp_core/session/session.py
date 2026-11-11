@@ -25,6 +25,9 @@ from .bus import EventBus
 log = logging.getLogger("wysp.session")
 
 REFRESH_DEBOUNCE_S = 0.4
+# Events within this long after Wysp's own action (or its undo) are Wysp's: selection events carry no origin,
+# and an adapter's own debounce delays the state events of the change.
+OWN_CHANGE_WINDOW_S = 1.5
 HISTORY_LIMIT = 12
 
 
@@ -87,6 +90,8 @@ class Session:
         self._turn_task: asyncio.Task | None = None
         self._cancel: CancelToken | None = None
         self._refresh_task: asyncio.Task | None = None
+        self._own_changes = 0  # Wysp actions or undos in progress
+        self._own_until = 0.0  # monotonic time until which events are attributed to Wysp
         self._tour_task: asyncio.Task | None = None
         self.current_user_text: str | None = None  # text that started the current turn
         self.last_highlight_error: str | None = None
@@ -357,14 +362,37 @@ class Session:
         record = self.undo.peek(conn.adapter_id)
         if record is None:
             return "There is nothing of mine to undo."
+        self.begin_own_change()
         try:
             await conn.undo(record.token)
         except WyspError as exc:
             return f"I could not undo that: {exc.message}"
+        finally:
+            self.end_own_change()
         self.undo.pop(conn.adapter_id)
         self.audit.append("undo", request_id=record.request_id, action_id=record.action_id, by="user")
+        # The undo may reach the goal of a guided step: that is Wysp's doing, not the user's.
+        from ..orchestrator.pipeline import close_watch_done_by_wysp
+
+        self.begin_own_change()
+        try:
+            await close_watch_done_by_wysp(self, conn)
+        finally:
+            self.end_own_change()
         await self.refresh_board()
         return f"Undone: {record.title}."
+
+    # ---------------------------------------------------------------- Wysp's own changes
+    def begin_own_change(self) -> None:
+        """Wysp is about to change the application (an approved action or an undo)."""
+        self._own_changes += 1
+
+    def end_own_change(self) -> None:
+        self._own_changes = max(0, self._own_changes - 1)
+        self._own_until = time.monotonic() + OWN_CHANGE_WINDOW_S
+
+    def own_change_active(self) -> bool:
+        return self._own_changes > 0 or time.monotonic() < self._own_until
 
     async def run_action(self, conn: AdapterConnection, call: ActionCall) -> Any:
         return await conn.execute(call)
@@ -398,6 +426,8 @@ class Session:
         # "select this" steps are verified from it.
         default_origin = "user" if event["name"] == "selection_changed" else "unknown"
         origin = event["data"].get("origin", default_origin)
+        if self.own_change_active():
+            origin = "wysp"  # caused by Wysp's own action, whatever the adapter could tell
         self._schedule_after_change(origin)
 
     def _schedule_after_change(self, origin: str) -> None:
@@ -410,7 +440,7 @@ class Session:
             await asyncio.sleep(REFRESH_DEBOUNCE_S)
             await self.refresh_board()
             # Changes made by Wysp itself never count as the user's achievement.
-            if origin != "wysp" and self.watch is not None:
+            if origin != "wysp" and not self.own_change_active() and self.watch is not None:
                 from ..orchestrator.pipeline import check_watch
 
                 await check_watch(self)

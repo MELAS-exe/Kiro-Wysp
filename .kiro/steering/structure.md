@@ -35,11 +35,12 @@ apps/
     profile/           profile.yaml, concepts.yaml, lessons/*.yaml                    (owner: B, review: C)
     demo/              Script that builds the demo scene
     contract.fixture.yaml
-  web-tutor/           Application 2                                                   (owner: C)
-    extension/         Chrome MV3 extension: src/actions/, snapshot, locators, overlay
-    demo-dashboard/    Target web app used in the demo                                (owner: B)
-    profile/           Web tutor profile                                              (owner: B)
+  intellij-tutor/      Application 2                                                   (owner: C)
+    plugin/            IntelliJ Platform plugin (Kotlin, Gradle): actions/, observe, highlight, tool window
+    profile/           IntelliJ tutor profile                                         (owner: B)
+    demo/sample-project/  Small project used in the demo and end-to-end checks
     contract.fixture.yaml
+  web-tutor/           Deferred (planned Chrome extension; replaced by intellij-tutor as application 2)
 docs/                  Architecture document (LaTeX), adapter guide, Kiro usage journal
 scripts/               Dev scripts and the Kiro hook dispatcher (scripts/kiro/hook.py)
 ```

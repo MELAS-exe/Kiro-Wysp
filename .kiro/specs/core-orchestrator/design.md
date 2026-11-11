@@ -140,6 +140,7 @@ approved ──execute──▶ executing ──result──▶ verifying ──
 - `dry_run: true` is used to obtain a preview for irreversible actions when the adapter supports it.
 - Undo stack per adapter (latest first) of `{request_id, action_id, undo_token, digest_before}`.
 - `guide` mode: the Core publishes the action's `guide.ui_path` as board steps, highlights each target in turn, and subscribes the verification of the postconditions to user-origin state events. No `adapter.execute` call is made.
+- Wysp's own changes never complete a guided step: every event during an approved execution or an undo, and for 1.5 s after it, is attributed to Wysp (selection events carry no origin, and adapters debounce their state events). When Wysp's own action reaches the goal of a pending guided step, the step is closed as done by Wysp (audit `guide_closed`, no evidence), so a later unrelated user change cannot claim it.
 
 ### UI protocol (`/ws/ui`, models in `contract/ui.py`, TS types generated)
 

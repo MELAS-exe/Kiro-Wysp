@@ -1,0 +1,41 @@
+# Contract Test Kit fixture for the IntelliJ tutor (see .kiro/specs/adapter-contract/design.md).
+# Project: apps/intellij-tutor/demo/sample-project, opened in a sandbox IDE with the plugin installed.
+tutor: intellij-tutor
+launch:
+  kind: manual
+  # The IDE cannot be driven headlessly like Blender: start the sandbox (gradlew runIde, or an IDE with the
+  # plugin ZIP installed), open the sample project, then point Settings > Tools > Wysp Tutor at {url}.
+  instructions: >
+    cd apps/intellij-tutor/plugin; gradlew runIde; open ../demo/sample-project;
+    Settings > Tools > Wysp Tutor > Core URL = {url}; Tools > Wysp > Connect to Wysp Core.
+  connect_timeout_s: 180
+expect:
+  entity_kinds: [project, module, directory, file, symbol, problem, run_config]
+  min_entities: 6
+  actions:
+    - open_file
+    - go_to_symbol
+    - show_tool_window
+    - rename_symbol
+safe_calls:
+  - {action_id: open_file, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java"}}
+  - {action_id: open_file, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Main.java", line: 5}}
+  - {action_id: go_to_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc"}}
+  - {action_id: show_tool_window, params: {id: Project}}
+  - {action_id: show_tool_window, params: {id: Structure}}
+  - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc", new_name: averageRating}}
+dry_run_calls:
+  - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Book.java#Book.rate", new_name: addRating}}
+invalid_calls:
+  - {action_id: open_file, params: {target: "intellij://file/src/Nope.java"}, expect_error: -32012}
+  - {action_id: open_file, params: {target: "intellij://file/../outside.txt"}, expect_error: -32012}
+  - {action_id: open_file, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Main.java", line: 0}, expect_error: -32602}
+  - {action_id: go_to_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.nope"}, expect_error: -32012}
+  - {action_id: show_tool_window, params: {id: NoSuchWindow}, expect_error: -32012}
+  - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc", new_name: "2fast"}, expect_error: -32602}
+  - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc", new_name: "class"}, expect_error: -32602}
+  - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Book.java#Book.title", new_name: "author"}, expect_error: -32013}
+  - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc"}, expect_error: -32602}
+  - {action_id: run_configuration, params: {name: Main}, expect_error: -32011}
+  - {action_id: no_such_action, params: {}, expect_error: -32011}
+skip: []

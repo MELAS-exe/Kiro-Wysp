@@ -1,0 +1,50 @@
+# Offline demo scenario for the ScriptedLLM (no network, deterministic).
+#   uv run wysp serve --llm scripted --scenario apps/intellij-tutor/demo/scenario.yaml
+# Matches apps/intellij-tutor/demo/sample-project (open it in the IDE with the Wysp plugin).
+steps:
+  # 1. "Explain this function" -> the real class and method on the board, then the explanation.
+  - when: "explain|calc|function|what does"
+    calls:
+      - name: show_entities
+        arguments:
+          refs: ["intellij://file/src/main/java/dev/wysp/sample/Library.java#Library"]
+          layout: tree
+          include_children: true
+          focus: ["intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc"]
+  - after_tool: show_entities
+    calls:
+      - name: narrate
+        arguments:
+          segments:
+            - text: "This is calc, a method of your Library class. It takes a Book and returns a double."
+              cues:
+                - {at_word: 2, op: highlight, target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc"}
+            - text: "It adds up the book's ratings and divides by how many there are: that is the average rating."
+            - text: "The name calc does not say that. The IDE can rename it safely, everywhere it is used."
+              cues:
+                - {at_word: 9, op: highlight, target: "intellij://ui/toolwindow/Structure"}
+            - text: "Want to try? Ask me to give it a clearer name."
+
+  # 2. Guided: the student renames, Wysp verifies.
+  - when: "rename|clearer|better name"
+    calls:
+      - name: propose_action
+        arguments:
+          action_id: rename_symbol
+          params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc", new_name: averageRating}
+          mode: guide
+          rationale: "Learn the Rename refactoring yourself"
+  - after_tool: propose_action
+    say: "Put the caret on calc, press Shift+F6 and type averageRating. I will check it in your code."
+
+  # 3. Do it for me: permission, execution, verification, undo available.
+  - when: "do it|for me"
+    calls:
+      - name: propose_action
+        arguments:
+          action_id: rename_symbol
+          params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc", new_name: averageRating}
+          mode: do
+          rationale: "You asked me to rename it for you"
+  - after_tool: propose_action
+    say: "Done: calc is now averageRating, in Library and in Main. I checked it in your code, and you can undo it."

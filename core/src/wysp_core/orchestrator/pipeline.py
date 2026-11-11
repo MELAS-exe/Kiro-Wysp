@@ -175,6 +175,30 @@ async def _start_guide(
     }
 
 
+async def close_watch_done_by_wysp(session: Session, conn: Any) -> None:
+    """Wysp's own action reached the goal of the step the user was being guided through: close the step.
+
+    The change is real, so the steps are shown as done, but it is not the user's achievement: no evidence,
+    and the watch is dropped so that a later, unrelated user change cannot claim it.
+    """
+    watch = session.watch
+    if watch is None or watch.adapter_id != conn.adapter_id:
+        return
+    try:
+        result = await verify(conn, watch.postconditions, watch.params)
+    except Exception:  # noqa: BLE001 - never lose the action's own result over this check
+        log.warning("could not check the guided step after Wysp's change; still watching it")
+        return
+    if not result.ok:
+        return
+    session.watch = None
+    session.tm.emit("guide.done_by_wysp", action_id=watch.action_id)
+    session.audit.append("guide_closed", action_id=watch.action_id, by="wysp")
+    await session.apply_board(
+        [{"op": "update_step", "id": sid, "status": "done"} for sid in watch.step_ids], validate=False
+    )
+
+
 async def check_watch(session: Session) -> None:
     watch = session.watch
     conn = session.conn
@@ -243,6 +267,16 @@ async def _do_action(
         }
 
     await session.set_status("acting")
+    session.begin_own_change()
+    try:
+        return await _execute_approved(session, conn, spec, params, proposal, title)
+    finally:
+        session.end_own_change()
+
+
+async def _execute_approved(
+    session: Session, conn: Any, spec: ActionSpec, params: dict[str, Any], proposal: Any, title: str
+) -> dict[str, Any]:
     try:
         with session.tm.span("action.execute", full={"params": params}, action_id=spec.id, risk=spec.risk) as ex:
             result = await conn.execute(ActionCall(action_id=spec.id, params=params, request_id=proposal.id))
@@ -266,6 +300,7 @@ async def _do_action(
 
     post = _postconditions(spec)
     if not post:
+        await close_watch_done_by_wysp(session, conn)
         await session.refresh_board()
         return {
             "ok": True,
@@ -293,6 +328,7 @@ async def _do_action(
                 "scope": "wysp_action",
             }
         )
+        await close_watch_done_by_wysp(session, conn)
         await session.refresh_board()
         return {
             "ok": True,

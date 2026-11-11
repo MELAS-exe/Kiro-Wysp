@@ -49,3 +49,6 @@ docs/architecture/*.png
 Thumbs.db
 .idea/
 .vscode/
+
+# Local test homes (Core, harness)
+.tmp-home/

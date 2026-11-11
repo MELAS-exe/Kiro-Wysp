@@ -53,6 +53,7 @@ FORBIDDEN_IMPORT_ROOTS = {
     "wysp_adapter_sdk",
     "wysp_blender",
     "wysp_web",
+    "wysp_intellij",
 }
 
 # Application vocabulary that must not appear in Core identifiers or strings.
@@ -68,6 +69,9 @@ FORBIDDEN_WORDS = {
     "subsurf",
     "modifier",
     "modifiers",
+    "intellij",
+    "jetbrains",
+    "kotlin",
 }
 
 PYTHON_PACKAGES = ["core", "contract-tests", "sdk/python", "apps/blender-tutor"]

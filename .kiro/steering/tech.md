@@ -23,7 +23,14 @@ inclusion: always
 - Blender **5.2 LTS** extension (`blender_manifest.toml`) with the bundled pure-Python wheel `websocket-client`.
 - `fake-bpy-module` for editor typing; `bpy` from PyPI (Python 3.13) for headless tests.
 
-## Chrome extension (`apps/web-tutor/extension/`)
+## IntelliJ plugin (`apps/intellij-tutor/plugin/`)
+- **Kotlin 2.4** on the IntelliJ Platform **2026.2** (build 262, Java 25), built with **Gradle 9.9** (wrapper) and the **IntelliJ Platform Gradle Plugin 2.20**, compiled against the locally installed IntelliJ IDEA (no SDK download). The JDK is the IDE's bundled JBR 25.
+- No third-party runtime dependency: `java.net.http.WebSocket` for the contract, a small JSON codec in the plugin.
+- Tests: JUnit 4 for pure logic (the IntelliJ test framework runs on JUnit 4); `BasePlatformTestCase` with the bundled Java plugin for observation and actions; `apps/intellij-tutor/tests/live_harness.py` against a sandbox IDE.
+- The embedded Panel uses JCEF, an optional bundled plugin (`com.intellij.modules.jcef`) in 2026.2.
+- Commands: `apps\intellij-tutor\plugin\gradlew.bat buildPlugin` (ZIP in `build/distributions`), `test`, `runIde` (sandbox IDE).
+
+## Chrome extension (`apps/web-tutor/extension/`, deferred)
 - Manifest V3 (Chrome 116 or later), service worker + content script, `dom-accessibility-api` for roles and accessible names, built with Vite.
 - Tests: Vitest + happy-dom for snapshot and locator logic, Playwright for the extension loaded in Chromium.
 

@@ -206,6 +206,101 @@ async def test_guide_mode_verifies_the_users_own_change(make_stack):
     assert s.session.watch is None
 
 
+async def test_wysp_doing_a_guided_step_never_credits_the_user(make_stack):
+    """Trust rule: only user actions count. When Wysp performs the step the user was guided through, the
+    selection change its action causes (selection events carry no origin) and any later user change must not
+    complete the guided step as the user's achievement."""
+    s = await make_stack(
+        [
+            {"when": "teach", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "move_card", "params": {"card": card_ref("c3"), "column": "doing"}, "mode": "guide"}}]},
+            say("Go ahead and drag the card."),
+            {"when": "do it", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "move_card", "params": {"card": card_ref("c3"), "column": "doing"}, "mode": "do"}}]},
+            say("Moved."),
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="teach me to move a card")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment")
+    assert s.session.watch is not None
+    await s.ui.send(type="user.message", text="do it for me")
+    req = await s.ui.wait_for(lambda m: m.get("type") == "permission.request")
+    await s.ui.send(type="permission.respond", request_id=req["request_id"], decision="approve")
+    await s.ui.wait_for(lambda m: m.get("type") == "evidence.added" and m["scope"] == "wysp_action")
+    # The action moved the user's focus: the adapter reports it, without an origin (the contract has none).
+    s.mock.report_selection([card_ref("c3")])
+    await asyncio.sleep(1.2)
+    # Later the user changes something unrelated: the guided goal is still true, but Wysp did it.
+    s.mock.simulate_user("rename_card", {"card": card_ref("c1"), "title": "Write the final spec"})
+    await asyncio.sleep(1.2)
+    assert not [m for m in s.ui.of_type("evidence.added") if m["scope"] == "user_action"]
+    assert not [r for r in s.audit if r["kind"] == "guide_verified"]
+    assert s.session.watch is None, "the guided step is closed: Wysp did it"
+
+
+async def test_a_failed_wysp_action_keeps_the_guided_step_open(make_stack):
+    """Review finding: a Wysp action that fails verification and is undone must not close the guided step."""
+    from wysp_adapter_sdk import ActionOutcome
+
+    s = await make_stack(
+        [
+            {"when": "teach", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "move_card", "params": {"card": card_ref("c3"), "column": "doing"}, "mode": "guide"}}]},
+            say("Go ahead and drag the card."),
+            {"when": "do it", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "rename_card", "params": {"card": card_ref("c3"), "title": "Demo"}, "mode": "do"}}]},
+            say("It did not work."),
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="teach me to move a card")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment")
+    # A faulty rename: it moves the card (reaching the guided goal) but does not rename it, so its own
+    # verification fails and the Core undoes it.
+    spec, _real = s.mock.registry._actions["rename_card"]
+
+    def faulty(p, dry):
+        s.mock.cards["c3"]["column"] = "doing"
+        return ActionOutcome(changed=[p["card"]], undo=lambda: s.mock.cards["c3"].update(column="todo"))
+
+    s.mock.registry._actions["rename_card"] = (spec, faulty)
+    await s.ui.send(type="user.message", text="do it for me")
+    req = await s.ui.wait_for(lambda m: m.get("type") == "permission.request")
+    await s.ui.send(type="permission.respond", request_id=req["request_id"], decision="approve")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment" and "did not work" in m["segment"]["text"])
+    assert s.session.watch is not None, "the user can still do the step"
+    assert all(st.status != "done" for st in s.session.board.steps)
+    assert not [r for r in s.audit if r["kind"] == "guide_closed"]
+
+
+async def test_wysp_undo_reaching_a_guided_goal_never_credits_the_user(make_stack):
+    """Review finding: an undo by Wysp that makes a guided step true closes it without crediting the user."""
+    s = await make_stack(
+        [
+            {"when": "move", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "move_card", "params": {"card": card_ref("c3"), "column": "doing"}, "mode": "do"}}]},
+            say("Moved."),
+            {"when": "teach", "calls": [{"name": "propose_action", "arguments": {
+                "action_id": "move_card", "params": {"card": card_ref("c3"), "column": "todo"}, "mode": "guide"}}]},
+            say("Drag it back to To do."),
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="move the demo card")
+    req = await s.ui.wait_for(lambda m: m.get("type") == "permission.request")
+    await s.ui.send(type="permission.respond", request_id=req["request_id"], decision="approve")
+    await s.ui.wait_for(lambda m: m.get("type") == "evidence.added")
+    await s.ui.send(type="user.message", text="teach me to move it back")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment" and "back" in m["segment"]["text"])
+    assert s.session.watch is not None
+    await s.ui.send(type="undo.last")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment" and "Undone" in m["segment"]["text"])
+    assert s.mock.cards["c3"]["column"] == "todo"
+    s.mock.simulate_user("rename_card", {"card": card_ref("c1"), "title": "Write the final spec"})
+    await asyncio.sleep(1.2)
+    assert not [m for m in s.ui.of_type("evidence.added") if m["scope"] == "user_action"]
+    assert s.session.watch is None
+    assert [r for r in s.audit if r["kind"] == "guide_closed" and r["by"] == "wysp"]
+
+
 async def test_guide_mode_skips_when_already_satisfied(make_stack):
     s = await make_stack(
         [

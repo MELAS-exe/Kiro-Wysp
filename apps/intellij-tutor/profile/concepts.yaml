@@ -1,0 +1,173 @@
+concepts:
+  - id: project
+    term: Project
+    short: "Everything you work on in one IDE window: code, settings, libraries."
+    detail: "A project is the folder you opened plus the IDE's settings for it (the .idea folder). It contains one or more modules."
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/creating-and-managing-projects.html"]
+    related: [module, project_tool_window]
+  - id: module
+    term: Module
+    short: "A part of the project with its own sources, dependencies and SDK."
+    detail: "Small projects have one module. Build tools such as Gradle and Maven usually create one module per subproject, and the IDE imports them."
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/creating-and-managing-modules.html"]
+    related: [project, build_tool]
+  - id: project_tool_window
+    term: Project tool window
+    short: "The tree of your project's directories and files (Alt+1)."
+    detail: "Double-click a file to open it. Select in Project View (Alt+F1) finds the file you are editing in the tree."
+    aliases: ["project view", "file tree"]
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/project-tool-window.html"]
+    related: [project, tool_window]
+  - id: tool_window
+    term: Tool window
+    short: "A panel docked at the side or bottom of the IDE: Project, Structure, Problems, Run, Terminal..."
+    detail: "Open them from View > Tool Windows or with their shortcuts (Alt+1 Project, Alt+7 Structure, Alt+6 Problems). Shift+Esc hides the active one."
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/tool-windows.html"]
+  - id: symbol
+    term: Symbol
+    short: "A named piece of code: a class, an interface, a function or method, a field or variable."
+    detail: "The IDE knows every symbol and where it is used, which is what makes navigation and refactorings reliable."
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/navigating-through-the-source-code.html"]
+    related: [class, function, structure_view]
+  - id: class
+    term: Class
+    short: "A template for objects: it groups data (fields) and behaviour (methods)."
+    detail: "You create objects from a class. An interface only declares what a class must provide; classes implement it."
+    aliases: ["interface", "object"]
+    level: basic
+    links: ["https://docs.oracle.com/javase/tutorial/java/javaOO/classes.html", "https://kotlinlang.org/docs/classes.html"]
+    related: [function, field]
+  - id: function
+    term: Function / method
+    short: "A named block of code that takes parameters and can return a value."
+    detail: "A function declared inside a class is called a method. Its signature is its name, its parameters and its return type."
+    aliases: ["method", "signature"]
+    level: basic
+    links: ["https://kotlinlang.org/docs/functions.html", "https://docs.oracle.com/javase/tutorial/java/javaOO/methods.html"]
+    related: [class, usages]
+  - id: field
+    term: Field
+    short: "A variable that belongs to a class or object (a property in Kotlin)."
+    detail: "Fields hold an object's state. Keep them private and expose behaviour through methods."
+    aliases: ["property", "member variable"]
+    level: basic
+    links: ["https://docs.oracle.com/javase/tutorial/java/javaOO/variables.html", "https://kotlinlang.org/docs/properties.html"]
+    related: [class]
+  - id: structure_view
+    term: Structure tool window
+    short: "The outline of the current file: its classes, functions and fields (Alt+7, or Ctrl+F12 as a popup)."
+    detail: "Click an element to jump to it. It is the quickest way to understand a long file."
+    aliases: ["file structure", "outline"]
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/viewing-structure-of-a-source-file.html"]
+    related: [symbol]
+  - id: go_to_declaration
+    term: Go to declaration
+    short: "Jump from a usage to where the symbol is defined (Ctrl+B or Ctrl+click)."
+    detail: "Ctrl+Alt+Left brings you back. Ctrl+Alt+B goes to implementations of an interface or abstract method."
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/navigating-through-the-source-code.html#go_to_declaration"]
+    related: [usages, search_everywhere]
+  - id: usages
+    term: Find usages
+    short: "Every place that uses a symbol (Alt+F7)."
+    detail: "Results open in the Find tool window, grouped by file. Ctrl+Shift+F7 highlights usages in the current file only."
+    aliases: ["references", "find usages"]
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/find-highlight-usages.html"]
+    related: [rename_refactoring, go_to_declaration]
+  - id: search_everywhere
+    term: Search Everywhere
+    short: "Press Shift twice to find any file, class, symbol, action or setting."
+    detail: "Ctrl+N finds classes, Ctrl+Shift+N files, Ctrl+Alt+Shift+N symbols, Ctrl+Shift+A actions."
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/searching-everywhere.html"]
+    related: [go_to_declaration]
+  - id: refactoring
+    term: Refactoring
+    short: "Changing the structure of code without changing what it does."
+    detail: "The IDE's refactorings (Ctrl+Alt+Shift+T) update every usage for you: rename, extract method, extract variable, change signature, move."
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/refactoring-source-code.html"]
+    related: [rename_refactoring, extract_method]
+  - id: rename_refactoring
+    term: Rename refactoring
+    short: "Rename a symbol and every usage at once (Shift+F6)."
+    detail: "Unlike find-and-replace, it understands the code: it renames only real usages, and warns about conflicts such as an existing symbol with the same name."
+    aliases: ["rename", "shift f6"]
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/rename-refactorings.html"]
+    related: [refactoring, usages]
+  - id: extract_method
+    term: Extract method
+    short: "Turn selected code into a new function and call it (Ctrl+Alt+M)."
+    detail: "The IDE works out the parameters and the return value. Good for long functions and repeated code."
+    level: advanced
+    links: ["https://www.jetbrains.com/help/idea/extract-method.html"]
+    related: [refactoring, function]
+  - id: inspection
+    term: Code inspection
+    short: "The IDE's continuous analysis that finds errors, warnings and weak spots as you type."
+    detail: "Red means an error, yellow a warning, grey unused code. The Problems tool window (Alt+6) lists them for the current file and the project."
+    aliases: ["problem", "warning", "error", "highlighting"]
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/code-inspection.html", "https://www.jetbrains.com/help/idea/problems-tool-window.html"]
+    related: [quick_fix]
+  - id: quick_fix
+    term: Quick fix / intention action
+    short: "Press Alt+Enter on highlighted code to see what the IDE can do about it."
+    detail: "Quick fixes solve a problem the IDE found; intention actions are improvements available anywhere (convert, add import, create a function...)."
+    aliases: ["alt enter", "intention"]
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/intention-actions.html"]
+    related: [inspection]
+  - id: run_configuration
+    term: Run configuration
+    short: "A saved recipe for running or testing something: what to start, with which arguments."
+    detail: "Choose one in the Run widget on the toolbar; Shift+F10 runs it, Shift+F9 debugs it. The green arrow in the gutter creates one for a main function or a test."
+    aliases: ["run widget", "run"]
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/run-debug-configuration.html"]
+    related: [debugger]
+  - id: debugger
+    term: Debugger and breakpoints
+    short: "Pause the program on a line (a breakpoint) and inspect variables step by step."
+    detail: "Click the gutter to add a breakpoint, then debug (Shift+F9). F8 steps over, F7 steps into, F9 resumes."
+    aliases: ["breakpoint", "debug"]
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/debugging-code.html", "https://www.jetbrains.com/help/idea/using-breakpoints.html"]
+    related: [run_configuration]
+  - id: build_tool
+    term: Build tool (Gradle, Maven)
+    short: "Describes how the project is built: dependencies, tasks, tests."
+    detail: "The IDE imports the build file (build.gradle.kts, pom.xml) into modules. After editing it, reload the project from the build tool window."
+    aliases: ["gradle", "maven"]
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/gradle.html", "https://www.jetbrains.com/help/idea/maven-support.html"]
+    related: [module]
+  - id: local_history
+    term: Local History
+    short: "The IDE's own record of your changes, even without Git."
+    detail: "Right-click a file > Local History > Show History to compare and revert. Ctrl+Z undoes recent edits, refactorings included."
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/local-history.html"]
+    related: [version_control]
+  - id: version_control
+    term: Version control (Git)
+    short: "Records versions of your project so you can review, share and undo changes."
+    detail: "The Commit tool window (Alt+0) shows changed files; Ctrl+K commits, Ctrl+Shift+K pushes."
+    aliases: ["git", "commit"]
+    level: intermediate
+    links: ["https://www.jetbrains.com/help/idea/commit-and-push-changes.html"]
+    related: [local_history]
+  - id: indexing
+    term: Indexing
+    short: "The IDE reads the whole project once to know every symbol; some features wait for it."
+    detail: "While the progress bar says Indexing, navigation and refactorings are limited. It is fast after the first time."
+    level: basic
+    links: ["https://www.jetbrains.com/help/idea/project-analysis.html"]

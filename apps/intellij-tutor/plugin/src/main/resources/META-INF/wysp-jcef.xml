@@ -1,0 +1,3 @@
+<idea-plugin>
+    <!-- Loaded only when the JCEF plugin is present; the Panel browser needs no extension of its own. -->
+</idea-plugin>
