@@ -122,3 +122,10 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - Tests: endpoints with a fake recorder and transcriber, client against a stand-in Core, GUI runs with `tests/fake_voice_core.py` (button and simulated Alt+Space hold with auto-repeat); never the real microphone in tests
   - _Owner: C (Core endpoints: A)_ · _Gate: J2_
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
+
+- [x] 20. Fixes from the session of 2026-11-10
+  - OCR ignores the 3D Viewport sidebar (Wysp's own chat) and Wysp's banners: "Bisect." had been framed inside Wysp's own sentence (`label_match.without`)
+  - Label OCR runs off the main thread: the SDK (0.3.0) lets a handler return a `Deferred` answered later; main-thread time per label highlight 125-600 ms -> 50-110 ms; numpy pre-loaded at connect (first tab highlight took up to 4.8 s)
+  - A new message dismisses an old clarification (Blender and browser Panels)
+  - Primer: items inside a closed menu are not visible; the sidebar is never a target
+  - _Owner: C_ · _Gate: J2_

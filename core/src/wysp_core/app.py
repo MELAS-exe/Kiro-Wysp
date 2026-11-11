@@ -151,7 +151,7 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
             return refused
         listener = request.app.state.listener
         try:
-            result = await listener.stop(session.lang)
+            result = await listener.stop(session.lang, session.speech_vocabulary())
         except ListenError as exc:
             return JSONResponse({"error": str(exc)}, status_code=exc.status)
         except Exception as exc:  # noqa: BLE001

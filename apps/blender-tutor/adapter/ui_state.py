@@ -137,6 +137,7 @@ class UiState:
 
     def add_user(self, text: str, source: str = "typed") -> None:
         self.transcript.append({"kind": "user", "text": text, "source": source})
+        self.clarification = None  # the user moved on: an old question must not linger (and be clicked later)
         self._touch()
 
     def node(self, node_id: str) -> dict[str, Any] | None:
@@ -185,6 +186,7 @@ class UiState:
             last = self.transcript[-1] if self.transcript else None
             if not (last and last["kind"] == "user" and last["text"] == m.get("text")):
                 self.transcript.append({"kind": "user", "text": m.get("text", ""), "source": m.get("source", "typed")})
+            self.clarification = None
         elif t == "board.snapshot":
             self.board = copy.deepcopy(m["board"])
             self._touch(board=True)

@@ -9,6 +9,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 from ..board import Board, BoardError, apply_ops, make_patch, node_id, project, validate_ops
 from ..contract import ActionCall, Observation, Scope, WyspError
@@ -267,6 +268,13 @@ class Session:
             await self.apply_board([{"op": "set_focus", "ids": [node]}], validate=False)
         if cue.get("op") == "highlight":
             await self.highlight_ref(target[2:] if target.startswith("n:") else target)
+
+    def speech_vocabulary(self) -> list[str]:
+        """Words speech recognition should expect: what is on the board, then the profile's terms."""
+        labels = [n.label for n in self.board.nodes if n.provenance == "observed"]
+        # Names seen in this session's observations (the last part of each ref, e.g. an object's name).
+        labels += sorted({unquote(r.rstrip("/").rsplit("/", 1)[-1]) for r in self.observed_refs})[:40]
+        return labels + (self.profile.vocabulary() if self.profile else [])
 
     def start_highlight_tour(self, refs: list[str], dwell_s: float = 3.0) -> None:
         """Point at each step target in turn (guided steps), replacing any tour still running."""

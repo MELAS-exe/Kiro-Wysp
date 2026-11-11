@@ -40,8 +40,10 @@ def test_tab_targets_open_their_tab() -> None:
 
 def test_primer_mentions_every_area_region_and_tab() -> None:
     primer = yaml.safe_load((ADAPTER.parent / "profile" / "profile.yaml").read_text(encoding="utf-8"))["primer"]
+    assert "blender://ui/label/" in primer
     for ref in ui_targets.all_refs():
-        if "/properties/tab/" in ref:
-            assert ref.rsplit("/", 1)[1] in primer, ref
-        else:
-            assert ref in primer, ref
+        name = ref.rsplit("/", 1)[1]
+        if name == "SIDEBAR":
+            assert "never point there" in primer  # the sidebar is Wysp's own chat
+            continue
+        assert name in primer, ref

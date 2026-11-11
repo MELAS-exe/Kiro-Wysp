@@ -125,3 +125,9 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - `POST /api/tts` with local voices, origin-checked like the WebSockets, no CORS headers
   - Tests: `contract-tests/tests/test_core_with_mock.py` (turn end, announced approval, repeat vs. new message, UI message log, TTS endpoint with a fake provider)
   - _Owner: A_ · _Gate: J2_
+
+- [x] 16. One response per answer (from the session log of 2026-11-10: 5 model requests per turn, up to 111 s)
+  - The model in use (gpt-oss on Groq) returns one tool call per response, so `narrate` can carry the board (`board.show`, `board.concepts`) and the whole answer fits in one request; `add_concept` takes `items` (steps chained) with optional `key` so cues can target `c:<key>`
+  - Prompt rewritten around that; answers how-to questions before asking anything; past replies kept as a gist in the history; `observe` reports an unknown root; profiles can give `speech_hints`, sent with board and observed names as Whisper's prompt
+  - Measured live on Groq: "how do I make a cube" 111 s / 5 requests -> 2.6 s / 1 request; "diagram of the steps" 35 s -> 3.8 s
+  - _Owner: A_ · _Gate: J2_

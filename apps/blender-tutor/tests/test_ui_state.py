@@ -315,3 +315,15 @@ def test_spoken_message_is_shown_and_sent_as_voice() -> None:
     assert s.route_transcript("   ") == []
     assert s.route_transcript("add a cube") == [{"type": "user.message", "text": "add a cube", "source": "voice"}]
     assert s.transcript[-1] == {"kind": "user", "text": "add a cube", "source": "voice"}
+
+
+def test_a_new_message_dismisses_an_old_question() -> None:
+    """Regression (session of 2026-11-10): an old clarification stayed up and was clicked two minutes later."""
+    s = ui_state.UiState()
+    s.handle({"type": "clarification", "question": "Keyframe or cue?", "options": ["Keyframe", "Other"]})
+    assert s.clarification is not None
+    s.route_transcript("I meant a cube")
+    assert s.clarification is None
+    s.handle({"type": "clarification", "question": "Which one?", "options": ["A"]})
+    s.handle({"type": "chat.user", "text": "typed elsewhere", "source": "typed"})  # from the browser Panel
+    assert s.clarification is None

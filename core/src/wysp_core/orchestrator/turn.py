@@ -26,6 +26,17 @@ HISTORY_LIMIT = 12
 LLM_RETRY_DELAY_S = 1.5
 # Tools whose result the model does not need to see before finishing its turn.
 DISPLAY_TOOLS = {"narrate", "show_entities", "add_concept", "annotate", "highlight"}
+GIST_CHARS = 280
+
+
+def _gist(text: str) -> str:
+    """A past reply shortened for the history (first sentences, at most GIST_CHARS)."""
+    text = " ".join(text.split())
+    if len(text) <= GIST_CHARS:
+        return text
+    cut = text[:GIST_CHARS]
+    end = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "))
+    return (cut[: end + 1] if end > GIST_CHARS // 2 else cut.rstrip()) + " …"
 
 
 class TurnRunner:
@@ -126,7 +137,9 @@ class TurnRunner:
             spoken = " ".join(seg.text for seg in s.narration.segments)
             s.history += [
                 {"role": "user", "content": user_text},
-                {"role": "assistant", "content": spoken or "(no answer)"},
+                # Older replies only need their gist: every request carries the history, and free LLM tiers
+                # are limited in tokens per minute (each saved token is latency saved).
+                {"role": "assistant", "content": _gist(spoken) or "(no answer)"},
             ]
             del s.history[: max(0, len(s.history) - HISTORY_LIMIT)]
         except LLMError as exc:

@@ -39,7 +39,7 @@ class FakeWhisper:
     def __init__(self, heard: str) -> None:
         self.heard = heard
 
-    async def transcribe(self, wav: bytes, lang: str = "en") -> str:
+    async def transcribe(self, wav: bytes, lang: str = "en", prompt: str = "") -> str:
         return self.heard
 
 

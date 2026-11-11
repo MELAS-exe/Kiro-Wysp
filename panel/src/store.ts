@@ -100,7 +100,9 @@ export const useStore = create<PanelState>((set, get) => ({
           : t,
       ),
     })),
-  addUser: (text, source) => set((s) => ({ transcript: [...s.transcript, { kind: "user", id: nextId("u"), text, source }] })),
+  // A new message from the user also dismisses any pending clarification question.
+  addUser: (text, source) =>
+    set((s) => ({ clarification: null, transcript: [...s.transcript, { kind: "user", id: nextId("u"), text, source }] })),
   setSelected: (id) => set({ selectedNode: id }),
   setMode: (mode) => set({ mode }),
   dismissPermission: () => set({ permission: null }),
@@ -135,6 +137,7 @@ export const useStore = create<PanelState>((set, get) => ({
         // Echo of a message sent from another Panel (or by "Why?"). Skip our own typed echo.
         const last = get().transcript[get().transcript.length - 1];
         if (!(last && last.kind === "user" && last.text === m.text)) get().addUser(m.text, m.source);
+        else set({ clarification: null });
         break;
       }
       case "board.snapshot":

@@ -8,6 +8,7 @@ bpy is only used on the main thread.
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 import bpy
@@ -18,7 +19,7 @@ log = logging.getLogger("wysp.blender")
 
 _adapter = None  # BlenderAdapter, created on first connect
 _timer_running = False
-MIN_SDK = (0, 2)  # AdapterClient(on_request_done=...) appeared in SDK 0.2
+MIN_SDK = (0, 3)  # Deferred handler results appeared in SDK 0.3
 
 
 def _prefs():
@@ -93,7 +94,16 @@ def connect() -> str:
     if not _timer_running:
         bpy.app.timers.register(_pump, first_interval=0.05, persistent=True)
         _timer_running = True
+    # Warm up numpy off the main thread: the first tab highlight would otherwise pay its import (up to seconds).
+    threading.Thread(target=_preload, name="wysp-preload", daemon=True).start()
     return "Connecting…"
+
+
+def _preload() -> None:
+    try:
+        import numpy  # noqa: F401
+    except ImportError:
+        pass
 
 
 def disconnect() -> None:

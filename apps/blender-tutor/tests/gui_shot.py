@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import bpy
@@ -17,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "demo"))
 import run_adapter  # noqa: E402
 
 run_adapter.load_adapter()
+from wysp_adapter_sdk import Deferred  # noqa: E402
 from wysp_tutor import highlight  # noqa: E402
 
 argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
@@ -25,6 +27,9 @@ REFS = argv[1:]
 OUT.mkdir(parents=True, exist_ok=True)
 if os.environ.get("WYSP_TEST_CORE"):  # label refs need a Core for OCR, e.g. ws://127.0.0.1:8799/ws/adapter
     highlight.set_core_url(os.environ["WYSP_TEST_CORE"])
+for _area in bpy.context.screen.areas:  # sidebar open, as in real use: its text must never be matched
+    if _area.type == "VIEW_3D":
+        _area.spaces.active.show_region_ui = True
 if os.environ.get("WYSP_TEST_UI_SCALE"):  # check that markers follow Blender's Resolution Scale
     bpy.context.preferences.view.ui_scale = float(os.environ["WYSP_TEST_UI_SCALE"])
 _queue = list(REFS)
@@ -41,7 +46,17 @@ def _step():
             ref = _queue.pop(0)
             _phase["ref"] = ref
             try:
-                print("GUI_HIGHLIGHT", ref, highlight.highlight(ref, "pulse", 6000))
+                t0 = time.monotonic()
+                result = highlight.highlight(ref, "pulse", 6000)
+                busy_ms = round((time.monotonic() - t0) * 1000, 1)
+                if isinstance(result, Deferred):  # label refs answer later, off the main thread
+                    result.attach(
+                        lambda r, e, ref=ref, busy=busy_ms: print(
+                            "GUI_HIGHLIGHT", ref, r or f"ERROR {e}", "main-thread ms", busy
+                        )
+                    )
+                else:
+                    print("GUI_HIGHLIGHT", ref, result, "main-thread ms", busy_ms)
                 print("GUI_RECTS tab", highlight._state.get("tab_rect"), "label", highlight._state.get("label_rect"))
             except Exception as exc:  # noqa: BLE001
                 print("GUI_ERROR", ref, exc)

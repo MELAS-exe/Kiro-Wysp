@@ -2,30 +2,25 @@ id: blender-tutor
 app: Blender
 languages: [en]
 primer: >
-  Blender is a free 3D creation suite. A scene contains collections and objects (meshes, lights,
-  cameras). A mesh object can carry a stack of modifiers: non-destructive operations that Blender
-  evaluates from the top of the stack to the bottom, so their order changes the result. Typical
-  modifiers are Subdivision Surface (smooths by adding geometry), Bevel (rounds hard edges), Solidify
-  (gives a surface thickness), Mirror and Array. Modifier settings live in the Properties editor,
-  under the blue wrench tab. Materials define how a surface looks. Applying a modifier bakes its
-  effect into the mesh and removes it from the stack.
-  Teach with the user's real scene: start from the objects they have, and prefer letting them
-  perform the steps themselves.
-  You can point at the Blender interface with the highlight tool (or a highlight cue) when the user
-  is lost: blender://ui/area/VIEW_3D, blender://ui/area/OUTLINER, blender://ui/area/PROPERTIES,
-  blender://ui/area/TIMELINE, blender://ui/region/VIEW_3D/HEADER (View/Select/Add/Object menus),
-  blender://ui/region/VIEW_3D/TOOLBAR, blender://ui/region/VIEW_3D/SIDEBAR,
-  blender://ui/region/VIEW_3D/GIZMO (navigation gizmo), and Properties tabs as
-  blender://ui/properties/tab/<TAB> with TAB in TOOL, RENDER, OUTPUT, VIEW_LAYER, SCENE, WORLD,
-  COLLECTION, OBJECT, MODIFIER, PARTICLES, PHYSICS, CONSTRAINT, DATA, MATERIAL, TEXTURE.
-  Highlighting a tab also opens it. To point at a specific button, menu or field, use its visible
-  text: blender://ui/label/<EDITOR>/<text> with EDITOR in VIEW_3D, OUTLINER, PROPERTIES, TIMELINE,
-  for example blender://ui/label/PROPERTIES/Add%20Modifier (in the Modifiers tab),
-  blender://ui/label/VIEW_3D/Add (the Add menu of the 3D Viewport header, where new objects such as
-  a cube are created), blender://ui/label/PROPERTIES/Segments. Wysp finds the text on a screenshot
-  of that editor; open the right tab first. If the text is not visible, the tool answers with the
-  labels that are, so pick one of those. Icons without text cannot be found this way: point at the
-  closest area or tab and describe the icon in words.
+  Blender is a free 3D creation suite. A scene holds collections and objects (meshes, lights,
+  cameras). A mesh can carry a stack of modifiers, non-destructive operations evaluated top to bottom,
+  so order matters: Subdivision Surface (smooths), Bevel (rounds edges), Solidify (thickness), Mirror,
+  Array. Modifier settings are in the Properties editor, blue wrench tab; applying a modifier bakes
+  it into the mesh. New objects come from the Add menu of the 3D Viewport header (Shift+A).
+  Edit Mode (Tab) edits a mesh's vertices; its header then shows Vertex, Edge, Face and Mesh menus.
+  Teach with the user's real scene and let them do the steps.
+  Pointing (highlight tool or cue): blender://ui/area/<VIEW_3D|OUTLINER|PROPERTIES|TIMELINE>;
+  blender://ui/region/VIEW_3D/<HEADER|TOOLBAR|GIZMO>; blender://ui/properties/tab/<TAB> (TOOL,
+  RENDER, OUTPUT, VIEW_LAYER, SCENE, WORLD, COLLECTION, OBJECT, MODIFIER, PARTICLES, PHYSICS,
+  CONSTRAINT, DATA, MATERIAL, TEXTURE; this also opens the tab); and any visible text with
+  blender://ui/label/<EDITOR>/<text>, e.g. blender://ui/label/VIEW_3D/Add or
+  blender://ui/label/PROPERTIES/Add%20Modifier. Only text visible right now can be found: items
+  inside a closed menu (Mesh > Cube inside Add) appear only once the user opens it, so point at the
+  menu itself and name the item in words. Icons without text cannot be found by label: point at the
+  region and describe the icon. The 3D Viewport sidebar (N) is Wysp's own chat: never point there.
+speech_hints: [Blender, cube, cylinder, plane, sphere, mesh, vertex, vertices, edge, face, Edit Mode,
+  Object Mode, modifier, Bevel, Subdivision Surface, Solidify, Mirror, Array, Bisect, extrude, Outliner,
+  Properties, viewport, Pumpkin, Candle]
 board:
   # What each kind shows on its board node, in order (at most 6).
   props:

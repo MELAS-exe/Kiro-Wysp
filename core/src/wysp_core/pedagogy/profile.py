@@ -18,7 +18,14 @@ class Profile:
     board_props: dict[str, list[str]] = field(default_factory=dict)
     skills: list[dict[str, Any]] = field(default_factory=list)
     concepts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    speech_hints: list[str] = field(default_factory=list)  # words speech recognition should expect
     path: Path | None = None
+
+    def vocabulary(self) -> list[str]:
+        """Application words for speech recognition: the hints, then the glossary terms."""
+        words = [str(w) for w in self.speech_hints]
+        words += [str(c.get("term", "")) for c in self.concepts.values() if c.get("term")]
+        return list(dict.fromkeys(w for w in words if w))
 
     def lookup(self, query: str) -> dict[str, Any] | None:
         q = query.strip().lower()
@@ -51,6 +58,7 @@ def load_profile(directory: Path) -> Profile:
         board_props=(data.get("board") or {}).get("props", {}),
         skills=data.get("skills", []),
         concepts=concepts,
+        speech_hints=[str(w) for w in data.get("speech_hints", []) or []],
         path=directory,
     )
 

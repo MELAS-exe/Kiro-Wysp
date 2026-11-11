@@ -112,3 +112,27 @@ def visible_labels(lines: list[dict[str, Any]], limit: int = 30) -> list[str]:
         if len(out) >= limit:
             break
     return out
+
+
+# Text Wysp itself puts on screen (its sidebar chat, banners, callouts): never a target.
+OWN_TEXT = ("wysp", "listening", "look for", "asks your approval", "understanding what you said", "newest first")
+
+
+def without(lines: list[dict[str, Any]], rects: list[tuple[float, float, float, float]]) -> list[dict[str, Any]]:
+    """Drop words inside `rects` (image pixels, origin top-left) and lines showing Wysp's own text.
+
+    The 3D Viewport screenshot includes its sidebar, where Wysp's chat repeats the very words it is pointing
+    at ("click Mesh, then Bisect"): matching there would frame Wysp's own sentence instead of the button.
+    """
+    out = []
+    for line in lines:
+        if any(p in str(line.get("text", "")).casefold() for p in OWN_TEXT):
+            continue
+        words = []
+        for w in line.get("words", []):
+            cx, cy = w["x"] + w["w"] / 2, w["y"] + w["h"] / 2
+            if not any(x <= cx <= x + rw and y <= cy <= y + rh for x, y, rw, rh in rects):
+                words.append(w)
+        if words:
+            out.append({"text": " ".join(str(w["text"]) for w in words), "words": words})
+    return out

@@ -72,3 +72,23 @@ def test_label_refs_parse() -> None:
     assert ui_targets.parse("blender://ui/label/VIEW_3D/Add").text == "Add"
     assert ui_targets.parse("blender://ui/label/NOPE/Add") is None
     assert ui_targets.parse("blender://ui/label/PROPERTIES/" + "x" * 80) is None
+
+
+def test_wysp_own_chat_and_sidebar_are_never_matched() -> None:
+    """Regression (session of 2026-11-10): "Bisect." was framed inside Wysp's own sidebar sentence."""
+    lines = [
+        {"text": "View Select Add Object", "words": [
+            {"text": "View", "x": 250, "y": 51, "w": 38, "h": 12}, {"text": "Select", "x": 312, "y": 51, "w": 48, "h": 12},
+            {"text": "Add", "x": 383, "y": 51, "w": 30, "h": 12}, {"text": "Object", "x": 437, "y": 51, "w": 50, "h": 12}]},
+        {"text": "click Mesh, then Bisect.", "words": [
+            {"text": "click", "x": 1300, "y": 600, "w": 30, "h": 12}, {"text": "Mesh,", "x": 1335, "y": 600, "w": 34, "h": 12},
+            {"text": "then", "x": 1372, "y": 600, "w": 28, "h": 12}, {"text": "Bisect.", "x": 1404, "y": 600, "w": 44, "h": 12}]},
+        {"text": "Wysp asks your approval: Add a modifier", "words": [
+            {"text": "Wysp", "x": 30, "y": 800, "w": 40, "h": 12}, {"text": "Add", "x": 200, "y": 800, "w": 30, "h": 12}]},
+    ]  # fmt: skip
+    sidebar = [(1290, 120, 300, 700)]  # x, y, w, h of the 3D Viewport sidebar in the screenshot
+    kept = label_match.without(lines, sidebar)
+    assert label_match.find("Bisect", kept)[0] is None
+    assert label_match.find("Mesh", kept)[0] is None
+    add, ties = label_match.find("Add", kept)
+    assert add is not None and add.y == 51 and ties == 1, "only the real Add menu, not the banner's text"

@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "wysp_tutor"
-version = "0.5.0"
+version = "0.6.0"
 name = "Wysp Tutor"
 tagline = "An AI tutor that sees your scene and teaches you Blender"
 maintainer = "Wysp contributors <noreply@users.noreply.github.com>"
@@ -16,7 +16,7 @@ copyright = ["2026 Wysp contributors"]
 
 # Pure-Python wheels, built by scripts/build_blender_extension.py
 wheels = [
-  "./wheels/wysp_adapter_sdk-0.2.0-py3-none-any.whl",
+  "./wheels/wysp_adapter_sdk-0.3.0-py3-none-any.whl",
   "./wheels/websocket_client-1.9.2-py3-none-any.whl",
 ]
 

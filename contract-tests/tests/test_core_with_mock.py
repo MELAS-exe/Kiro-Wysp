@@ -425,7 +425,7 @@ class _FakeWhisper:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def transcribe(self, wav: bytes, lang: str = "en") -> str:
+    async def transcribe(self, wav: bytes, lang: str = "en", prompt: str = "") -> str:
         self.calls += 1
         assert wav[:4] == b"RIFF"
         return "add a cube"
@@ -459,3 +459,93 @@ async def test_listen_endpoints_need_the_token_and_skip_silence(make_stack):
         assert quiet["text"] == "" and quiet["silent"] is True and whisper.calls == 1
     recs = [r for r in s.session.tm.ring if r["kind"] == "listen.stop"]
     assert recs and all("audio" not in r and "pcm" not in r for r in recs)
+
+
+async def test_steps_go_on_the_board_in_one_call_and_chain(make_stack):
+    """One add_concept call with several steps instead of one model round per step (rate-limited tiers)."""
+    s = await make_stack(
+        [
+            {"when": "steps", "calls": [
+                {"name": "show_entities", "arguments": {"refs": CARDS[:1], "layout": "sequence"}},
+                {"name": "add_concept", "arguments": {"items": [
+                    {"label": "Open the card", "kind": "step", "attach_to": CARDS[0]},
+                    {"label": "Change its column", "kind": "step"},
+                    {"label": "Check the board", "kind": "step"}]}},
+                {"name": "narrate", "arguments": {"segments": [{"text": "Three steps.", "provenance": "illustrative"}]}}]},
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="show me the steps")
+    await s.ui.wait_for(lambda m: m.get("type") == "narration.segment")
+    await s.session.wait_for_turn()
+    steps = [n for n in s.session.board.nodes if n.kind == "step"]
+    assert [n.label for n in steps] == ["Open the card", "Change its column", "Check the board"]
+    assert all(n.provenance in ("inferred", "illustrative") for n in steps)
+    edges = {(e.source, e.target) for e in s.session.board.edges}
+    assert (steps[0].id, steps[1].id) in edges and (steps[1].id, steps[2].id) in edges
+    assert any(e.target == steps[0].id and e.source != steps[1].id for e in s.session.board.edges)
+
+
+async def _turn_done(s, timeout: float = 8.0) -> None:
+    """Wait until the Core has recorded a finished turn (the message is handled asynchronously)."""
+    for _ in range(int(timeout / 0.02)):
+        if any(r["kind"] == "turn" for r in s.session.tm.ring):
+            return
+        await asyncio.sleep(0.02)
+    raise AssertionError("no turn finished")
+
+
+async def test_observe_with_an_unknown_root_says_so(make_stack):
+    s = await make_stack(
+        [
+            {"when": "look", "calls": [{"name": "observe", "arguments": {"level": "focus", "root": "mock://nothing"}}]},
+            {"after_tool": "observe", "say": "ok"},
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="look at it")
+    await _turn_done(s)
+    calls = [r for r in s.session.tm.ring if r["kind"] == "tool.call" and r.get("tool") == "observe"]
+    assert calls and calls[-1]["ok"] is False and "no entity" in calls[-1]["error"]
+
+
+async def test_history_keeps_only_the_gist_of_long_replies(make_stack):
+    long = " ".join(f"Sentence number {i} explains something about the board." for i in range(20))
+    s = await make_stack([{"when": "explain", "calls": [{"name": "narrate", "arguments": {"segments": [
+        {"text": long[i : i + 280]} for i in range(0, len(long), 280)]}}]}])  # fmt: skip
+    await s.ui.send(type="user.message", text="explain")
+    await _turn_done(s)
+    reply = s.session.history[-1]["content"]
+    assert len(reply) <= 300 and reply.endswith("…")
+
+
+def test_speech_hints_prompt() -> None:
+    from wysp_core.listen import MAX_PROMPT_CHARS, hint_prompt
+
+    assert hint_prompt(["Cube", "cube", " Bevel ", "", "Edit Mode"]) == "Cube, Bevel, Edit Mode"
+    assert len(hint_prompt([f"word{i}" for i in range(500)])) <= MAX_PROMPT_CHARS
+
+
+async def test_one_narrate_call_builds_the_board_and_speaks(make_stack):
+    """The whole answer in one model response: board (real entities + steps) and speech with cues."""
+    s = await make_stack(
+        [
+            {"when": "how", "calls": [{"name": "narrate", "arguments": {
+                "board": {"show": [CARDS[2]], "layout": "sequence", "concepts": [
+                    {"label": "Drag the card", "kind": "step", "attach_to": CARDS[2], "key": "drag"},
+                    {"label": "Drop it on Done", "kind": "step", "key": "drop"}]},
+                "segments": [{"text": "Drag the card, then drop it.", "provenance": "illustrative",
+                              "cues": [{"at_word": 0, "op": "focus", "target": "c:drag"}]}]}}]},
+            {"after_tool": "narrate", "say": "EXTRA ROUND"},
+        ]
+    )  # fmt: skip
+    await s.ui.send(type="user.message", text="how do I finish it?")
+    await _turn_done(s)
+    board = s.session.board
+    assert any(n.ref == CARDS[2] and n.provenance == "observed" for n in board.nodes)
+    assert board.node("c:drag") is not None and board.node("c:drop") is not None
+    assert board.layout == "sequence"
+    texts = [m["segment"]["text"] for m in s.ui.of_type("narration.segment")]
+    assert texts == ["Drag the card, then drop it."], "one response, no extra round"
+    seg = s.ui.of_type("narration.segment")[0]["segment"]
+    await s.ui.send(type="narration.cue", segment_id=seg["id"], index=0)
+    await s.ui.wait_for(lambda m: m.get("type") == "board.patch" and any(
+        op.get("op") == "set_focus" and op.get("ids") == ["c:drag"] for op in m["patch"]["ops"]))  # fmt: skip

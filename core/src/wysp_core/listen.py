@@ -25,6 +25,7 @@ import httpx
 
 MAX_SECONDS = 30.0
 SAMPLE_RATE = 16_000
+MAX_PROMPT_CHARS = 600  # Whisper reads at most ~224 tokens of prompt
 SILENCE_RMS = 0.004  # below this the clip is treated as silence and never sent (Whisper invents text on silence)
 
 
@@ -32,6 +33,21 @@ class ListenError(RuntimeError):
     def __init__(self, message: str, status: int = 409) -> None:
         super().__init__(message)
         self.status = status
+
+
+def hint_prompt(words: list[str]) -> str:
+    """A short vocabulary line that biases recognition toward the application's terms (e.g. object names)."""
+    seen: list[str] = []
+    for w in words:
+        w = " ".join(str(w).split())[:40]
+        if w and w.lower() not in (s.lower() for s in seen):
+            seen.append(w)
+    text = ""
+    for w in seen:
+        if len(text) + len(w) + 2 > MAX_PROMPT_CHARS:
+            break
+        text = f"{text}, {w}" if text else w
+    return text
 
 
 def rms(pcm16: bytes) -> float:
@@ -117,13 +133,16 @@ class GroqWhisper:
         self._key = api_key
         self.model = model
 
-    async def transcribe(self, wav: bytes, lang: str = "en") -> str:
+    async def transcribe(self, wav: bytes, lang: str = "en", prompt: str = "") -> str:
+        data = {"model": self.model, "response_format": "json", "language": lang[:2] or "en"}
+        if prompt:
+            data["prompt"] = prompt[:MAX_PROMPT_CHARS]  # spelling hints: the application's own words
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.post(
                 self.url,
                 headers={"Authorization": f"Bearer {self._key}"},
                 files={"file": ("speech.wav", wav, "audio/wav")},
-                data={"model": self.model, "response_format": "json", "language": lang[:2] or "en"},
+                data=data,
             )
         if r.status_code != 200:
             raise RuntimeError(f"speech service answered {r.status_code}")
@@ -144,13 +163,13 @@ class Listener:
     def cancel(self) -> None:
         self.recorder.cancel()
 
-    async def stop(self, lang: str = "en") -> dict[str, Any]:
+    async def stop(self, lang: str = "en", vocabulary: list[str] | None = None) -> dict[str, Any]:
         pcm, seconds = self.recorder.stop()
         level = rms(pcm)
         if seconds < 0.3 or level < SILENCE_RMS:
             return {"text": "", "seconds": round(seconds, 2), "silent": True}
         started = time.monotonic()
-        text = await self.transcriber.transcribe(to_wav(pcm, self.recorder.rate), lang)
+        text = await self.transcriber.transcribe(to_wav(pcm, self.recorder.rate), lang, hint_prompt(vocabulary or []))
         return {"text": text, "seconds": round(seconds, 2), "ms": round((time.monotonic() - started) * 1000, 1)}
 
 

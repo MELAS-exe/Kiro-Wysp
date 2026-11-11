@@ -63,16 +63,30 @@ TOOLS: dict[str, tuple[str | None, ToolSpec]] = {
         None,
         ToolSpec(
             "add_concept",
-            "Add a non-observed node: a general concept, an example or a step. Provenance must be 'inferred' or 'illustrative'.",
+            "Add non-observed nodes (concepts, examples or steps; provenance 'inferred' or 'illustrative'). "
+            "Put ALL of them in `items` in one call; steps are chained in order.",
             _obj(
                 {
-                    "label": {"type": "string", "maxLength": 80},
+                    "items": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 12,
+                        "items": _obj(
+                            {
+                                "label": {"type": "string", "maxLength": 80},
+                                "kind": {"type": "string", "enum": ["concept", "example", "step"]},
+                                "provenance": {"type": "string", "enum": ["inferred", "illustrative"]},
+                                "attach_to": {"type": "string", "description": "Ref or node id"},
+                                "key": {"type": "string", "description": "Short id; cues can target c:<key>"},
+                            },
+                            ["label"],
+                        ),
+                    },
+                    "label": {"type": "string", "maxLength": 80, "description": "Single node (old form)"},
                     "kind": {"type": "string", "enum": ["concept", "example", "step"]},
                     "provenance": {"type": "string", "enum": ["inferred", "illustrative"]},
                     "attach_to": {"type": "string", "description": "Ref or node id to connect to"},
-                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
                 },
-                ["label", "provenance"],
             ),
         ),
     ),
@@ -95,9 +109,29 @@ TOOLS: dict[str, tuple[str | None, ToolSpec]] = {
         None,
         ToolSpec(
             "narrate",
-            "Speak and caption short segments (at most 300 characters each). Cues synchronise the board with the speech.",
+            "Speak and caption short segments (at most 300 characters each); cues synchronise the board with the "
+            "speech. `board` updates the board in the same call: usually this one call is your whole answer.",
             _obj(
                 {
+                    "board": _obj(
+                        {
+                            "show": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "maxItems": 40,
+                                "description": "Refs of REAL entities to show (as show_entities)",
+                            },
+                            "layout": {"type": "string", "enum": LAYOUTS},
+                            "focus": {"type": "array", "items": {"type": "string"}},
+                            "include_children": {"type": "boolean"},
+                            "concepts": {
+                                "type": "array",
+                                "maxItems": 12,
+                                "description": "As add_concept items",
+                                "items": {"type": "object"},
+                            },
+                        }
+                    ),  # fmt: skip
                     "segments": {
                         "type": "array",
                         "minItems": 1,
@@ -120,7 +154,7 @@ TOOLS: dict[str, tuple[str | None, ToolSpec]] = {
                             },
                             ["text"],
                         ),
-                    }
+                    },
                 },
                 ["segments"],
             ),
@@ -244,10 +278,14 @@ class ToolBox:
         level = a.get("level", "focus")
         root = a.get("root")
         obs = await self.s.observe(Scope(level=level, root=root) if root else Scope(level=level))
+        if root and root not in {e.ref for e in obs.entities}:
+            return {"ok": False, "error": f"no entity has the ref {root!r}; use a ref listed in <app_data>"}
         return summarize_observation(obs)
 
     async def _t_show_entities(self, a: dict[str, Any]) -> dict[str, Any]:
         refs = [str(r) for r in a["refs"]]
+        if refs and all(r.startswith(("c:", "n:")) for r in refs):
+            return {"ok": False, "error": "these are board node ids, already on the board; show_entities takes refs"}
         layout = a.get("layout", "graph")
         if layout not in LAYOUTS:
             layout = "graph"
@@ -272,37 +310,61 @@ class ToolBox:
         return out
 
     async def _t_add_concept(self, a: dict[str, Any]) -> dict[str, Any]:
-        provenance = a.get("provenance")
-        if provenance not in ("inferred", "illustrative"):
-            provenance = "inferred"  # the LLM can never create observed facts
-        nid = f"c:{uuid.uuid4().hex[:6]}"
-        node = {
-            "id": nid,
-            "ref": None,
-            "kind": a.get("kind", "concept"),
-            "label": str(a["label"])[:80],
-            "provenance": provenance,
-            "confidence": float(a.get("confidence", 0.8 if provenance == "inferred" else 1.0)),
-        }
-        ops: list[dict[str, Any]] = [{"op": "add_node", "node": node}]
-        attach = a.get("attach_to")
-        if attach:
-            target = attach if attach.startswith(("n:", "c:")) else node_id(attach)
-            if self.s.board.node(target):
+        items = a.get("items") or ([a] if a.get("label") else [])
+        if not items:
+            return {"ok": False, "error": "give the nodes in `items`"}
+        ops: list[dict[str, Any]] = []
+        ids: list[str] = []
+        previous_step: str | None = None
+        for item in items[:12]:
+            provenance = item.get("provenance", a.get("provenance"))
+            if provenance not in ("inferred", "illustrative"):
+                provenance = "inferred"  # the LLM can never create observed facts
+            kind = item.get("kind", a.get("kind", "concept"))
+            key = str(item.get("key", ""))
+            nid = (
+                f"c:{key}"
+                if _KEY_RE.fullmatch(key) and not self.s.board.node(f"c:{key}")
+                else f"c:{uuid.uuid4().hex[:6]}"
+            )
+            ops.append(
+                {
+                    "op": "add_node",
+                    "node": {
+                        "id": nid,
+                        "ref": None,
+                        "kind": kind,
+                        "label": str(item["label"])[:80],
+                        "provenance": provenance,
+                        "confidence": 0.8 if provenance == "inferred" else 1.0,
+                        "order": len(ids) if kind == "step" else None,
+                    },
+                }
+            )
+            # Steps follow each other; anything else (and the first step) hangs off what it explains.
+            attach = item.get("attach_to", a.get("attach_to"))
+            source = previous_step if kind == "step" and previous_step else None
+            if source is None and attach:
+                target = attach if str(attach).startswith(("n:", "c:")) else node_id(str(attach))
+                source = target if (self.s.board.node(target) or target in ids) else None
+            if source is not None:
                 ops.append(
                     {
                         "op": "add_edge",
                         "edge": {
-                            "id": f"x:{nid}>{target}",
-                            "source": target,
+                            "id": f"x:{source}>{nid}",
+                            "source": source,
                             "target": nid,
-                            "kind": "explains",
+                            "kind": "next" if kind == "step" and source == previous_step else "explains",
                             "provenance": provenance,
                         },
                     }
                 )
+            if kind == "step":
+                previous_step = nid
+            ids.append(nid)
         result = await self.s.apply_board(ops)
-        return {**result, "node_id": nid} if result["ok"] else result
+        return {**result, "node_ids": ids} if result["ok"] else result
 
     async def _t_annotate(self, a: dict[str, Any]) -> dict[str, Any]:
         target = str(a["target"])
@@ -317,6 +379,19 @@ class ToolBox:
         return await self.s.apply_board([{"op": "add_annotation", "annotation": ann}])
 
     async def _t_narrate(self, a: dict[str, Any]) -> dict[str, Any]:
+        board_result: dict[str, Any] = {}
+        b = a.get("board") if isinstance(a.get("board"), dict) else {}
+        if b.get("show"):
+            board_result["show"] = await self._t_show_entities(
+                {
+                    "refs": b["show"],
+                    "layout": b.get("layout", "graph"),
+                    "focus": b.get("focus", []),
+                    "include_children": b.get("include_children", False),
+                }
+            )
+        if b.get("concepts"):
+            board_result["concepts"] = await self._t_add_concept({"items": b["concepts"]})
         count = 0
         for seg in a["segments"]:
             cues = [
@@ -329,7 +404,10 @@ class ToolBox:
                 str(seg["text"]), prov if prov in ("observed", "inferred", "illustrative") else "observed", cues
             )
         self.narrated = True
-        return {"ok": True, "segments": count}
+        out: dict[str, Any] = {"ok": True, "segments": count}
+        if board_result:
+            out["board"] = board_result
+        return out
 
     async def _t_highlight(self, a: dict[str, Any]) -> dict[str, Any]:
         ok = await self.s.highlight_ref(str(a["ref"]))
@@ -364,6 +442,9 @@ class ToolBox:
         await self.s.broadcast({"type": "clarification", "question": str(a["question"]), "options": options})
         self.turn_ended = True
         return {"ok": True, "status": "waiting_for_answer"}
+
+
+_KEY_RE = re.compile(r"[a-z0-9_-]{1,24}")
 
 
 def normalize_tool_name(name: str) -> str:

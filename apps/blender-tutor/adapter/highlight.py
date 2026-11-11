@@ -17,12 +17,13 @@ import logging
 import math
 import os
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
 
 import bpy
-from wysp_adapter_sdk import ErrorCode, WyspError
+from wysp_adapter_sdk import Deferred, ErrorCode, WyspError
 
 from . import label_match, nav_detect, refs, telemetry, ui_targets
 
@@ -271,6 +272,8 @@ def _draw_ui() -> None:
 
 
 def _draw_label(area, region, target, s: float, alpha: float) -> None:
+    if _state.get("label_pending"):
+        return  # still reading the screenshot: draw nothing rather than a wrong frame
     rect = _state["label_rect"]
     if rect is None:  # not located (no OCR): frame the editor and say what to look for
         if region.type == "WINDOW":
@@ -408,40 +411,31 @@ def _spellings(text: str) -> list[str]:
     return names
 
 
-def _locate(area, text: str) -> tuple[tuple[float, float, float, float] | None, dict]:
-    """Find `text` on a screenshot of `area`. Returns (window rect or None, details for the tutor)."""
-    started = time.monotonic()
-    png = _screenshot_area(area)
-    shot_ms = (time.monotonic() - started) * 1000
-    try:
-        result = _recognize(png)
-    except (urllib.error.URLError, TimeoutError, RuntimeError, ValueError, OSError) as exc:
-        telemetry.tm.emit("highlight.label", ok=False, reason="ocr_unavailable", shot_ms=round(shot_ms, 1))
-        return None, {"located": False, "reason": f"text recognition unavailable ({type(exc).__name__})"}
-    lines = result.get("lines", [])
-    match, ties = label_match.find(_spellings(text), lines)
-    total_ms = (time.monotonic() - started) * 1000
-    telemetry.tm.emit(
-        "highlight.label",
-        ok=match is not None,
-        shot_ms=round(shot_ms, 1),
-        ocr_ms=result.get("ms"),
-        total_ms=round(total_ms, 1),
-        lines=len(lines),
-        score=match.score if match else None,
-        ties=ties,
-        full={"wanted": text, "seen": match.text if match else None},
-    )
+def _geometry(area) -> dict:
+    """What the worker thread needs to know about the editor (bpy is main-thread only)."""
+    excluded = [
+        # The sidebar (N panel) holds Wysp's own chat: words there are never the button being taught.
+        (r.x - area.x, area.height - (r.y - area.y + r.height), r.width, r.height)
+        for r in area.regions
+        if r.type == "UI" and r.width > 1 and r.height > 1
+    ]
+    return {"x": area.x, "y": area.y, "w": area.width, "h": area.height, "excluded": excluded}
+
+
+def _match(result: dict, names: list[str], geom: dict) -> tuple[tuple[float, float, float, float] | None, dict]:
+    """Locate one of `names` in OCR output. Returns (window rect or None, details for the tutor)."""
+    lines = label_match.without(result.get("lines", []), geom["excluded"])
+    match, ties = label_match.find(names, lines)
     if match is None:
         visible = label_match.visible_labels(lines)
         cut = sum(1 for line in lines if str(line.get("text", "")).rstrip().endswith(("...", "…")))
         return None, {"located": False, "visible": visible, "too_narrow": cut >= max(3, len(lines) // 3)}
     # Image pixels (origin top-left) -> window pixels (origin bottom-left). The screenshot is the area's size;
     # scale anyway in case a platform captures at another resolution.
-    sx = area.width / float(result.get("width") or area.width)
-    sy = area.height / float(result.get("height") or area.height)
-    x = area.x + match.x * sx
-    y = area.y + area.height - (match.y + match.h) * sy
+    sx = geom["w"] / float(result.get("width") or geom["w"])
+    sy = geom["h"] / float(result.get("height") or geom["h"])
+    x = geom["x"] + match.x * sx
+    y = geom["y"] + geom["h"] - (match.y + match.h) * sy
     details = {"located": True, "seen": match.text, "confidence": match.score}
     if ties > 1:
         details["note"] = f"{ties} places show this text; the first one is marked"
@@ -497,6 +491,7 @@ def clear_highlight() -> None:
         timer=False,
         drawn=set(),
         label_rect=None,
+        label_pending=False,
         tab_rect=None,
     )
     try:
@@ -562,30 +557,74 @@ def _highlight_ui(ref: str, duration_ms: int) -> dict:
     return out
 
 
-def _highlight_label(target, duration_ms: int) -> dict:
+def _highlight_label(target, duration_ms: int):
+    """Screenshot on the main thread (Blender's rule), recognition on a worker thread (no UI freeze).
+
+    Returns a ``Deferred``: the SDK answers the Core once the text has been found, or not found.
+    """
     areas = [a for a in _areas() if a.ui_type == target.area or a.type == target.area]
     area = max(areas, key=lambda a: a.width * a.height)
-    _state["object"] = None
-    _state["label_rect"] = None
-    _state["ui"] = []  # do not photograph an older highlight
-    rect, details = _locate(area, target.text)
-    if rect is None and details.get("visible") is not None:
-        shown = ", ".join(details["visible"][:25]) or "no readable text"
-        why = (
-            "the editor is too narrow: Blender shortened its labels; ask the user to widen it"
-            if details.get("too_narrow")
-            else "it may be scrolled away, collapsed or in another tab"
-        )
-        raise WyspError(
-            ErrorCode.TARGET_NOT_FOUND,
-            f"{target.label} is not visible in the {ui_targets.AREAS.get(target.area, (target.area,))[0]} right now "
-            f"({why}). Visible labels: {shown}",
-        )
-    _state["label_rect"] = rect
+    seq = _state["label_seq"] = _state.get("label_seq", 0) + 1
+    _state.update(object=None, label_rect=None, label_pending=True, ui=[])
+    started = time.monotonic()
+    png = _screenshot_area(area)
+    shot_ms = round((time.monotonic() - started) * 1000, 1)
+    geom, names = _geometry(area), _spellings(target.text)
+    editor = ui_targets.AREAS.get(target.area, (target.area,))[0]
     _state["ui"] = [target]
     _register_ui_handlers([target])
     _start(duration_ms)
-    return {"ok": True, "note": target.label, **details}
+    answer = Deferred()
+
+    def current() -> bool:
+        return _state.get("label_seq") == seq  # a newer highlight replaced this one
+
+    def work() -> None:
+        try:
+            try:
+                result = _recognize(png)
+            except (urllib.error.URLError, TimeoutError, RuntimeError, ValueError, OSError) as exc:
+                if current():
+                    _state["label_pending"] = False  # fall back to framing the editor
+                telemetry.tm.emit("highlight.label", ok=False, reason="ocr_unavailable", shot_ms=shot_ms)
+                answer.resolve({"ok": True, "note": target.label, "located": False,
+                                "reason": f"text recognition unavailable ({type(exc).__name__})"})  # fmt: skip
+                return
+            rect, details = _match(result, names, geom)
+            telemetry.tm.emit(
+                "highlight.label",
+                ok=rect is not None,
+                shot_ms=shot_ms,
+                ocr_ms=result.get("ms"),
+                total_ms=round((time.monotonic() - started) * 1000, 1),
+                score=details.get("confidence"),
+                full={"wanted": target.text, "seen": details.get("seen")},
+            )
+            if rect is None:
+                if current():
+                    _state.update(ui=[], label_pending=False)
+                shown = ", ".join(details["visible"][:25]) or "no readable text"
+                why = (
+                    "the editor is too narrow: Blender shortened its labels; ask the user to widen it"
+                    if details.get("too_narrow")
+                    else "it may be inside a closed menu, scrolled away, collapsed or in another tab"
+                )
+                answer.reject(
+                    WyspError(
+                        ErrorCode.TARGET_NOT_FOUND,
+                        f"{target.label} is not visible in the {editor} right now ({why}). Visible labels: {shown}",
+                    )
+                )
+                return
+            if current():
+                _state.update(label_rect=rect, label_pending=False)
+            answer.resolve({"ok": True, "note": target.label, **details})
+        except Exception as exc:  # noqa: BLE001 - always answer the Core
+            log.debug("label highlight failed", exc_info=True)
+            answer.reject(WyspError(ErrorCode.EXECUTION_FAILED, f"label highlight failed: {type(exc).__name__}"))
+
+    threading.Thread(target=work, name="wysp-label", daemon=True).start()
+    return answer
 
 
 def _highlight_object(ref: str, duration_ms: int) -> dict:
