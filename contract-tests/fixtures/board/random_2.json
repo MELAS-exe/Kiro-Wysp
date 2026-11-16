@@ -1,0 +1,1211 @@
+{
+  "expected": [
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "L46",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [],
+      "version": 1
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "L46",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [],
+      "version": 2
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "L46",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [],
+      "version": 3
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [
+        "n1"
+      ],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "L46",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [],
+      "version": 4
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [],
+      "version": 5
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [],
+      "version": 6
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        },
+        {
+          "id": "s2",
+          "index": 2,
+          "status": "pending",
+          "target": null,
+          "text": "step 2"
+        }
+      ],
+      "version": 7
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 8
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 9
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 10
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 11
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 12
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L95",
+          "order": 4,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 13
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L95",
+          "order": 4,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "done",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 14
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "L8",
+          "order": 5,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "done",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 15
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": true,
+      "steps": [],
+      "version": 16
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L44",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L43",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [],
+      "version": 17
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L44",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L43",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [],
+      "version": 18
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L57",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L43",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": "n4",
+          "text": "step 0"
+        }
+      ],
+      "version": 19
+    },
+    {
+      "annotations": [],
+      "edges": [
+        {
+          "id": "e5",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n0",
+          "target": "n4"
+        }
+      ],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L57",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L43",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": "n4",
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n4",
+          "text": "step 1"
+        }
+      ],
+      "version": 20
+    },
+    {
+      "annotations": [],
+      "edges": [
+        {
+          "id": "e5",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n0",
+          "target": "n4"
+        },
+        {
+          "id": "e1",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n0",
+          "target": "n0"
+        }
+      ],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L57",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L43",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": "n4",
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n4",
+          "text": "step 1"
+        }
+      ],
+      "version": 21
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L43",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": "n4",
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n4",
+          "text": "step 1"
+        }
+      ],
+      "version": 22
+    }
+  ],
+  "initial": {
+    "annotations": [],
+    "edges": [],
+    "focus": [],
+    "layout": "graph",
+    "nodes": [],
+    "stale": false,
+    "steps": [],
+    "version": 0
+  },
+  "name": "random_2",
+  "patches": [
+    {
+      "base_version": 0,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n1",
+            "kind": "object",
+            "label": "L46",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 1
+    },
+    {
+      "base_version": 1,
+      "ops": [
+        {
+          "layout": "tree",
+          "op": "set_layout"
+        },
+        {
+          "op": "set_stale",
+          "stale": true
+        },
+        {
+          "id": "e1",
+          "op": "remove_edge"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "base_version": 2,
+      "ops": [
+        {
+          "id": "e3",
+          "op": "remove_edge"
+        },
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "failed"
+        },
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "pending"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "base_version": 3,
+      "ops": [
+        {
+          "ids": [
+            "n1"
+          ],
+          "op": "set_focus"
+        }
+      ],
+      "version": 4
+    },
+    {
+      "base_version": 4,
+      "ops": [
+        {
+          "annotation": {
+            "id": "a4",
+            "provenance": "inferred",
+            "target": "n1",
+            "text": "note"
+          },
+          "op": "add_annotation"
+        },
+        {
+          "id": "s0",
+          "op": "update_step",
+          "status": "active"
+        },
+        {
+          "id": "n1",
+          "op": "remove_node"
+        }
+      ],
+      "version": 5
+    },
+    {
+      "base_version": 5,
+      "ops": [
+        {
+          "id": "s2",
+          "op": "update_step",
+          "status": "done"
+        }
+      ],
+      "version": 6
+    },
+    {
+      "base_version": 6,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            },
+            {
+              "id": "s2",
+              "index": 2,
+              "status": "pending",
+              "target": null,
+              "text": "step 2"
+            }
+          ]
+        }
+      ],
+      "version": 7
+    },
+    {
+      "base_version": 7,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": true
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            }
+          ]
+        }
+      ],
+      "version": 8
+    },
+    {
+      "base_version": 8,
+      "ops": [
+        {
+          "id": "e4",
+          "op": "remove_edge"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            }
+          ]
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            }
+          ]
+        }
+      ],
+      "version": 9
+    },
+    {
+      "base_version": 9,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            }
+          ]
+        },
+        {
+          "op": "set_stale",
+          "stale": false
+        },
+        {
+          "id": "s2",
+          "op": "update_step",
+          "status": "failed"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            }
+          ]
+        }
+      ],
+      "version": 10
+    },
+    {
+      "base_version": 10,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": true
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            }
+          ]
+        }
+      ],
+      "version": 11
+    },
+    {
+      "base_version": 11,
+      "ops": [
+        {
+          "id": "s2",
+          "op": "update_step",
+          "status": "failed"
+        },
+        {
+          "layout": "tree",
+          "op": "set_layout"
+        }
+      ],
+      "version": 12
+    },
+    {
+      "base_version": 12,
+      "ops": [
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "pending"
+        },
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n3",
+            "kind": "object",
+            "label": "L95",
+            "order": 4,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "op": "set_stale",
+          "stale": true
+        }
+      ],
+      "version": 13
+    },
+    {
+      "base_version": 13,
+      "ops": [
+        {
+          "id": "s0",
+          "op": "update_step",
+          "status": "done"
+        }
+      ],
+      "version": 14
+    },
+    {
+      "base_version": 14,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "id": "n3",
+          "op": "remove_node"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n1",
+            "kind": "object",
+            "label": "L8",
+            "order": 5,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 15
+    },
+    {
+      "base_version": 15,
+      "ops": [
+        {
+          "op": "clear"
+        }
+      ],
+      "version": 16
+    },
+    {
+      "base_version": 16,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n0",
+            "kind": "object",
+            "label": "L44",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n4",
+            "kind": "object",
+            "label": "L43",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 17
+    },
+    {
+      "base_version": 17,
+      "ops": [
+        {
+          "layout": "sequence",
+          "op": "set_layout"
+        }
+      ],
+      "version": 18
+    },
+    {
+      "base_version": 18,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": "n4",
+              "text": "step 0"
+            }
+          ]
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n0",
+            "kind": "object",
+            "label": "L57",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 19
+    },
+    {
+      "base_version": 19,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": "n4",
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": "n4",
+              "text": "step 1"
+            }
+          ]
+        },
+        {
+          "id": "e0",
+          "op": "remove_edge"
+        },
+        {
+          "edge": {
+            "id": "e5",
+            "kind": "link",
+            "label": null,
+            "provenance": "observed",
+            "source": "n0",
+            "target": "n4"
+          },
+          "op": "add_edge"
+        }
+      ],
+      "version": 20
+    },
+    {
+      "base_version": 20,
+      "ops": [
+        {
+          "edge": {
+            "id": "e1",
+            "kind": "link",
+            "label": null,
+            "provenance": "observed",
+            "source": "n0",
+            "target": "n0"
+          },
+          "op": "add_edge"
+        }
+      ],
+      "version": 21
+    },
+    {
+      "base_version": 21,
+      "ops": [
+        {
+          "id": "e1",
+          "op": "remove_edge"
+        },
+        {
+          "id": "s2",
+          "op": "update_step",
+          "status": "pending"
+        },
+        {
+          "id": "n0",
+          "op": "remove_node"
+        }
+      ],
+      "version": 22
+    }
+  ]
+}

@@ -1,0 +1,464 @@
+{
+  "expected": [
+    {
+      "annotations": [],
+      "edges": [
+        {
+          "id": "e1",
+          "kind": "has",
+          "label": null,
+          "provenance": "observed",
+          "source": "o:cube",
+          "target": "m:1"
+        }
+      ],
+      "focus": [
+        "m:1"
+      ],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "o:cube",
+          "kind": "object",
+          "label": "o:cube",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": "mock://cube"
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "m:1",
+          "kind": "object",
+          "label": "m:1",
+          "order": 0,
+          "props_view": [
+            [
+              "levels",
+              "2"
+            ]
+          ],
+          "provenance": "observed",
+          "ref": "mock://cube/m1"
+        },
+        {
+          "badges": [
+            "new"
+          ],
+          "confidence": 0.6,
+          "group": null,
+          "id": "m:2",
+          "kind": "object",
+          "label": "m:2",
+          "order": 1,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [],
+      "version": 1
+    },
+    {
+      "annotations": [
+        {
+          "id": "a1",
+          "provenance": "inferred",
+          "target": "m:2",
+          "text": "probably a bevel"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "kind": "has",
+          "label": null,
+          "provenance": "observed",
+          "source": "o:cube",
+          "target": "m:1"
+        }
+      ],
+      "focus": [
+        "m:1"
+      ],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "o:cube",
+          "kind": "object",
+          "label": "o:cube",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": "mock://cube"
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "m:1",
+          "kind": "object",
+          "label": "m:1",
+          "order": 0,
+          "props_view": [
+            [
+              "levels",
+              "2"
+            ]
+          ],
+          "provenance": "observed",
+          "ref": "mock://cube/m1"
+        },
+        {
+          "badges": [
+            "new"
+          ],
+          "confidence": 0.6,
+          "group": null,
+          "id": "m:2",
+          "kind": "object",
+          "label": "m:2",
+          "order": 1,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [],
+      "version": 2
+    },
+    {
+      "annotations": [
+        {
+          "id": "a1",
+          "provenance": "inferred",
+          "target": "m:2",
+          "text": "probably a bevel"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "kind": "has",
+          "label": null,
+          "provenance": "observed",
+          "source": "o:cube",
+          "target": "m:1"
+        }
+      ],
+      "focus": [
+        "m:1"
+      ],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "o:cube",
+          "kind": "object",
+          "label": "o:cube",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": "mock://cube"
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "m:1",
+          "kind": "object",
+          "label": "replaced",
+          "order": 0,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [
+            "new"
+          ],
+          "confidence": 0.6,
+          "group": null,
+          "id": "m:2",
+          "kind": "object",
+          "label": "m:2",
+          "order": 1,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [],
+      "version": 3
+    },
+    {
+      "annotations": [
+        {
+          "id": "a1",
+          "provenance": "inferred",
+          "target": "m:2",
+          "text": "probably a bevel"
+        }
+      ],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "o:cube",
+          "kind": "object",
+          "label": "o:cube",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": "mock://cube"
+        },
+        {
+          "badges": [
+            "new"
+          ],
+          "confidence": 0.6,
+          "group": null,
+          "id": "m:2",
+          "kind": "object",
+          "label": "m:2",
+          "order": 1,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [],
+      "version": 4
+    },
+    {
+      "annotations": [
+        {
+          "id": "a1",
+          "provenance": "inferred",
+          "target": "m:2",
+          "text": "probably a bevel"
+        }
+      ],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "o:cube",
+          "kind": "object",
+          "label": "o:cube",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": "mock://cube"
+        },
+        {
+          "badges": [
+            "new"
+          ],
+          "confidence": 0.6,
+          "group": null,
+          "id": "m:2",
+          "kind": "object",
+          "label": "m:2",
+          "order": 1,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [],
+      "version": 5
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [],
+      "stale": true,
+      "steps": [],
+      "version": 6
+    }
+  ],
+  "initial": {
+    "annotations": [],
+    "edges": [],
+    "focus": [],
+    "layout": "graph",
+    "nodes": [],
+    "stale": false,
+    "steps": [],
+    "version": 0
+  },
+  "name": "stack_and_cascade",
+  "patches": [
+    {
+      "base_version": 0,
+      "ops": [
+        {
+          "layout": "stack",
+          "op": "set_layout"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "o:cube",
+            "kind": "object",
+            "label": "o:cube",
+            "order": null,
+            "props_view": [],
+            "provenance": "observed",
+            "ref": "mock://cube"
+          },
+          "op": "add_node"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "m:1",
+            "kind": "object",
+            "label": "m:1",
+            "order": 0,
+            "props_view": [
+              [
+                "levels",
+                "2"
+              ]
+            ],
+            "provenance": "observed",
+            "ref": "mock://cube/m1"
+          },
+          "op": "add_node"
+        },
+        {
+          "node": {
+            "badges": [
+              "new"
+            ],
+            "confidence": 0.6,
+            "group": null,
+            "id": "m:2",
+            "kind": "object",
+            "label": "m:2",
+            "order": 1,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "edge": {
+            "id": "e1",
+            "kind": "has",
+            "label": null,
+            "provenance": "observed",
+            "source": "o:cube",
+            "target": "m:1"
+          },
+          "op": "add_edge"
+        },
+        {
+          "ids": [
+            "m:1",
+            "ghost"
+          ],
+          "op": "set_focus"
+        }
+      ],
+      "version": 1
+    },
+    {
+      "base_version": 1,
+      "ops": [
+        {
+          "annotation": {
+            "id": "a1",
+            "provenance": "inferred",
+            "target": "m:2",
+            "text": "probably a bevel"
+          },
+          "op": "add_annotation"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "base_version": 2,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "m:1",
+            "kind": "object",
+            "label": "replaced",
+            "order": 0,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "base_version": 3,
+      "ops": [
+        {
+          "id": "m:1",
+          "op": "remove_node"
+        }
+      ],
+      "version": 4
+    },
+    {
+      "base_version": 4,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": true
+        }
+      ],
+      "version": 5
+    },
+    {
+      "base_version": 5,
+      "ops": [
+        {
+          "op": "clear"
+        }
+      ],
+      "version": 6
+    }
+  ]
+}

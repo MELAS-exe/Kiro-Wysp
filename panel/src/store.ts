@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { applyPatch, emptyBoard } from "./board/applyOps";
 import { preferredAdapter } from "./coreVoice";
 import { CoreSocket, coreUrl } from "./protocol";
-import type { AdapterInfo, Board, CoreMessage, ExploreState, LogLevel, PanelMessage, PermissionRequest, Segment } from "./protocol";
+import type { AdapterInfo, Board, CoreMessage, ExerciseState, ExploreState, LessonState, LogLevel, PanelMessage, PermissionRequest, Segment } from "./protocol";
 
 // queued: not spoken yet (hidden); skipped: cancelled before it was spoken (hidden, Continue replays it).
 export type SegState = "queued" | "playing" | "played" | "cancelled" | "skipped";
@@ -11,7 +11,7 @@ export type SegState = "queued" | "playing" | "played" | "cancelled" | "skipped"
 export type TranscriptItem =
   | { kind: "user"; id: string; text: string; source: string }
   | { kind: "wysp"; id: string; segment: Segment; state: SegState }
-  | { kind: "evidence"; id: string; title: string; scope: string; ok: boolean }
+  | { kind: "evidence"; id: string; title: string; scope: string; ok: boolean; etype: string }
   | { kind: "note"; id: string; text: string; tone: "info" | "error" };
 
 export interface SessionInfo {
@@ -37,6 +37,8 @@ interface PanelState {
   current: Segment | null;
   permission: PermissionRequest | null;
   clarification: { question: string; options: string[] } | null;
+  lesson: LessonState | null;
+  exercise: ExerciseState | null;
   voiceOn: boolean;
   listening: boolean;
   interim: string;
@@ -77,6 +79,8 @@ export const useStore = create<PanelState>((set, get) => ({
   current: null,
   permission: null,
   clarification: null,
+  lesson: null,
+  exercise: null,
   voiceOn: true,
   listening: false,
   interim: "",
@@ -191,10 +195,20 @@ export const useStore = create<PanelState>((set, get) => ({
         set((s) => ({
           transcript: [
             ...s.transcript,
-            { kind: "evidence", id: nextId("e"), title: m.title, scope: m.scope, ok: m.evidence.outcomes.every((o) => o.ok) },
+            { kind: "evidence", id: nextId("e"), title: m.title, scope: m.scope, ok: m.evidence.outcomes.every((o) => o.ok), etype: m.evidence.type },
           ],
         }));
         break;
+      case "lesson.update": {
+        const { type: _t, ...lesson } = m;
+        set({ lesson: lesson.status === "running" ? lesson : null });
+        break;
+      }
+      case "exercise.update": {
+        const { type: _t, ...exercise } = m;
+        set({ exercise });
+        break;
+      }
       case "error":
         set((s) => ({ transcript: [...s.transcript, { kind: "note", id: nextId("n"), text: m.message, tone: "error" }] }));
         break;

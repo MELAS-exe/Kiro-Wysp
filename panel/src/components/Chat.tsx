@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { interruptNarration } from "../narration";
 import { useStore } from "../store";
+import { ExerciseCard } from "./ExerciseCard";
 import { ExploreCard } from "./ExploreCard";
 import { startListening, stopListening, voiceSupported } from "../voice";
 
@@ -65,8 +66,13 @@ export function Chat() {
             );
           if (t.kind === "evidence")
             return (
-              <div key={t.id} className={`msg evidence ${t.ok ? "ok" : "bad"}`}>
-                {t.ok ? "Verified in the application" : "Could not be verified"}: {t.title}
+              <div key={t.id} className={`msg evidence ${t.etype === "declared" ? "declared" : t.ok ? "ok" : "bad"}`}>
+                {t.etype === "declared"
+                  ? "Declared by you, not checked in the application"
+                  : t.ok
+                    ? "Verified in the application"
+                    : "Could not be verified"}
+                : {t.title}
               </div>
             );
           return (
@@ -96,6 +102,7 @@ export function Chat() {
         <div ref={endRef} />
       </div>
       <ExploreCard />
+      <ExerciseCard />
       {(busy || hasCancelled) && (
         <div className="quick">
           {busy ? (

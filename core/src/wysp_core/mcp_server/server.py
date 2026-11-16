@@ -51,7 +51,9 @@ Start with `get_tutor_context`: it returns the tutoring rules and what the conne
 right now. Then answer with `narrate` (usually one call: speech plus board). When the user works from the \
 Wysp Panel (typing or talking there), call `wait_for_user` to receive their messages, answer each one, and call \
 `wait_for_user` again. A `study` event from `wait_for_user` is a task, not a message: the user agreed to let you \
-study the project; do what the event's `instructions` say (study_read, record_understanding, finish_study).
+study the project; do what the event's `instructions` say (study_read, record_understanding, finish_study). To teach by practice, call `learner_status` (mastery, lessons, \
+the recommended one), run a `lesson`, and offer exercises with `start_exercise`: Wysp itself verifies them in the \
+application and records evidence; you never judge success.
 
 Rules that always apply: you never execute anything yourself; `propose_action` asks the user for approval in \
 the Panel and Wysp verifies the result. Facts shown as observed must come from `observe`. Say what code does only \
@@ -66,6 +68,7 @@ READ_ONLY = {
     "code_map",
     "get_study_plan",
     "study_read",
+    "learner_status",
 }
 
 _EXTRA_TOOLS: dict[str, tuple[str, dict[str, Any]]] = {

@@ -1,0 +1,1603 @@
+{
+  "expected": [
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 1
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L26",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 4
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L26",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 5
+    },
+    {
+      "annotations": [
+        {
+          "id": "a2",
+          "provenance": "inferred",
+          "target": "n0",
+          "text": "note"
+        }
+      ],
+      "edges": [],
+      "focus": [
+        "n0"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L26",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 6
+    },
+    {
+      "annotations": [
+        {
+          "id": "a2",
+          "provenance": "inferred",
+          "target": "n0",
+          "text": "note"
+        }
+      ],
+      "edges": [],
+      "focus": [
+        "n0"
+      ],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L26",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 7
+    },
+    {
+      "annotations": [
+        {
+          "id": "a2",
+          "provenance": "inferred",
+          "target": "n0",
+          "text": "note"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e3",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n4",
+          "target": "n0"
+        }
+      ],
+      "focus": [
+        "n0"
+      ],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L26",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L2",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 8
+    },
+    {
+      "annotations": [
+        {
+          "id": "a2",
+          "provenance": "inferred",
+          "target": "n0",
+          "text": "note"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e3",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n4",
+          "target": "n0"
+        }
+      ],
+      "focus": [
+        "n0"
+      ],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L26",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n4",
+          "kind": "object",
+          "label": "L2",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 9
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [],
+      "stale": false,
+      "steps": [],
+      "version": 10
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "done",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 11
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [
+        "n9"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L11",
+          "order": 4,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "done",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 12
+    },
+    {
+      "annotations": [],
+      "edges": [
+        {
+          "id": "e6",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n9",
+          "target": "n9"
+        }
+      ],
+      "focus": [
+        "n9"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L11",
+          "order": 4,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 13
+    },
+    {
+      "annotations": [],
+      "edges": [
+        {
+          "id": "e6",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n9",
+          "target": "n9"
+        }
+      ],
+      "focus": [
+        "n9"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L11",
+          "order": 4,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 14
+    },
+    {
+      "annotations": [],
+      "edges": [
+        {
+          "id": "e6",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n9",
+          "target": "n9"
+        },
+        {
+          "id": "e0",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n3",
+          "target": "n9"
+        }
+      ],
+      "focus": [
+        "n9"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L11",
+          "order": 4,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L94",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n3",
+          "text": "step 1"
+        }
+      ],
+      "version": 15
+    },
+    {
+      "annotations": [
+        {
+          "id": "a0",
+          "provenance": "inferred",
+          "target": "n9",
+          "text": "note"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e0",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n3",
+          "target": "n9"
+        }
+      ],
+      "focus": [
+        "n9"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L11",
+          "order": 4,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L94",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n3",
+          "text": "step 1"
+        }
+      ],
+      "version": 16
+    },
+    {
+      "annotations": [
+        {
+          "id": "a0",
+          "provenance": "inferred",
+          "target": "n9",
+          "text": "note"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e0",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n6",
+          "target": "n6"
+        }
+      ],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L37",
+          "order": 4,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L94",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n3",
+          "text": "step 1"
+        },
+        {
+          "id": "s2",
+          "index": 2,
+          "status": "pending",
+          "target": "n6",
+          "text": "step 2"
+        }
+      ],
+      "version": 17
+    },
+    {
+      "annotations": [
+        {
+          "id": "a0",
+          "provenance": "inferred",
+          "target": "n9",
+          "text": "note"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e0",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n6",
+          "target": "n6"
+        }
+      ],
+      "focus": [
+        "n9",
+        "n6"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L37",
+          "order": 4,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L94",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n7",
+          "kind": "object",
+          "label": "L34",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n3",
+          "text": "step 1"
+        },
+        {
+          "id": "s2",
+          "index": 2,
+          "status": "pending",
+          "target": "n6",
+          "text": "step 2"
+        }
+      ],
+      "version": 18
+    },
+    {
+      "annotations": [
+        {
+          "id": "a0",
+          "provenance": "inferred",
+          "target": "n9",
+          "text": "note"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e0",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n6",
+          "target": "n6"
+        }
+      ],
+      "focus": [
+        "n9",
+        "n6"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L37",
+          "order": 4,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L94",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n7",
+          "kind": "object",
+          "label": "L34",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 19
+    },
+    {
+      "annotations": [
+        {
+          "id": "a0",
+          "provenance": "inferred",
+          "target": "n9",
+          "text": "note"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e0",
+          "kind": "link",
+          "label": null,
+          "provenance": "observed",
+          "source": "n6",
+          "target": "n6"
+        }
+      ],
+      "focus": [
+        "n9",
+        "n6"
+      ],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L95",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n6",
+          "kind": "object",
+          "label": "L37",
+          "order": 4,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n3",
+          "kind": "object",
+          "label": "L94",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n7",
+          "kind": "object",
+          "label": "L34",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": "n3",
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n3",
+          "text": "step 1"
+        }
+      ],
+      "version": 20
+    }
+  ],
+  "initial": {
+    "annotations": [],
+    "edges": [],
+    "focus": [],
+    "layout": "graph",
+    "nodes": [],
+    "stale": false,
+    "steps": [],
+    "version": 0
+  },
+  "name": "random_5",
+  "patches": [
+    {
+      "base_version": 0,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            }
+          ]
+        }
+      ],
+      "version": 1
+    },
+    {
+      "base_version": 1,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "base_version": 2,
+      "ops": [
+        {
+          "id": "s0",
+          "op": "update_step",
+          "status": "active"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "base_version": 3,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n0",
+            "kind": "object",
+            "label": "L26",
+            "order": null,
+            "props_view": [],
+            "provenance": "observed",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 4
+    },
+    {
+      "base_version": 4,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "id": "s2",
+          "op": "update_step",
+          "status": "active"
+        }
+      ],
+      "version": 5
+    },
+    {
+      "base_version": 5,
+      "ops": [
+        {
+          "annotation": {
+            "id": "a2",
+            "provenance": "inferred",
+            "target": "n0",
+            "text": "note"
+          },
+          "op": "add_annotation"
+        },
+        {
+          "ids": [
+            "n0"
+          ],
+          "op": "set_focus"
+        }
+      ],
+      "version": 6
+    },
+    {
+      "base_version": 6,
+      "ops": [
+        {
+          "layout": "stack",
+          "op": "set_layout"
+        },
+        {
+          "ids": [
+            "n0"
+          ],
+          "op": "set_focus"
+        }
+      ],
+      "version": 7
+    },
+    {
+      "base_version": 7,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n4",
+            "kind": "object",
+            "label": "L45",
+            "order": null,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "edge": {
+            "id": "e3",
+            "kind": "link",
+            "label": null,
+            "provenance": "observed",
+            "source": "n4",
+            "target": "n0"
+          },
+          "op": "add_edge"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n4",
+            "kind": "object",
+            "label": "L2",
+            "order": null,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 8
+    },
+    {
+      "base_version": 8,
+      "ops": [
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "done"
+        }
+      ],
+      "version": 9
+    },
+    {
+      "base_version": 9,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": false
+        },
+        {
+          "op": "set_steps",
+          "steps": []
+        },
+        {
+          "op": "clear"
+        },
+        {
+          "id": "n0",
+          "op": "remove_node"
+        }
+      ],
+      "version": 10
+    },
+    {
+      "base_version": 10,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            }
+          ]
+        },
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "done"
+        }
+      ],
+      "version": 11
+    },
+    {
+      "base_version": 11,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n9",
+            "kind": "object",
+            "label": "L95",
+            "order": null,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n6",
+            "kind": "object",
+            "label": "L11",
+            "order": 4,
+            "props_view": [],
+            "provenance": "observed",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "ids": [
+            "n9"
+          ],
+          "op": "set_focus"
+        },
+        {
+          "layout": "graph",
+          "op": "set_layout"
+        }
+      ],
+      "version": 12
+    },
+    {
+      "base_version": 12,
+      "ops": [
+        {
+          "edge": {
+            "id": "e6",
+            "kind": "link",
+            "label": null,
+            "provenance": "observed",
+            "source": "n9",
+            "target": "n9"
+          },
+          "op": "add_edge"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            }
+          ]
+        }
+      ],
+      "version": 13
+    },
+    {
+      "base_version": 13,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": false
+        }
+      ],
+      "version": 14
+    },
+    {
+      "base_version": 14,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n3",
+            "kind": "object",
+            "label": "L94",
+            "order": null,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "id": "e3",
+          "op": "remove_edge"
+        },
+        {
+          "edge": {
+            "id": "e0",
+            "kind": "link",
+            "label": null,
+            "provenance": "observed",
+            "source": "n3",
+            "target": "n9"
+          },
+          "op": "add_edge"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": "n3",
+              "text": "step 1"
+            }
+          ]
+        }
+      ],
+      "version": 15
+    },
+    {
+      "base_version": 15,
+      "ops": [
+        {
+          "id": "e6",
+          "op": "remove_edge"
+        },
+        {
+          "annotation": {
+            "id": "a0",
+            "provenance": "inferred",
+            "target": "n9",
+            "text": "note"
+          },
+          "op": "add_annotation"
+        }
+      ],
+      "version": 16
+    },
+    {
+      "base_version": 16,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n6",
+            "kind": "object",
+            "label": "L37",
+            "order": 4,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": "n3",
+              "text": "step 1"
+            },
+            {
+              "id": "s2",
+              "index": 2,
+              "status": "pending",
+              "target": "n6",
+              "text": "step 2"
+            }
+          ]
+        },
+        {
+          "edge": {
+            "id": "e0",
+            "kind": "link",
+            "label": null,
+            "provenance": "observed",
+            "source": "n6",
+            "target": "n6"
+          },
+          "op": "add_edge"
+        }
+      ],
+      "version": 17
+    },
+    {
+      "base_version": 17,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n7",
+            "kind": "object",
+            "label": "L34",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "ids": [
+            "n9",
+            "n6"
+          ],
+          "op": "set_focus"
+        }
+      ],
+      "version": 18
+    },
+    {
+      "base_version": 18,
+      "ops": [
+        {
+          "id": "s2",
+          "op": "update_step",
+          "status": "done"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            }
+          ]
+        },
+        {
+          "layout": "graph",
+          "op": "set_layout"
+        }
+      ],
+      "version": 19
+    },
+    {
+      "base_version": 19,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": false
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": "n3",
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": "n3",
+              "text": "step 1"
+            }
+          ]
+        }
+      ],
+      "version": 20
+    }
+  ]
+}

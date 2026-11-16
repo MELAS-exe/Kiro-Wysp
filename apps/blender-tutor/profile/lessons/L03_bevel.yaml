@@ -1,0 +1,26 @@
+id: blender.modifiers.bevel
+title: {en: "Round the edges with a Bevel"}
+skills: [bevel_modifier]
+prerequisites: [blender.modifiers.stack]
+bindings: {target: "$focus.object"}
+board: {layout: stack}
+steps:
+  - explain: {en: "Real objects never have perfectly sharp edges. A Bevel modifier rounds them, and more segments make the rounding smoother."}
+    concepts: [bevel, edge]
+  - explain: {en: "Add a Bevel to the selected object, then set its segments."}
+    guide: {action: add_modifier, params: {type: BEVEL}}
+  - explain: {en: "Your turn."}
+    check: {exercise: bevel_segments}
+exercises:
+  - id: bevel_segments
+    prompt: {en: "Give the Bevel of the selected object 3 segments."}
+    skills: [bevel_modifier]
+    bindings: {target: "$focus.object"}
+    success:
+      all:
+        - {path: "length(entities[?kind=='modifier' && parent=='${bindings.target}' && props.type=='BEVEL'])", op: gte, value: 1}
+        - {path: "entities[?kind=='modifier' && parent=='${bindings.target}' && props.type=='BEVEL'].props.segments | [0]", op: eq, value: 3}
+    hints:
+      - {en: "Select the object first, then open the Modifier Properties tab."}
+      - {en: "Add Modifier, Generate, Bevel. Then find the Segments field."}
+    max_attempts: 3

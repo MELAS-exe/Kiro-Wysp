@@ -24,6 +24,7 @@ from .bus import EventBus
 from .explore import Explorer
 from .inbox import UserInbox
 from .survey import SurveyRunner
+from .tutoring import Tutoring
 
 log = logging.getLogger("wysp.session")
 
@@ -111,6 +112,8 @@ class Session:
         self.history: list[dict[str, Any]] = []
         self.survey = SurveyRunner(self, survey)
         self.explorer = Explorer(self)
+        self.tutoring = Tutoring(self)
+        self.own_change_total = 0  # Wysp changes since the session began; an exercise passes only if it did not move
         self.status = "idle"
         self.active_adapter_id: str | None = None
         self._turn_task: asyncio.Task | None = None
@@ -158,6 +161,7 @@ class Session:
         self.watch = None
         self.survey.reset()
         self.survey.start()
+        self.tutoring.reset(self.profile)
         self.explorer.reset(self.profile)  # offers to explore the project when the profile says it can be explored
 
     # --------------------------------------------------------------------- broadcasting
@@ -490,6 +494,7 @@ class Session:
     def begin_own_change(self) -> None:
         """Wysp is about to change the application (an approved action or an undo)."""
         self._own_changes += 1
+        self.own_change_total += 1
 
     def end_own_change(self) -> None:
         self._own_changes = max(0, self._own_changes - 1)
@@ -559,6 +564,7 @@ class Session:
                 from ..orchestrator.pipeline import check_watch
 
                 await check_watch(self)
+            await self.tutoring.on_change(origin)
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001

@@ -19,7 +19,7 @@ Depends on core-orchestrator task 4 (UI protocol) and task 6 (board golden fixtu
   - _Owner: B_ · _Gate: J1_
   - _Requirements: 2.1_
 
-- [ ] 3.1 Write property tests for patches
+- [x] 3.1 Write property tests for patches
   - **Property PAN-P1: Patch parity with the Core**
   - **Property PAN-P2: Gap detection**
   - **Validates: Requirement 2.1**
@@ -30,7 +30,7 @@ Depends on core-orchestrator task 4 (UI protocol) and task 6 (board golden fixtu
   - _Owner: B_ · _Gate: J1 (stack + tree), J2 (graph + sequence)_
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 4.1 Write property tests for layout and styles
+- [x] 4.1 Write property tests for layout and styles
   - **Property PAN-P3: Layout determinism**
   - **Property PAN-P6: Provenance style is total and distinct**
   - **Validates: Requirements 2.2, 2.3**
@@ -41,7 +41,7 @@ Depends on core-orchestrator task 4 (UI protocol) and task 6 (board golden fixtu
   - _Owner: B_ · _Gate: J1 (captions + browser TTS), J2 (Core TTS)_
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.4_
 
-- [ ] 5.1 Write property test for the narration state machine
+- [x] 5.1 Write property test for the narration state machine
   - **Property PAN-P4: Narration order and cancellation**
   - **Validates: Requirements 3.1, 3.3**
 
@@ -55,7 +55,7 @@ Depends on core-orchestrator task 4 (UI protocol) and task 6 (board golden fixtu
   - _Owner: B_ · _Gate: J1_
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 7.1 Write property test for voice approval
+- [x] 7.1 Write property test for voice approval
   - **Property PAN-P5: No voice approval for irreversible actions**
   - **Validates: Requirement 5.2**
 

@@ -262,6 +262,66 @@ TOOLS: dict[str, tuple[str | None, ToolSpec]] = {
             ),
         ),
     ),
+    "learner_status": (
+        None,
+        ToolSpec(
+            "learner_status",
+            "The learner's mastery per skill (with how deep to teach), the lessons of this application, the "
+            "recommended next lesson and the exercise in progress.",
+            _obj({}),
+        ),
+    ),
+    "lesson": (
+        None,
+        ToolSpec(
+            "lesson",
+            "Run an authored lesson. action=start (with lesson_id) returns step 1; next/skip/repeat/stop move "
+            "through it. Each step says what to explain, show, guide or check: perform it with your other tools, "
+            "then call next. Prefer the recommended lesson from learner_status.",
+            _obj(
+                {
+                    "action": {"type": "string", "enum": ["start", "next", "skip", "repeat", "stop"]},
+                    "lesson_id": {"type": "string"},
+                },
+                ["action"],
+            ),
+        ),
+    ),
+    "start_exercise": (
+        "observe",
+        ToolSpec(
+            "start_exercise",
+            "Offer one authored exercise (by id, from learner_status). Wysp then verifies it in the application when "
+            "the learner changes something: you never judge success yourself. It refuses exercises that are already "
+            "satisfied or whose target is not selected.",
+            _obj({"exercise_id": {"type": "string"}}, ["exercise_id"]),
+        ),
+    ),
+    "exercise_hint": (
+        None,
+        ToolSpec(
+            "exercise_hint",
+            "Give the next authored hint of the exercise in progress (hints cost a little mastery).",
+            _obj({}),
+        ),
+    ),
+    "check_exercise": (
+        "observe",
+        ToolSpec(
+            "check_exercise",
+            "The learner says they are done: verify the exercise now on a fresh observation.",
+            _obj({}),
+        ),
+    ),
+    "declare_done": (
+        None,
+        ToolSpec(
+            "declare_done",
+            "Only for an exercise the application cannot verify: record that the learner says it is done "
+            "(weak evidence, labelled declared). Refused for verifiable exercises.",
+            _obj({}),
+        ),
+    ),
     "lookup_concept": (
         None,
         ToolSpec(
@@ -532,6 +592,24 @@ class ToolBox:
     async def _t_propose_action(self, a: dict[str, Any]) -> dict[str, Any]:
         await self.s.activity("Preparing an action…")
         return await pipeline.propose_action(self.s, a)
+
+    async def _t_learner_status(self, a: dict[str, Any]) -> dict[str, Any]:
+        return self.s.tutoring.status()
+
+    async def _t_lesson(self, a: dict[str, Any]) -> dict[str, Any]:
+        return await self.s.tutoring.lesson(str(a["action"]), a.get("lesson_id"))
+
+    async def _t_start_exercise(self, a: dict[str, Any]) -> dict[str, Any]:
+        return await self.s.tutoring.start_exercise(str(a["exercise_id"]))
+
+    async def _t_exercise_hint(self, a: dict[str, Any]) -> dict[str, Any]:
+        return await self.s.tutoring.hint()
+
+    async def _t_check_exercise(self, a: dict[str, Any]) -> dict[str, Any]:
+        return await self.s.tutoring.check(claim=True)
+
+    async def _t_declare_done(self, a: dict[str, Any]) -> dict[str, Any]:
+        return await self.s.tutoring.declare()
 
     async def _t_lookup_concept(self, a: dict[str, Any]) -> dict[str, Any]:
         profile = self.s.profile

@@ -17,6 +17,7 @@ import type { Annotation, Board, BoardNode } from "../protocol";
 import { LiveCaption } from "../components/Caption";
 import { useStore } from "../store";
 import { NODE_W, computeLayout, type Positions } from "./layout";
+import { provenanceStyle } from "./provenance";
 
 interface WispData extends Record<string, unknown> {
   node: BoardNode;
@@ -25,25 +26,39 @@ interface WispData extends Record<string, unknown> {
   vertical: boolean;
 }
 
-const PROV_TAG: Record<string, string | null> = { observed: null, inferred: "likely", illustrative: "example" };
-
 const WispNode = memo(function WispNode({ data }: NodeProps<Node<WispData>>) {
   const { node, focused, annotations, vertical } = data;
   const send = useStore((s) => s.send);
-  const tag = PROV_TAG[node.provenance];
+  const style = provenanceStyle(node.provenance);
   return (
-    <div className={`wnode ${node.provenance}${focused ? " focused" : ""}`} style={{ width: NODE_W }} title={node.ref ?? node.id}>
-      <Handle type="target" position={vertical ? Position.Top : Position.Left} />
+    <div
+      className={`wnode ${style.className}${focused ? " focused" : ""}`}
+      style={{ width: NODE_W }}
+      title={node.ref ?? node.id}
+    >
+      <Handle
+        type="target"
+        position={vertical ? Position.Top : Position.Left}
+      />
       <div className="wnode-head">
         <span className="kind">{node.kind}</span>
-        {node.provenance === "observed" ? (
-          <span className="eye" role="img" aria-label="observed in the application" title="Observed in the application">
+        {style.eye ? (
+          <span
+            className="eye"
+            role="img"
+            aria-label="observed in the application"
+            title="Observed in the application"
+          >
             ◉
           </span>
         ) : (
-          <span className="tag">{tag}</span>
+          <span className="tag">{style.tag}</span>
         )}
-        {node.confidence < 1 && <span className="conf" title="confidence">{Math.round(node.confidence * 100)}%</span>}
+        {node.confidence < 1 && (
+          <span className="conf" title="confidence">
+            {Math.round(node.confidence * 100)}%
+          </span>
+        )}
       </div>
       <div className="wnode-label">{node.label}</div>
       {node.props_view.length > 0 && (
@@ -71,7 +86,10 @@ const WispNode = memo(function WispNode({ data }: NodeProps<Node<WispData>>) {
       >
         Why?
       </button>
-      <Handle type="source" position={vertical ? Position.Bottom : Position.Right} />
+      <Handle
+        type="source"
+        position={vertical ? Position.Bottom : Position.Right}
+      />
     </div>
   );
 });
@@ -84,22 +102,39 @@ function Flow({ board }: { board: Board }) {
   const [positions, setPositions] = useState<Positions>({});
   const { fitView } = useReactFlow();
   // Portrait (a narrow tool window): flows run top to bottom.
-  const [portrait, setPortrait] = useState(() => window.innerHeight > window.innerWidth);
+  const [portrait, setPortrait] = useState(
+    () => window.innerHeight > window.innerWidth,
+  );
   useEffect(() => {
     const on = () => setPortrait(window.innerHeight > window.innerWidth);
     window.addEventListener("resize", on);
     return () => window.removeEventListener("resize", on);
   }, []);
-  const vertical = board.layout === "tree" || board.layout === "stack" || portrait;
+  const vertical =
+    board.layout === "tree" || board.layout === "stack" || portrait;
 
   // The layout key ignores props_view text so that value updates do not re-run ELK.
-  const layoutKey = JSON.stringify([board.layout, portrait, board.nodes.map((n) => [n.id, n.order, n.props_view.length]), board.edges.map((e) => e.id)]);
+  const layoutKey = JSON.stringify([
+    board.layout,
+    portrait,
+    board.nodes.map((n) => [n.id, n.order, n.props_view.length]),
+    board.edges.map((e) => e.id),
+  ]);
   useEffect(() => {
     let alive = true;
     computeLayout(board, portrait).then((p) => {
       if (!alive) return;
       setPositions(p);
-      setTimeout(() => fitView({ duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 300, padding: 0.2 }), 80);
+      setTimeout(
+        () =>
+          fitView({
+            duration: matchMedia("(prefers-reduced-motion: reduce)").matches
+              ? 0
+              : 300,
+            padding: 0.2,
+          }),
+        80,
+      );
     });
     return () => {
       alive = false;
@@ -113,7 +148,12 @@ function Flow({ board }: { board: Board }) {
         id: n.id,
         type: "wisp",
         position: positions[n.id] ?? { x: 0, y: 0 },
-        data: { node: n, focused: board.focus.includes(n.id), annotations: board.annotations.filter((a) => a.target === n.id), vertical },
+        data: {
+          node: n,
+          focused: board.focus.includes(n.id),
+          annotations: board.annotations.filter((a) => a.target === n.id),
+          vertical,
+        },
         draggable: true,
       })),
     [board.nodes, board.focus, board.annotations, positions, vertical],
@@ -130,7 +170,9 @@ function Flow({ board }: { board: Board }) {
       animated: false,
     }));
     if (board.layout === "stack") {
-      const ordered = board.nodes.filter((n) => n.order !== null).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const ordered = board.nodes
+        .filter((n) => n.order !== null)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       for (let i = 0; i + 1 < ordered.length; i++) {
         const a = ordered[i];
         const b = ordered[i + 1];
@@ -200,12 +242,24 @@ export function BoardView() {
   const board = useStore((s) => s.board);
   return (
     <div className="boardwrap">
-      {board.stale && <div className="stale">The application disconnected: this board may be out of date.</div>}
+      {board.stale && (
+        <div className="stale">
+          The application disconnected: this board may be out of date.
+        </div>
+      )}
       {board.nodes.length === 0 ? (
         <div className="empty">
-          <img className="mascot" src="/wysp-mark.png" alt="" width={96} height={96} />
+          <img
+            className="mascot"
+            src="/wysp-mark.png"
+            alt=""
+            width={96}
+            height={96}
+          />
           <p>Ask me about what you are working on.</p>
-          <p className="muted">Real elements of your project will appear here, marked as observed.</p>
+          <p className="muted">
+            Real elements of your project will appear here, marked as observed.
+          </p>
         </div>
       ) : (
         <ReactFlowProvider>

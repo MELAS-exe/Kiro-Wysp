@@ -1,0 +1,268 @@
+{
+  "expected": [
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "n1",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s1",
+          "index": 0,
+          "status": "pending",
+          "target": "n1",
+          "text": "Select it"
+        },
+        {
+          "id": "s2",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "Apply it"
+        }
+      ],
+      "version": 1
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "n1",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s1",
+          "index": 0,
+          "status": "active",
+          "target": "n1",
+          "text": "Select it"
+        },
+        {
+          "id": "s2",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "Apply it"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "n1",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s1",
+          "index": 0,
+          "status": "active",
+          "target": "n1",
+          "text": "Select it"
+        },
+        {
+          "id": "s2",
+          "index": 1,
+          "status": "done",
+          "target": null,
+          "text": "Apply the change"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s1",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "Select it"
+        },
+        {
+          "id": "s2",
+          "index": 1,
+          "status": "done",
+          "target": null,
+          "text": "Apply the change"
+        }
+      ],
+      "version": 4
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s1",
+          "index": 0,
+          "status": "active",
+          "target": null,
+          "text": "Select it"
+        },
+        {
+          "id": "s2",
+          "index": 1,
+          "status": "done",
+          "target": null,
+          "text": "Apply the change"
+        }
+      ],
+      "version": 5
+    }
+  ],
+  "initial": {
+    "annotations": [],
+    "edges": [],
+    "focus": [],
+    "layout": "graph",
+    "nodes": [],
+    "stale": false,
+    "steps": [],
+    "version": 0
+  },
+  "name": "steps",
+  "patches": [
+    {
+      "base_version": 0,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n1",
+            "kind": "object",
+            "label": "n1",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s1",
+              "index": 0,
+              "status": "pending",
+              "target": "n1",
+              "text": "Select it"
+            },
+            {
+              "id": "s2",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "Apply it"
+            }
+          ]
+        }
+      ],
+      "version": 1
+    },
+    {
+      "base_version": 1,
+      "ops": [
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "active"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "base_version": 2,
+      "ops": [
+        {
+          "id": "s2",
+          "op": "update_step",
+          "status": "done",
+          "text": "Apply the change"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "base_version": 3,
+      "ops": [
+        {
+          "id": "n1",
+          "op": "remove_node"
+        }
+      ],
+      "version": 4
+    },
+    {
+      "base_version": 4,
+      "ops": [
+        {
+          "id": "nothing",
+          "op": "remove_edge"
+        },
+        {
+          "id": "nothing",
+          "op": "remove_annotation"
+        }
+      ],
+      "version": 5
+    }
+  ]
+}

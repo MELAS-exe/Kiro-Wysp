@@ -1,0 +1,35 @@
+id: blender.scene.read
+title: {en: "Read the scene"}
+skills: [scene_navigation]
+prerequisites: []
+board: {layout: tree}
+steps:
+  - explain: {en: "A scene is a tree: collections hold objects, and an object can carry modifiers. The Outliner shows the same tree."}
+    show: ["blender://scene"]
+    include_children: true
+  - explain: {en: "Selecting an object in the Outliner or the viewport makes it the focus: that is what Wysp and the Properties editor talk about."}
+    guide: {ui: "blender://ui/area/OUTLINER"}
+  - explain: {en: "Now you pick one yourself."}
+    check: {exercise: select_candle}
+exercises:
+  - id: select_candle
+    prompt: {en: "Select the Candle by clicking it in the Outliner."}
+    skills: [scene_navigation]
+    bindings: {candle: "$ref:blender://object/Candle"}
+    success:
+      all:
+        - {path: "focus", op: contains, value: "${bindings.candle}"}
+    hints:
+      - {en: "The Outliner is the list of objects, usually at the top right."}
+      - {en: "Click the name Candle in that list."}
+    max_attempts: 3
+  - id: select_pumpkin
+    prompt: {en: "Select the Pumpkin by clicking it in the Outliner."}
+    skills: [scene_navigation]
+    bindings: {pumpkin: "$ref:blender://object/Pumpkin"}
+    success:
+      all:
+        - {path: "focus", op: contains, value: "${bindings.pumpkin}"}
+    hints:
+      - {en: "Look for the name Pumpkin in the Outliner."}
+    max_attempts: 3

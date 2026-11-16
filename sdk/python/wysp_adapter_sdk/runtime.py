@@ -201,9 +201,12 @@ class AdapterRuntime:
         if self.client is not None:
             self.client.notify("event.highlight_dismissed", {"ref": ref, "reason": "user"})
 
-    def report_user_action(self, kind: str, target: str | None, details: dict[str, Any] | None = None) -> None:
+    def report_user_action(
+        self, kind: str, target: str | None, details: dict[str, Any] | None = None, origin: str | None = None
+    ) -> None:
+        # CON-P9 fix: an explicit origin wins; the time-window guess would tag a user action 'wysp' right after an execute.
         if self.client is not None:
             self.client.notify(
                 "event.user_action",
-                {"kind": kind, "target": target, "details": details or {}, "origin": self.origin.current()},
+                {"kind": kind, "target": target, "details": details or {}, "origin": origin or self.origin.current()},
             )

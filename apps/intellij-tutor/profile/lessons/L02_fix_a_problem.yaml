@@ -1,0 +1,23 @@
+id: intellij.problems.fix
+title: {en: "Read a problem and fix it"}
+skills: [problems_and_fixes]
+prerequisites: [intellij.structure.read]
+board: {layout: tree}
+steps:
+  - explain: {en: "The IDE analyses code as you type. Problems appear in the editor and in the Problems tool window."}
+    guide: {tool_window: Problems}
+  - explain: {en: "Put the caret on a highlighted problem and press Alt+Enter: the IDE lists quick fixes."}
+  - explain: {en: "Fix one."}
+    check: {exercise: fix_problem}
+exercises:
+  - id: fix_problem
+    prompt: {en: "Fix every problem the IDE reports in the file you are looking at."}
+    skills: [problems_and_fixes]
+    bindings: {file: "$focus.file"}
+    success:
+      all:
+        - {path: "length(entities[?kind=='problem' && parent=='${bindings.file}'])", op: eq, value: 0}
+    hints:
+      - {en: "Open the Problems tool window (Alt+6) to see what the IDE found."}
+      - {en: "Put the caret on the highlighted code and press Alt+Enter to see the quick fixes."}
+    max_attempts: 3

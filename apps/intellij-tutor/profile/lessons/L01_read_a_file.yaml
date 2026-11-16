@@ -1,0 +1,22 @@
+id: intellij.structure.read
+title: {en: "Read the structure of a file"}
+skills: [project_navigation, code_structure]
+prerequisites: []
+board: {layout: tree}
+steps:
+  - explain: {en: "A source file is made of symbols: classes, methods, fields. The Structure tool window lists them."}
+    goal: "Show the symbols of the file in the editor on the board"
+    guide: {tool_window: Structure}
+  - explain: {en: "The caret tells the IDE which symbol you are in. Click inside a method body."}
+    check: {exercise: caret_in_symbol}
+exercises:
+  - id: caret_in_symbol
+    prompt: {en: "Click inside the body of a method so the caret sits in it."}
+    skills: [code_structure]
+    success:
+      all:
+        - {path: "length(focus[?contains(@, '#')])", op: gte, value: 1}
+    hints:
+      - {en: "Open a source file in the editor first."}
+      - {en: "Click on any line between a method's curly braces."}
+    max_attempts: 3

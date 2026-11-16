@@ -10,7 +10,7 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: A_ · _Gate: J0_
   - _Requirements: 1.1, 1.2, 1.3, 11.1_
 
-- [ ] 1.1 Write property test for redaction
+- [x] 1.1 Write property test for redaction
   - **Property CORE-P11: Redaction**
   - **Validates: Requirements 9.3, 11.2**
 
@@ -79,7 +79,7 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: A_ · _Gate: J1_
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 8.1 Write property test for capability-based tool filtering
+- [x] 8.1 Write property test for capability-based tool filtering
   - **Property CORE-P10: Tools follow capabilities**
   - **Validates: Requirement 4.2**
 

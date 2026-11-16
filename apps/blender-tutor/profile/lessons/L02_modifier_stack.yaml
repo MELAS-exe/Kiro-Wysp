@@ -1,0 +1,25 @@
+id: blender.modifiers.stack
+title: {en: "The modifier stack"}
+skills: [modifier_stack]
+prerequisites: [blender.scene.read]
+board: {layout: stack}
+steps:
+  - explain: {en: "Modifiers are evaluated from the top of the stack to the bottom, so their order changes the result."}
+    show: ["blender://object/Pumpkin"]
+    include_children: true
+  - explain: {en: "Moving Solidify above Subdivision changes what gets smoothed. Try it yourself in the Modifier Properties tab."}
+    guide: {ui: "blender://ui/properties/tab/MODIFIER"}
+  - explain: {en: "Over to you."}
+    check: {exercise: move_solidify_first}
+exercises:
+  - id: move_solidify_first
+    prompt: {en: "Move the Solidify modifier of the Pumpkin to the top of its stack."}
+    skills: [modifier_stack]
+    bindings: {solidify: "$ref:blender://object/Pumpkin/modifier/Solidify"}
+    success:
+      all:
+        - {path: "entities[?ref=='${bindings.solidify}'] | [0].props.index", op: eq, value: 0}
+    hints:
+      - {en: "Open the Modifier Properties tab (the blue wrench)."}
+      - {en: "Use the small arrow menu of the Solidify panel and choose Move to First."}
+    max_attempts: 3

@@ -1,6 +1,7 @@
 // Voice input: push-to-talk with the browser's speech recognition. Speaking interrupts the narration (barge-in).
 import { coreListenStart, coreListenStop, hasCoreListen } from "./coreVoice";
 import { interruptNarration } from "./narration";
+import { voiceDecision } from "./permissions";
 import { useStore } from "./store";
 
 interface RecognitionResultLike {
@@ -32,9 +33,6 @@ export const voiceSupported = hasCoreListen() || Ctor !== undefined;
 let rec: RecognitionLike | null = null;
 let finalText = "";
 
-const YES = /^(yes|yeah|yep|ok|okay|approve|approved|go ahead|do it|sure|confirm)\b/i;
-const NO = /^(no|nope|deny|cancel|stop|don't|do not|refuse)\b/i;
-
 /** Route a final transcript: answers a pending permission request by voice when allowed, else it is a message. */
 export function handleTranscript(text: string): void {
   const st = useStore.getState();
@@ -42,13 +40,13 @@ export function handleTranscript(text: string): void {
   if (!t) return;
   const perm = st.permission;
   if (perm) {
-    if (YES.test(t)) {
-      // The Core refuses voice approval of irreversible actions and says why; the Panel does not second-guess it.
-      st.send({ type: "permission.respond", request_id: perm.request_id, decision: "approve", via: "voice" });
+    const d = voiceDecision(t, perm);
+    if (d === "approve" || d === "deny") {
+      st.send({ type: "permission.respond", request_id: perm.request_id, decision: d, via: "voice" });
       return;
     }
-    if (NO.test(t)) {
-      st.send({ type: "permission.respond", request_id: perm.request_id, decision: "deny", via: "voice" });
+    if (d === "needs_click") {
+      note("This action needs a click: use the Approve button.");
       return;
     }
   }

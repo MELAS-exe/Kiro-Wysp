@@ -1,0 +1,1400 @@
+{
+  "expected": [
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 1
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n2",
+          "kind": "object",
+          "label": "L84",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 4
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L75",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 5
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 6
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [
+            "b"
+          ],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n8",
+          "kind": "object",
+          "label": "L86",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 7
+    },
+    {
+      "annotations": [
+        {
+          "id": "a3",
+          "provenance": "inferred",
+          "target": "n8",
+          "text": "note"
+        }
+      ],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [
+            "b"
+          ],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n8",
+          "kind": "object",
+          "label": "L86",
+          "order": null,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 8
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 9
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 10
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "done",
+          "target": null,
+          "text": "step 1"
+        }
+      ],
+      "version": 11
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n2",
+          "kind": "object",
+          "label": "L54",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L85",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n8",
+          "kind": "object",
+          "label": "L54",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 12
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "tree",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n2",
+          "kind": "object",
+          "label": "L54",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n9",
+          "kind": "object",
+          "label": "L85",
+          "order": null,
+          "props_view": [],
+          "provenance": "inferred",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 13
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "graph",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n2",
+          "kind": "object",
+          "label": "L54",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        },
+        {
+          "id": "s2",
+          "index": 2,
+          "status": "pending",
+          "target": "n2",
+          "text": "step 2"
+        }
+      ],
+      "version": 14
+    },
+    {
+      "annotations": [
+        {
+          "id": "a3",
+          "provenance": "inferred",
+          "target": "n2",
+          "text": "note"
+        }
+      ],
+      "edges": [],
+      "focus": [
+        "n2"
+      ],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n2",
+          "kind": "object",
+          "label": "L54",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        },
+        {
+          "id": "s2",
+          "index": 2,
+          "status": "pending",
+          "target": "n2",
+          "text": "step 2"
+        }
+      ],
+      "version": 15
+    },
+    {
+      "annotations": [
+        {
+          "id": "a3",
+          "provenance": "inferred",
+          "target": "n2",
+          "text": "note"
+        }
+      ],
+      "edges": [],
+      "focus": [
+        "n2"
+      ],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n2",
+          "kind": "object",
+          "label": "L54",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": null,
+          "text": "step 1"
+        },
+        {
+          "id": "s2",
+          "index": 2,
+          "status": "pending",
+          "target": "n2",
+          "text": "step 2"
+        }
+      ],
+      "version": 16
+    },
+    {
+      "annotations": [
+        {
+          "id": "a3",
+          "provenance": "inferred",
+          "target": "n2",
+          "text": "note"
+        }
+      ],
+      "edges": [],
+      "focus": [
+        "n2"
+      ],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n2",
+          "kind": "object",
+          "label": "L54",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 17
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [],
+      "stale": false,
+      "steps": [],
+      "version": 18
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 19
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 20
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 21
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "stack",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "L91",
+          "order": 5,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L89",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": true,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 22
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n1",
+          "kind": "object",
+          "label": "L91",
+          "order": 5,
+          "props_view": [],
+          "provenance": "illustrative",
+          "ref": null
+        },
+        {
+          "badges": [],
+          "confidence": 1.0,
+          "group": null,
+          "id": "n0",
+          "kind": "object",
+          "label": "L89",
+          "order": null,
+          "props_view": [],
+          "provenance": "observed",
+          "ref": null
+        }
+      ],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": null,
+          "text": "step 0"
+        }
+      ],
+      "version": 23
+    },
+    {
+      "annotations": [],
+      "edges": [],
+      "focus": [],
+      "layout": "sequence",
+      "nodes": [],
+      "stale": false,
+      "steps": [
+        {
+          "id": "s0",
+          "index": 0,
+          "status": "pending",
+          "target": "n0",
+          "text": "step 0"
+        },
+        {
+          "id": "s1",
+          "index": 1,
+          "status": "pending",
+          "target": "n1",
+          "text": "step 1"
+        },
+        {
+          "id": "s2",
+          "index": 2,
+          "status": "pending",
+          "target": null,
+          "text": "step 2"
+        }
+      ],
+      "version": 24
+    }
+  ],
+  "initial": {
+    "annotations": [],
+    "edges": [],
+    "focus": [],
+    "layout": "graph",
+    "nodes": [],
+    "stale": false,
+    "steps": [],
+    "version": 0
+  },
+  "name": "random_6",
+  "patches": [
+    {
+      "base_version": 0,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            }
+          ]
+        }
+      ],
+      "version": 1
+    },
+    {
+      "base_version": 1,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n2",
+            "kind": "object",
+            "label": "L84",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 2
+    },
+    {
+      "base_version": 2,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "layout": "sequence",
+          "op": "set_layout"
+        },
+        {
+          "id": "n2",
+          "op": "remove_node"
+        }
+      ],
+      "version": 3
+    },
+    {
+      "base_version": 3,
+      "ops": [
+        {
+          "id": "e6",
+          "op": "remove_edge"
+        },
+        {
+          "op": "set_stale",
+          "stale": false
+        }
+      ],
+      "version": 4
+    },
+    {
+      "base_version": 4,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n5",
+            "kind": "object",
+            "label": "L52",
+            "order": null,
+            "props_view": [],
+            "provenance": "observed",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "id": "n5",
+          "op": "remove_node"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n0",
+            "kind": "object",
+            "label": "L75",
+            "order": null,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 5
+    },
+    {
+      "base_version": 5,
+      "ops": [
+        {
+          "id": "n0",
+          "op": "remove_node"
+        },
+        {
+          "id": "e2",
+          "op": "remove_edge"
+        },
+        {
+          "id": "n0",
+          "op": "remove_node"
+        },
+        {
+          "layout": "graph",
+          "op": "set_layout"
+        }
+      ],
+      "version": 6
+    },
+    {
+      "base_version": 6,
+      "ops": [
+        {
+          "node": {
+            "badges": [
+              "b"
+            ],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n8",
+            "kind": "object",
+            "label": "L86",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 7
+    },
+    {
+      "base_version": 7,
+      "ops": [
+        {
+          "layout": "tree",
+          "op": "set_layout"
+        },
+        {
+          "annotation": {
+            "id": "a3",
+            "provenance": "inferred",
+            "target": "n8",
+            "text": "note"
+          },
+          "op": "add_annotation"
+        }
+      ],
+      "version": 8
+    },
+    {
+      "base_version": 8,
+      "ops": [
+        {
+          "id": "n8",
+          "op": "remove_node"
+        }
+      ],
+      "version": 9
+    },
+    {
+      "base_version": 9,
+      "ops": [
+        {
+          "id": "e2",
+          "op": "remove_edge"
+        }
+      ],
+      "version": 10
+    },
+    {
+      "base_version": 10,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        },
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "done"
+        }
+      ],
+      "version": 11
+    },
+    {
+      "base_version": 11,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n2",
+            "kind": "object",
+            "label": "L54",
+            "order": null,
+            "props_view": [],
+            "provenance": "observed",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            }
+          ]
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n9",
+            "kind": "object",
+            "label": "L85",
+            "order": null,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n8",
+            "kind": "object",
+            "label": "L54",
+            "order": null,
+            "props_view": [],
+            "provenance": "inferred",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 12
+    },
+    {
+      "base_version": 12,
+      "ops": [
+        {
+          "id": "n8",
+          "op": "remove_node"
+        }
+      ],
+      "version": 13
+    },
+    {
+      "base_version": 13,
+      "ops": [
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": null,
+              "text": "step 1"
+            },
+            {
+              "id": "s2",
+              "index": 2,
+              "status": "pending",
+              "target": "n2",
+              "text": "step 2"
+            }
+          ]
+        },
+        {
+          "layout": "graph",
+          "op": "set_layout"
+        },
+        {
+          "id": "n9",
+          "op": "remove_node"
+        }
+      ],
+      "version": 14
+    },
+    {
+      "base_version": 14,
+      "ops": [
+        {
+          "ids": [
+            "n2"
+          ],
+          "op": "set_focus"
+        },
+        {
+          "annotation": {
+            "id": "a3",
+            "provenance": "inferred",
+            "target": "n2",
+            "text": "note"
+          },
+          "op": "add_annotation"
+        },
+        {
+          "layout": "sequence",
+          "op": "set_layout"
+        },
+        {
+          "id": "e3",
+          "op": "remove_edge"
+        }
+      ],
+      "version": 15
+    },
+    {
+      "base_version": 15,
+      "ops": [
+        {
+          "layout": "sequence",
+          "op": "set_layout"
+        },
+        {
+          "ids": [
+            "n2"
+          ],
+          "op": "set_focus"
+        }
+      ],
+      "version": 16
+    },
+    {
+      "base_version": 16,
+      "ops": [
+        {
+          "ids": [
+            "n2"
+          ],
+          "op": "set_focus"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            }
+          ]
+        },
+        {
+          "layout": "stack",
+          "op": "set_layout"
+        }
+      ],
+      "version": 17
+    },
+    {
+      "base_version": 17,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n2",
+            "kind": "object",
+            "label": "L3",
+            "order": null,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "op": "set_steps",
+          "steps": []
+        },
+        {
+          "id": "n2",
+          "op": "remove_node"
+        }
+      ],
+      "version": 18
+    },
+    {
+      "base_version": 18,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": true
+        },
+        {
+          "id": "s1",
+          "op": "update_step",
+          "status": "pending"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": null,
+              "text": "step 0"
+            }
+          ]
+        }
+      ],
+      "version": 19
+    },
+    {
+      "base_version": 19,
+      "ops": [
+        {
+          "ids": [],
+          "op": "set_focus"
+        }
+      ],
+      "version": 20
+    },
+    {
+      "base_version": 20,
+      "ops": [
+        {
+          "id": "e5",
+          "op": "remove_edge"
+        }
+      ],
+      "version": 21
+    },
+    {
+      "base_version": 21,
+      "ops": [
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n1",
+            "kind": "object",
+            "label": "L91",
+            "order": 5,
+            "props_view": [],
+            "provenance": "illustrative",
+            "ref": null
+          },
+          "op": "add_node"
+        },
+        {
+          "node": {
+            "badges": [],
+            "confidence": 1.0,
+            "group": null,
+            "id": "n0",
+            "kind": "object",
+            "label": "L89",
+            "order": null,
+            "props_view": [],
+            "provenance": "observed",
+            "ref": null
+          },
+          "op": "add_node"
+        }
+      ],
+      "version": 22
+    },
+    {
+      "base_version": 22,
+      "ops": [
+        {
+          "op": "set_stale",
+          "stale": false
+        },
+        {
+          "layout": "sequence",
+          "op": "set_layout"
+        }
+      ],
+      "version": 23
+    },
+    {
+      "base_version": 23,
+      "ops": [
+        {
+          "op": "clear"
+        },
+        {
+          "id": "e1",
+          "op": "remove_edge"
+        },
+        {
+          "id": "n0",
+          "op": "remove_node"
+        },
+        {
+          "op": "set_steps",
+          "steps": [
+            {
+              "id": "s0",
+              "index": 0,
+              "status": "pending",
+              "target": "n0",
+              "text": "step 0"
+            },
+            {
+              "id": "s1",
+              "index": 1,
+              "status": "pending",
+              "target": "n1",
+              "text": "step 1"
+            },
+            {
+              "id": "s2",
+              "index": 2,
+              "status": "pending",
+              "target": null,
+              "text": "step 2"
+            }
+          ]
+        }
+      ],
+      "version": 24
+    }
+  ]
+}

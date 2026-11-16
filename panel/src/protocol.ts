@@ -104,6 +104,23 @@ export interface PermissionRequest {
   can_grant: boolean;
   timeout_s: number;
 }
+export interface LessonState {
+  lesson_id: string | null;
+  title: string | null;
+  status: "idle" | "running" | "done" | "stopped";
+  step: number;
+  total: number;
+}
+export interface ExerciseState {
+  exercise_id: string;
+  prompt: string;
+  skills: string[];
+  status: "active" | "passed" | "failed" | "declared";
+  attempts: number;
+  max_attempts: number;
+  hints_used: number;
+  hints_total: number;
+}
 export interface Evidence {
   id: string;
   type: "verified" | "answered" | "declared";
@@ -134,6 +151,8 @@ export type CoreMessage =
   | PermissionRequest
   | { type: "permission.resolved"; request_id: string; approved: boolean; by: string }
   | { type: "evidence.added"; evidence: Evidence; title: string; scope: string }
+  | ({ type: "lesson.update" } & LessonState)
+  | ({ type: "exercise.update" } & ExerciseState)
   | ({ type: "explore.state" } & ExploreState)
   | { type: "error"; code: string; message: string };
 

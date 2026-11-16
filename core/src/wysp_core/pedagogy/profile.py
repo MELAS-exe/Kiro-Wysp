@@ -108,6 +108,9 @@ def validate_profile(directory: Path) -> list[str]:
 
     if any(has_cycle(n, ()) for n in graph):
         problems.append("profile.yaml: skill prerequisites contain a cycle")
+    from .lessons import validate_lessons
+
+    problems += validate_lessons(directory, {str(i) for i in ids if i})
     if (directory / "concepts.yaml").exists():
         try:
             profile = load_profile(directory)

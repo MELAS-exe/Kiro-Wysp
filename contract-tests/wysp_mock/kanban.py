@@ -13,6 +13,7 @@ from typing import Any
 
 from wysp_adapter_sdk import ActionOutcome, AdapterRuntime, ErrorCode, WyspError
 
+MAX_ENTITIES = 500  # contract limit (CON-P10)
 BOARD = "mock://board/b1"
 COLUMNS = [("todo", "To do"), ("doing", "Doing"), ("done", "Done")]
 COLUMN_IDS = [c for c, _ in COLUMNS]
@@ -119,7 +120,10 @@ class MockKanban(AdapterRuntime):
                         "props": {"card_count": counts[cid]},
                     }
                 )
-            for card in sorted(self.cards.values(), key=lambda c: int(c["id"][1:])):
+            # CON-P10: stay within the contract's 500-entity limit; `counts` keeps the real totals
+            ordered = sorted(self.cards.values(), key=lambda c: int(c["id"][1:]))
+            shown = ordered[: MAX_ENTITIES - len(entities)]
+            for card in shown:
                 entities.append(
                     {
                         "ref": card_ref(card["id"]),
@@ -129,7 +133,8 @@ class MockKanban(AdapterRuntime):
                         "props": {"column": card["column"], "selected": card["id"] == self.selected},
                     }
                 )
-            focus = [card_ref(self.selected)] if self.selected in self.cards else []
+            shown_ids = {c["id"] for c in shown}
+            focus = [card_ref(self.selected)] if self.selected in shown_ids else []
             return {
                 "observation_id": uuid.uuid4().hex[:8],
                 "state_version": self.state_version(),
@@ -138,7 +143,7 @@ class MockKanban(AdapterRuntime):
                 "entities": entities,
                 "links": [],
                 "focus": focus,
-                "truncated": False,
+                "truncated": len(shown) < len(ordered),
                 "counts": {"card": len(self.cards), "column": len(COLUMNS), "board": 1},
             }
 
@@ -335,4 +340,4 @@ class MockKanban(AdapterRuntime):
         self.report_change(outcome.changed, origin="user")
         if action_id == "select_card":
             self.report_selection(outcome.changed)
-        self.report_user_action(action_id, outcome.changed[0] if outcome.changed else None, params)
+        self.report_user_action(action_id, outcome.changed[0] if outcome.changed else None, params, origin="user")

@@ -28,7 +28,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: A_ · _Gate: J0_
   - _Requirements: 5.3, 6.5_
 
-- [ ] 3.1 Write property test for digest invariance
+- [x] 3.1 Write property test for digest invariance
   - **Property CON-P4: Digest invariance**
   - **Validates: Requirement 6.5**
 
@@ -55,7 +55,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: A_ · _Gate: J0_
   - _Requirements: 12.1, 12.3, 1.2, 1.5, 6.1, 6.4, 6.7, 7.1, 7.4_
 
-- [ ] 6.1 Write stateful property tests on the mock adapter
+- [x] 6.1 Write stateful property tests on the mock adapter
   - Hypothesis `RuleBasedStateMachine` mixing execute, undo and simulated user actions
   - **Property CON-P5: Invalid calls do not change state**
   - **Property CON-P6: Undo round trip**
