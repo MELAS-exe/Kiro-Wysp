@@ -1,11 +1,12 @@
 {
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "schemas": {
     "action-call": "https://wysp.dev/schemas/1/action-call.schema.json",
     "action-result": "https://wysp.dev/schemas/1/action-result.schema.json",
     "action-spec": "https://wysp.dev/schemas/1/action-spec.schema.json",
     "context": "https://wysp.dev/schemas/1/context.schema.json",
     "entity": "https://wysp.dev/schemas/1/entity.schema.json",
+    "event-highlight-dismissed": "https://wysp.dev/schemas/1/event-highlight-dismissed.schema.json",
     "event-navigation": "https://wysp.dev/schemas/1/event-navigation.schema.json",
     "event-selection-changed": "https://wysp.dev/schemas/1/event-selection-changed.schema.json",
     "event-state-changed": "https://wysp.dev/schemas/1/event-state-changed.schema.json",

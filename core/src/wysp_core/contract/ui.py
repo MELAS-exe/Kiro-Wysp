@@ -3,7 +3,7 @@
 Core to Panel messages are plain JSON objects with a `type` field; see ui_api/hub.py for builders:
 session.state, adapters.list, status, activity, board.snapshot, board.patch, narration.segment,
 narration.cancel, clarification, permission.request, permission.resolved, evidence.added,
-chat.user, error.
+chat.user, explore.state, error.
 """
 
 from __future__ import annotations
@@ -79,6 +79,18 @@ class SettingsUpdate(_Msg):
     logging: Literal["off", "basic", "full"] | None = None
 
 
+class ExploreStart(_Msg):
+    """The user agrees to let Wysp map and study the project (nothing is read before this)."""
+
+    type: Literal["explore.start"]
+
+
+class ExploreStop(_Msg):
+    """The user declines the offer, or stops a running exploration."""
+
+    type: Literal["explore.stop"]
+
+
 UiInbound = Annotated[
     Union[  # noqa: UP007
         UserMessage,
@@ -93,6 +105,8 @@ UiInbound = Annotated[
         SnapshotRequest,
         UndoLast,
         SettingsUpdate,
+        ExploreStart,
+        ExploreStop,
     ],
     Field(discriminator="type"),
 ]

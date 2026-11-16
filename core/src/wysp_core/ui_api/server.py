@@ -13,6 +13,8 @@ from ..contract.ui import (
     AdapterActivate,
     BoardAskWhy,
     BoardSelect,
+    ExploreStart,
+    ExploreStop,
     NarrationCue,
     NarrationProgress,
     PermissionRespond,
@@ -32,6 +34,8 @@ log = logging.getLogger("wysp.ui")
 
 # High-frequency bookkeeping messages, already covered by narration telemetry.
 QUIET_UI_MESSAGES = {"narration.progress", "narration.cue", "board.snapshot_request"}
+# Messages that do not mean the user is using this Panel (bookkeeping, or a Panel catching up).
+PASSIVE_UI_MESSAGES = QUIET_UI_MESSAGES
 
 
 async def serve_ui(ws: WebSocket, session: Session, hub: UiHub, allowed_origins: set[str]) -> None:
@@ -55,6 +59,8 @@ async def serve_ui(ws: WebSocket, session: Session, hub: UiHub, allowed_origins:
             if msg.type not in QUIET_UI_MESSAGES:
                 # Who clicked what, from which window: makes "something pressed undo" traceable.
                 session.tm.emit("ui.message", full={"message": msg.model_dump()}, type=msg.type, client=client)
+            if msg.type not in PASSIVE_UI_MESSAGES:
+                hub.touch(ws)  # the user is here: this Panel speaks from now on
             await handle_ui_message(session, hub, ws, msg)
     except WebSocketDisconnect:
         pass
@@ -90,9 +96,11 @@ async def handle_ui_message(session: Session, hub: UiHub, ws, msg) -> None:
             await session.broadcast({"type": "chat.user", "text": f"Why “{node.label}”?", "source": "typed"})
             await session.user_message(question, "typed")
     elif isinstance(msg, NarrationProgress):
-        await session.on_narration_progress(msg.segment_id, msg.played)
+        if hub.is_speaker(ws):  # only the Panel that speaks drives the narration timeline
+            await session.on_narration_progress(msg.segment_id, msg.played)
     elif isinstance(msg, NarrationCue):
-        await session.on_narration_cue(msg.segment_id, msg.index)
+        if hub.is_speaker(ws):
+            await session.on_narration_cue(msg.segment_id, msg.index)
     elif isinstance(msg, AdapterActivate):
         await session.activate(msg.adapter_id)
     elif isinstance(msg, SnapshotRequest):
@@ -108,6 +116,11 @@ async def handle_ui_message(session: Session, hub: UiHub, ws, msg) -> None:
             await session.send_state()
         if msg.logging:
             await session.set_logging(msg.logging)
+    elif isinstance(msg, ExploreStart):
+        session.tm.emit("explore.accepted", phase=session.explorer.phase)
+        await session.explorer.start()
+    elif isinstance(msg, ExploreStop):
+        await session.explorer.stop()
 
 
 __all__ = ["handle_ui_message", "node_id", "serve_ui"]

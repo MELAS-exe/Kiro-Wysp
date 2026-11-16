@@ -1,0 +1,24 @@
+{
+  "$id": "https://wysp.dev/schemas/1/event-highlight-dismissed.schema.json",
+  "additionalProperties": false,
+  "description": "The user interacted with a persistent highlight and the adapter removed it (contract 1.1).",
+  "properties": {
+    "reason": {
+      "const": "user",
+      "default": "user",
+      "title": "Reason",
+      "type": "string"
+    },
+    "ref": {
+      "maxLength": 512,
+      "pattern": "^[a-z][a-z0-9+.-]*://.+$",
+      "title": "Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "ref"
+  ],
+  "title": "HighlightDismissed",
+  "type": "object"
+}

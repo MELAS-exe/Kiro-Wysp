@@ -60,7 +60,16 @@ class HighlightParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     ref: Ref
     style: Literal["pulse", "outline"] = "pulse"
-    duration_ms: int = Field(default=2500, ge=100, le=10000)
+    # 0 (contract 1.1): the highlight stays until cleared, replaced, dismissed by the user or the adapter disconnects.
+    duration_ms: int = Field(default=2500, ge=0, le=10000)
+
+
+class HighlightDismissed(BaseModel):
+    """The user interacted with a persistent highlight and the adapter removed it (contract 1.1)."""
+
+    model_config = ConfigDict(extra="forbid")
+    ref: Ref
+    reason: Literal["user"] = "user"
 
 
 class VerifyParams(BaseModel):

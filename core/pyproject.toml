@@ -22,7 +22,11 @@ dependencies = [
     "winrt-Windows.Media.Ocr==4!10.0.28000.2957; sys_platform == 'win32'",
     "winrt-Windows.Storage.Streams==4!10.0.28000.2957; sys_platform == 'win32'",
     "sounddevice==0.5.6",  # push-to-talk recording for /api/listen (bundles PortAudio on Windows)
+    "mcp==2.3.0",  # MCP server so Claude Code, kiro-cli... can drive the tutor (/mcp)
 ]
+
+[project.optional-dependencies]
+voice = ["kokoro-onnx>=0.4"]  # offline female voice (WYSP_TTS_PROVIDER=kokoro)
 
 [project.scripts]
 wysp = "wysp_core.cli:main"

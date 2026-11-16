@@ -23,7 +23,7 @@ async def test_handshake_health_and_initial_state(make_stack):
     s = await make_stack([])
     health = await _get_json(f"http://127.0.0.1:{s.port}/api/health")
     assert health["adapters"][0]["adapter_id"] == "mock-kanban"
-    assert health["contract_version"] == "1.0.0"
+    assert health["contract_version"] == "1.1.0"
     state = await s.ui.wait_for(lambda m: m.get("type") == "session.state")
     assert state["active_adapter"] == "mock-kanban"
     assert s.ui.of_type("board.snapshot")
@@ -103,6 +103,7 @@ async def test_do_action_requires_approval_then_verifies(make_stack):
     await s.ui.send(type="user.message", text="please move the demo card")
     req = await s.ui.wait_for(lambda m: m.get("type") == "permission.request")
     assert req["risk"] == "reversible" and req["voice_allowed"] is True
+    assert req["preview"] == {"from": "todo", "to": "doing"}, "a reversible change shows what it would do"
     assert s.mock.cards["c3"]["column"] == "todo", "nothing may run before approval"
     await s.ui.send(type="permission.respond", request_id=req["request_id"], decision="approve", via="click")
     ev = await s.ui.wait_for(lambda m: m.get("type") == "evidence.added")
@@ -644,3 +645,22 @@ async def test_one_narrate_call_builds_the_board_and_speaks(make_stack):
     await s.ui.send(type="narration.cue", segment_id=seg["id"], index=0)
     await s.ui.wait_for(lambda m: m.get("type") == "board.patch" and any(
         op.get("op") == "set_focus" and op.get("ids") == ["c:drag"] for op in m["patch"]["ops"]))  # fmt: skip
+
+
+async def test_prop_patches_carry_complete_nodes(make_stack):
+    """The Panel applies patches without the Core's models: a concept node must arrive with every field."""
+    s = await make_stack([])
+    result = await s.session.apply_board(
+        [
+            {
+                "op": "add_node",
+                "node": {"id": "c:s1", "ref": None, "kind": "step", "label": "Describe", "provenance": "illustrative"},
+            }
+        ]
+    )
+    assert result["ok"]
+    patch = (
+        await s.ui.wait_for(lambda m: m.get("type") == "board.patch" and m["patch"]["ops"][0]["op"] == "add_node")
+    )["patch"]
+    node = patch["ops"][0]["node"]
+    assert node["props_view"] == [] and node["badges"] == [] and node["group"] is None

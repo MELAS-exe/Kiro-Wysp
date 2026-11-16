@@ -30,7 +30,7 @@ def manifest() -> dict[str, Any]:
     return {
         "adapter_id": "mock-kanban",
         "app": {"name": "MockKanban", "version": "1.0"},
-        "contract_version": "1.0.0",
+        "contract_version": "1.1.0",
         "integration_level": "native",
         "ref_scheme": "mock",
         "capabilities": [
@@ -79,6 +79,9 @@ class MockKanban(AdapterRuntime):
         self._ids = itertools.count(1)
         self.cards: dict[str, dict[str, Any]] = {}
         self.selected: str | None = None
+        self.highlight_log: list[tuple[str, int]] = []  # (ref, duration_ms) of every highlight request
+        self.highlight_active: str | None = None  # the persistent highlight, if any
+        self.highlight_clears = 0
         if seed_cards:
             for title, col in (("Write the spec", "done"), ("Build the core", "doing"), ("Record the demo", "todo")):
                 self._add_card(title, col)
@@ -150,7 +153,21 @@ class MockKanban(AdapterRuntime):
 
     def highlight(self, ref: str, style: str, duration_ms: int) -> dict[str, Any]:
         self.last_highlight = ref
+        self.highlight_log.append((ref, duration_ms))
+        self.highlight_active = ref if duration_ms == 0 else None  # 0: persistent (contract 1.1)
         return {"ok": True}
+
+    def clear_highlight(self) -> dict[str, Any]:
+        cleared = self.highlight_active is not None
+        self.highlight_active = None
+        self.highlight_clears += 1
+        return {"cleared": cleared}
+
+    def simulate_user_touches_highlight(self) -> None:
+        """The user clicked the highlighted element: the adapter takes it down and says so."""
+        ref, self.highlight_active = self.highlight_active, None
+        if ref is not None:
+            self.report_highlight_dismissed(ref)
 
     # ------------------------------------------------------------------------------ actions
     def _register_actions(self) -> None:
@@ -236,6 +253,24 @@ class MockKanban(AdapterRuntime):
             ),  # fmt: skip
             self._archive_card,
         )
+        r(
+            _spec(
+                "describe_card",
+                "Describe a card",
+                "Read a card's title and column. Nothing changes.",
+                {"card": ref},
+                ["card"],
+                "read_only",
+                [],
+                [],
+            ),  # fmt: skip
+            self._describe_card,
+        )
+
+    def _describe_card(self, p: dict[str, Any], dry: bool) -> ActionOutcome:
+        with self._lock:
+            card = self._need_card(p["card"])
+            return ActionOutcome(message=f"{card['title']} is in {card['column']}")
 
     def _need_card(self, ref: str) -> dict[str, Any]:
         cid = ref.rsplit("/", 1)[-1]

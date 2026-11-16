@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
-from ..board import Board, BoardError, apply_ops, make_patch, node_id, project, validate_ops
+from ..board import Board, BoardError, apply_ops, make_patch, node_id, normalize_ops, project, validate_ops
 from ..contract import ActionCall, Observation, Scope, WyspError
 from ..gateway import AdapterConnection, AdapterRegistry
 from ..llm import CancelToken, LLMProvider
@@ -21,6 +21,9 @@ from ..telemetry import Telemetry
 from ..trust import AuditLog, PermissionGate, UndoStack
 from ..ui_api import UiHub
 from .bus import EventBus
+from .explore import Explorer
+from .inbox import UserInbox
+from .survey import SurveyRunner
 
 log = logging.getLogger("wysp.session")
 
@@ -29,6 +32,14 @@ REFRESH_DEBOUNCE_S = 0.4
 # and an adapter's own debounce delays the state events of the change.
 OWN_CHANGE_WINDOW_S = 1.5
 HISTORY_LIMIT = 12
+# How long a narration cue's highlight stays: about as long as the Panel takes to say the sentence.
+CUE_MS_PER_CHAR = 55
+CUE_MIN_MS = 2500
+CUE_MAX_MS = 10_000
+# A persistent highlight that nobody ended (the tutor forgot, the user walked away) goes away by itself.
+HIGHLIGHT_TTL_S = 600.0
+# With an adapter older than contract 1.1 the longest timed highlight is the best we can do (adapter-contract 8.6).
+LEGACY_LONG_HIGHLIGHT_MS = 10_000
 
 
 def _same_request(a: str | None, b: str | None) -> bool:
@@ -40,6 +51,14 @@ def _same_request(a: str | None, b: str | None) -> bool:
         return " ".join("".join(ch for ch in s.lower() if ch.isalnum() or ch.isspace()).split())
 
     return norm(a) == norm(b)
+
+
+@dataclass
+class ActiveHighlight:
+    """What Wysp is pointing at and has not taken down yet (persistent highlights only)."""
+
+    ref: str
+    adapter_id: str
 
 
 @dataclass
@@ -65,6 +84,7 @@ class Session:
         profile_roots: list[Path] | None = None,
         lang: str = "en",
         telemetry: Telemetry | None = None,
+        survey: bool = True,
     ) -> None:
         self.id = uuid.uuid4().hex[:10]
         self.tm = telemetry or Telemetry("off")
@@ -73,6 +93,10 @@ class Session:
         self.hub = hub
         self.audit = audit
         self.llm = llm
+        # External-agent mode: an AI agent connected through MCP does the thinking, the Core queues the user's words.
+        self.external = bool(getattr(llm, "external", False))
+        self.inbox = UserInbox()
+        self.agent_seen_at: float | None = None  # monotonic time of the agent's last MCP call
         self.lang = lang
         self.profile_roots = profile_roots or []
         self.profile: Profile | None = None
@@ -85,6 +109,8 @@ class Session:
         self.narration = NarrationState()
         self.first_segment_t: float | None = None
         self.history: list[dict[str, Any]] = []
+        self.survey = SurveyRunner(self, survey)
+        self.explorer = Explorer(self)
         self.status = "idle"
         self.active_adapter_id: str | None = None
         self._turn_task: asyncio.Task | None = None
@@ -93,6 +119,8 @@ class Session:
         self._own_changes = 0  # Wysp actions or undos in progress
         self._own_until = 0.0  # monotonic time until which events are attributed to Wysp
         self._tour_task: asyncio.Task | None = None
+        self.active_highlight: ActiveHighlight | None = None
+        self._highlight_ttl: asyncio.Task | None = None
         self.current_user_text: str | None = None  # text that started the current turn
         self.last_highlight_error: str | None = None
         self.last_highlight_result: dict[str, Any] = {}  # what the adapter said it pointed at
@@ -122,10 +150,15 @@ class Session:
         await self.send_state()
 
     def _on_new_active(self, conn: AdapterConnection) -> None:
+        if self.active_highlight is not None:  # the previous application stops pointing at things
+            asyncio.create_task(self.clear_highlight("switched"))
         self.profile = find_profile(conn.manifest.profile_id, self.profile_roots)
         self.observed_refs.clear()
         self.board_spec = None
         self.watch = None
+        self.survey.reset()
+        self.survey.start()
+        self.explorer.reset(self.profile)  # offers to explore the project when the profile says it can be explored
 
     # --------------------------------------------------------------------- broadcasting
     async def broadcast(self, message: dict[str, Any]) -> None:
@@ -160,6 +193,7 @@ class Session:
             {"type": "adapters.list", "adapters": self.registry.describe()},
             {"type": "status", "state": self.status},
             {"type": "board.snapshot", "board": self.board.model_dump(mode="json")},
+            self.explorer.state_message(),
         ]
 
     async def set_status(self, state: str) -> None:
@@ -177,6 +211,7 @@ class Session:
         if validate:
             ops, warnings = validate_ops(ops, self.observed_refs)
         try:
+            ops = normalize_ops(ops)  # full wire objects: the Panel applies patches without the models
             after = apply_ops(self.board, ops)
         except (BoardError, ValueError, KeyError) as exc:
             return {"ok": False, "error": str(exc)}
@@ -272,14 +307,19 @@ class Session:
         if cue.get("op") in ("focus", "highlight") and self.board.node(node):
             await self.apply_board([{"op": "set_focus", "ids": [node]}], validate=False)
         if cue.get("op") == "highlight":
-            await self.highlight_ref(target[2:] if target.startswith("n:") else target)
+            # A cue frames what the sentence is about while it is spoken: as long as the sentence lasts.
+            spoken_ms = int(len(seg.text) * CUE_MS_PER_CHAR)
+            await self.highlight_ref(
+                target[2:] if target.startswith("n:") else target,
+                duration_ms=min(CUE_MAX_MS, max(CUE_MIN_MS, spoken_ms)),
+            )
 
     def speech_vocabulary(self) -> list[str]:
         """Words speech recognition should expect: what is on the board, then the profile's terms."""
         labels = [n.label for n in self.board.nodes if n.provenance == "observed"]
         # Names seen in this session's observations (the last part of each ref, e.g. an object's name).
         labels += sorted({unquote(r.rstrip("/").rsplit("/", 1)[-1]) for r in self.observed_refs})[:40]
-        return labels + (self.profile.vocabulary() if self.profile else [])
+        return ["Wysp", *labels, *(self.profile.vocabulary() if self.profile else [])]
 
     def start_highlight_tour(self, refs: list[str], dwell_s: float = 3.0) -> None:
         """Point at each step target in turn (guided steps), replacing any tour still running."""
@@ -289,26 +329,70 @@ class Session:
 
     async def _highlight_tour(self, refs: list[str], dwell_s: float) -> None:
         try:
-            for i, ref in enumerate(dict.fromkeys(refs)):
+            targets = list(dict.fromkeys(refs))
+            for i, ref in enumerate(targets):
                 if i:
                     await asyncio.sleep(dwell_s)
-                await self.highlight_ref(ref, duration_ms=int(dwell_s * 1000))
+                # The last target stays highlighted: it is the one the user has to find and act on.
+                await self.highlight_ref(ref, duration_ms=int(dwell_s * 1000), persistent=i == len(targets) - 1)
         except asyncio.CancelledError:
             pass
 
-    async def highlight_ref(self, ref: str, style: str = "pulse", duration_ms: int = 2500) -> bool:
+    def _drop_highlight(self) -> None:
+        self.active_highlight = None
+        if self._highlight_ttl is not None and not self._highlight_ttl.done():
+            self._highlight_ttl.cancel()
+        self._highlight_ttl = None
+
+    async def clear_highlight(self, reason: str = "tutor") -> bool:
+        """Take the persistent highlight down (the tutor is done, the user moved on, the step is verified)."""
+        h = self.active_highlight
+        if h is None:
+            return False
+        self._drop_highlight()
+        conn = self.registry.get(h.adapter_id)
+        if conn is None or not conn.persistent_highlights:
+            return False
+        try:
+            cleared = await conn.clear_highlight()
+        except WyspError as exc:
+            log.debug("clear highlight failed: %s", exc.message)
+            cleared = False
+        self.tm.emit("highlight.cleared", reason=reason, cleared=cleared)
+        return cleared
+
+    async def _expire_highlight(self, h: ActiveHighlight) -> None:
+        try:
+            await asyncio.sleep(HIGHLIGHT_TTL_S)
+        except asyncio.CancelledError:
+            return
+        if self.active_highlight is h:
+            await self.clear_highlight("expired")
+
+    async def highlight_ref(
+        self, ref: str, style: str = "pulse", duration_ms: int = 2500, persistent: bool = False
+    ) -> bool:
+        """Point at something. `persistent`: it stays until cleared, replaced, or the user interacts with it."""
         conn = self.conn
         self.last_highlight_error = None
         self.last_highlight_result = {}
         if conn is None or not conn.manifest.has("highlight"):
             self.last_highlight_error = "the connected application cannot highlight"
             return False
+        keep = persistent and conn.persistent_highlights
+        if persistent:
+            duration_ms = 0 if keep else LEGACY_LONG_HIGHLIGHT_MS
         try:
             self.last_highlight_result = await conn.highlight(ref, style, duration_ms)
+            self._drop_highlight()  # at most one highlight is active: this one replaces the previous
+            if keep:
+                self.active_highlight = ActiveHighlight(ref, conn.adapter_id)
+                self._highlight_ttl = asyncio.create_task(self._expire_highlight(self.active_highlight))
             return True
         except WyspError as exc:
             log.debug("highlight failed: %s", exc.message)
             self.last_highlight_error = exc.message[:600]  # may list what is visible instead
+            self.tm.emit("highlight.failed", full={"ref": ref}, code=exc.code, error=exc.message[:200])
             return False
 
     # ---------------------------------------------------------------------------- turns
@@ -321,6 +405,9 @@ class Session:
             await self.narrate(f"I am still waiting for your approval: {pending[0].title}. Approve or deny it.")
             return
         await self.interrupt(quiet=True)
+        if self.external:
+            await self._queue_for_agent(text, source)
+            return
         from ..orchestrator import TurnRunner  # local import: orchestrator depends on Session
 
         self.current_user_text = text
@@ -328,6 +415,19 @@ class Session:
         self._cancel = CancelToken()
         runner = TurnRunner(self, self._cancel)
         self._turn_task = asyncio.create_task(runner.run(text), name="wysp-turn")
+
+    async def _queue_for_agent(self, text: str, source: str) -> None:
+        """External-agent mode: keep the user's words for the agent's next `wait_for_user` call."""
+        self.current_user_text = text
+        self.narration.new_turn()
+        self.first_segment_t = None
+        self.tm.emit("user.message", full={"text": text}, chars=len(text), source=source, external=True)
+        self.inbox.put("message", text=text, source=source)
+        await self.set_status("thinking")
+        if self.agent_seen_at is None:
+            await self.narrate(
+                "No AI assistant is connected yet. Connect one to the Wysp MCP endpoint, then ask me again."
+            )
 
     async def wait_for_turn(self) -> None:
         """Await the running turn (tests)."""
@@ -337,6 +437,8 @@ class Session:
     async def interrupt(self, quiet: bool = False) -> None:
         if not quiet:
             self.tm.emit("interrupt", status=self.status)
+            if self.external:
+                self.inbox.put("interrupt")
         if self._cancel is not None:
             self._cancel.cancel()
         self.gate.cancel_all()
@@ -351,6 +453,8 @@ class Session:
             await self.set_status("idle")
 
     async def resume(self) -> None:
+        if self.external:
+            self.inbox.put("continue")
         for seg in self.narration.resume():
             await self.broadcast(seg.to_message())
 
@@ -410,6 +514,8 @@ class Session:
             await self.send_state()
         elif topic == "adapter.disconnected":
             await self.send_state()
+            if self.active_highlight and self.active_highlight.adapter_id == event["adapter_id"]:
+                self._drop_highlight()  # the adapter takes its own highlight down when it goes
             if event["adapter_id"] == self.active_adapter_id:
                 await self.apply_board([{"op": "set_stale", "stale": True}], validate=False)
                 await self.activity(f"{event['adapter_id']} disconnected. The board may be out of date.")
@@ -420,8 +526,17 @@ class Session:
         conn = self.conn
         if conn is None or event["adapter_id"] != conn.adapter_id:
             return
+        if event["name"] == "highlight_dismissed":
+            # The user interacted with what Wysp pointed at: the adapter already took the highlight down.
+            self.tm.emit(
+                "highlight.dismissed", full={"ref": event["data"].get("ref")}, reason=event["data"].get("reason")
+            )
+            self._drop_highlight()
+            return
         if event["name"] not in ("state_changed", "selection_changed"):
             return
+        if event["name"] == "state_changed":
+            self.survey.mark_stale()
         # A selection change is always the user's doing unless the adapter says otherwise; guided
         # "select this" steps are verified from it.
         default_origin = "user" if event["name"] == "selection_changed" else "unknown"

@@ -21,6 +21,7 @@ from .errors import ErrorCode, WyspError
 from .events import (
     ExecuteParams,
     Heartbeat,
+    HighlightDismissed,
     HighlightParams,
     Navigation,
     ObserveParams,
@@ -52,6 +53,7 @@ __all__ = [
     "Heartbeat",
     "HelloParams",
     "HelloResult",
+    "HighlightDismissed",
     "HighlightParams",
     "Link",
     "Manifest",

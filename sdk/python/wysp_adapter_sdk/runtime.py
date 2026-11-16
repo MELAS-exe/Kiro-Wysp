@@ -159,6 +159,10 @@ class AdapterRuntime:
     def highlight(self, ref: str, style: str, duration_ms: int) -> dict[str, Any]:
         raise WyspError(ErrorCode.NOT_SUPPORTED, "highlight is not supported")
 
+    def clear_highlight(self) -> dict[str, Any]:
+        """Contract 1.1: remove the active persistent highlight. Return {"cleared": bool}."""
+        raise WyspError(ErrorCode.NOT_SUPPORTED, "clear_highlight is not supported")
+
     # --- routing ---------------------------------------------------------------------
     def handle(self, method: str, params: dict[str, Any]) -> Any:
         if method == "adapter.observe":
@@ -175,6 +179,8 @@ class AdapterRuntime:
                 return self.registry.undo(params["token"], self.bump)
         if method == "adapter.highlight":
             return self.highlight(params["ref"], params.get("style", "pulse"), int(params.get("duration_ms", 2500)))
+        if method == "adapter.clear_highlight":
+            return self.clear_highlight()
         raise WyspError(ErrorCode.METHOD_NOT_FOUND, f"unknown method {method}")
 
     # --- events ----------------------------------------------------------------------
@@ -189,6 +195,11 @@ class AdapterRuntime:
     def report_selection(self, focus: list[str]) -> None:
         if self.client is not None:
             self.client.notify("event.selection_changed", {"focus": focus})
+
+    def report_highlight_dismissed(self, ref: str) -> None:
+        """Contract 1.1: the user interacted with the persistent highlight and it was removed."""
+        if self.client is not None:
+            self.client.notify("event.highlight_dismissed", {"ref": ref, "reason": "user"})
 
     def report_user_action(self, kind: str, target: str | None, details: dict[str, Any] | None = None) -> None:
         if self.client is not None:

@@ -5,13 +5,14 @@ from __future__ import annotations
 import hmac
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import Route
 
 from . import __version__
 from .contract import CONTRACT_VERSION
@@ -21,6 +22,7 @@ from .listen import MAX_SECONDS as MAX_LISTEN_SECONDS
 from .listen import ListenError
 from .listen import from_env as listen_from_env
 from .llm import LLMProvider
+from .mcp_server import MCP_PATH, McpEndpoint
 from .ocr import MAX_IMAGE_BYTES, is_png
 from .ocr import from_env as ocr_from_env
 from .session.bus import EventBus
@@ -34,6 +36,17 @@ from .ui_api import UiHub
 from .ui_api.server import serve_ui
 
 log = logging.getLogger("wysp.app")
+
+
+class _PanelFiles(StaticFiles):
+    """The built Panel. Hashed assets may be cached; the HTML entry point never is, so an embedded browser
+    (an IDE tool window keeps its cache across sessions) always loads the current build."""
+
+    async def get_response(self, path: str, scope):  # type: ignore[no-untyped-def]
+        response = await super().get_response(path, scope)
+        if response.media_type == "text/html" or path in ("", ".", "index.html"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 def find_repo_root() -> Path:
@@ -52,7 +65,9 @@ class Config:
     panel_dist: Path | None = None
     profile_roots: list[Path] = field(default_factory=list)
     lang: str = "en"
+    survey: bool = field(default_factory=lambda: os.environ.get("WYSP_SURVEY", "on").strip().lower() != "off")
     log_level: str | None = None  # off | basic | full; None means the WYSP_LOG variable (default full)
+    mcp: bool = False  # serve /mcp (always on with the external provider)
 
     def allowed_origins(self) -> set[str]:
         own = {f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}"}
@@ -95,13 +110,17 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
         llm.telemetry = tm  # providers time their own requests
     registry = AdapterRegistry(bus, tm)
     audit = AuditLog(wysp_home() / "audit")
-    session = Session(registry, bus, hub, audit, llm, config.profile_roots, config.lang, tm)
+    session = Session(registry, bus, hub, audit, llm, config.profile_roots, config.lang, tm, config.survey)
     allowed = config.allowed_origins()
+    mcp = McpEndpoint(session, token, allowed) if (config.mcp or session.external) else None
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         session.start()
-        yield
+        async with AsyncExitStack() as stack:
+            if mcp is not None:
+                await stack.enter_async_context(mcp.running())
+            yield
         tm.emit("session.end")
         tm.close()
 
@@ -238,6 +257,7 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
                 "stt": getattr(app.state.listener, "name", None),
                 "adapters": registry.describe(),
                 "panels": hub.count,
+                "mcp": MCP_PATH if mcp is not None else None,
             }
         )
 
@@ -250,8 +270,12 @@ def create_app(config: Config, llm: LLMProvider) -> FastAPI:
         await serve_ui(ws, session, hub, allowed)
 
     dist = config.panel_dist
+    if mcp is not None:
+        # Before the Panel's catch-all mount below. The endpoint checks Origin and the pairing token itself.
+        app.router.routes.append(Route(MCP_PATH, endpoint=mcp))
+        app.state.mcp = mcp
     if dist is not None and dist.is_dir():
-        app.mount("/", StaticFiles(directory=dist, html=True), name="panel")
+        app.mount("/", _PanelFiles(directory=dist, html=True), name="panel")
     else:
 
         @app.get("/")

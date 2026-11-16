@@ -19,6 +19,7 @@ class Profile:
     skills: list[dict[str, Any]] = field(default_factory=list)
     concepts: dict[str, dict[str, Any]] = field(default_factory=dict)
     speech_hints: list[str] = field(default_factory=list)  # words speech recognition should expect
+    explore: dict[str, Any] = field(default_factory=dict)  # makes a project explorable (see session/explore.py)
     path: Path | None = None
 
     def vocabulary(self) -> list[str]:
@@ -59,6 +60,7 @@ def load_profile(directory: Path) -> Profile:
         skills=data.get("skills", []),
         concepts=concepts,
         speech_hints=[str(w) for w in data.get("speech_hints", []) or []],
+        explore=data.get("explore") or {},
         path=directory,
     )
 

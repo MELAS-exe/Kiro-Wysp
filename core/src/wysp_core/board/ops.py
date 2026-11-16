@@ -89,6 +89,27 @@ def apply_op(board: Board, op: dict[str, Any]) -> None:
         raise BoardError(f"unknown board op {kind!r}")
 
 
+def normalize_ops(ops: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return the ops with every node, edge, step and annotation in its full wire form (model defaults filled in).
+
+    Handlers write short dicts (a concept needs no `props_view`). The Panel applies patches without Pydantic,
+    so a patch must carry complete objects: otherwise it stores a node without `props_view` and fails to render.
+    """
+    out: list[dict[str, Any]] = []
+    for op in ops:
+        kind = op.get("op")
+        if kind == "add_node":
+            op = {**op, "node": BoardNode.model_validate(op["node"]).model_dump(mode="json")}
+        elif kind == "add_edge":
+            op = {**op, "edge": BoardEdge.model_validate(op["edge"]).model_dump(mode="json")}
+        elif kind == "add_annotation":
+            op = {**op, "annotation": Annotation.model_validate(op["annotation"]).model_dump(mode="json")}
+        elif kind == "set_steps":
+            op = {**op, "steps": [Step.model_validate(s).model_dump(mode="json") for s in op["steps"]]}
+        out.append(op)
+    return out
+
+
 def apply_ops(board: Board, ops: list[dict[str, Any]]) -> Board:
     """Apply ops in order and bump the version once. Raises BoardError and leaves `board` untouched."""
     work = board.model_copy(deep=True)

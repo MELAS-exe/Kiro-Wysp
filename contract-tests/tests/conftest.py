@@ -15,7 +15,7 @@ import pytest
 import uvicorn
 import websockets
 from wysp_core.app import Config, create_app
-from wysp_core.llm import ScriptedLLM
+from wysp_core.llm import ExternalLLM, ScriptedLLM
 from wysp_core.store import clear_registered
 from wysp_mock.cli import start_mock
 
@@ -70,7 +70,7 @@ class Stack:
     mock: Any
     client: Any
     ui: UiClient
-    llm: ScriptedLLM
+    llm: Any
 
     @property
     def audit(self):
@@ -78,12 +78,12 @@ class Stack:
 
 
 async def _start_stack(
-    tmp_path, monkeypatch, steps: list[dict[str, Any]], connect_mock: bool = True
+    tmp_path, monkeypatch, steps: list[dict[str, Any]], connect_mock: bool = True, external: bool = False
 ) -> tuple[Stack, Callable[[], Awaitable[None]]]:
     monkeypatch.setenv("WYSP_HOME", str(tmp_path))
     clear_registered()
     port = free_port()
-    llm = ScriptedLLM(steps)
+    llm = ExternalLLM() if external else ScriptedLLM(steps)
     app = create_app(Config(port=port), llm)
     server = uvicorn.Server(
         uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", timeout_graceful_shutdown=1)
@@ -125,8 +125,8 @@ async def make_stack(tmp_path, monkeypatch):
     """Factory fixture: `stack = await make_stack(scripted_steps)`. Everything is stopped afterwards."""
     stops: list[Callable[[], Awaitable[None]]] = []
 
-    async def factory(steps: list[dict[str, Any]], connect_mock: bool = True) -> Stack:
-        stack, stop = await _start_stack(tmp_path, monkeypatch, steps, connect_mock)
+    async def factory(steps: list[dict[str, Any]], connect_mock: bool = True, external: bool = False) -> Stack:
+        stack, stop = await _start_stack(tmp_path, monkeypatch, steps, connect_mock, external)
         stops.append(stop)
         return stack
 

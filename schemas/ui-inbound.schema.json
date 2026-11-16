@@ -60,6 +60,38 @@
       "title": "BoardSelect",
       "type": "object"
     },
+    "ExploreStart": {
+      "additionalProperties": false,
+      "description": "The user agrees to let Wysp map and study the project (nothing is read before this).",
+      "properties": {
+        "type": {
+          "const": "explore.start",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ExploreStart",
+      "type": "object"
+    },
+    "ExploreStop": {
+      "additionalProperties": false,
+      "description": "The user declines the offer, or stops a running exploration.",
+      "properties": {
+        "type": {
+          "const": "explore.stop",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ExploreStop",
+      "type": "object"
+    },
     "NarrationCue": {
       "additionalProperties": false,
       "properties": {
@@ -294,6 +326,8 @@
       "board.ask_why": "#/$defs/BoardAskWhy",
       "board.select": "#/$defs/BoardSelect",
       "board.snapshot_request": "#/$defs/SnapshotRequest",
+      "explore.start": "#/$defs/ExploreStart",
+      "explore.stop": "#/$defs/ExploreStop",
       "narration.cue": "#/$defs/NarrationCue",
       "narration.progress": "#/$defs/NarrationProgress",
       "permission.respond": "#/$defs/PermissionRespond",
@@ -341,6 +375,12 @@
     },
     {
       "$ref": "#/$defs/SettingsUpdate"
+    },
+    {
+      "$ref": "#/$defs/ExploreStart"
+    },
+    {
+      "$ref": "#/$defs/ExploreStop"
     }
   ]
 }

@@ -21,12 +21,14 @@ from ..contract import (
 from ..contract.rpc import (
     BUDGETS_S,
     METHOD_CAPABILITY,
+    METHOD_CLEAR_HIGHLIGHT,
     METHOD_EXECUTE,
     METHOD_GET_ACTIONS,
     METHOD_GET_CONTEXT,
     METHOD_HIGHLIGHT,
     METHOD_OBSERVE,
     METHOD_UNDO,
+    split_version,
 )
 
 # Extra time on top of the contract budgets, for the network hop and the host's dispatch pump.
@@ -140,3 +142,14 @@ class AdapterConnection:
     async def highlight(self, ref: str, style: str = "pulse", duration_ms: int = 2500) -> dict:
         result = await self.call(METHOD_HIGHLIGHT, {"ref": ref, "style": style, "duration_ms": duration_ms})
         return result if isinstance(result, dict) else {}
+
+    @property
+    def persistent_highlights(self) -> bool:
+        """Contract 1.1 or later: `duration_ms: 0`, `adapter.clear_highlight` and `event.highlight_dismissed`."""
+        major, minor = split_version(self.manifest.contract_version)[:2]
+        return (major, minor) >= (1, 1) and self.manifest.has("highlight")
+
+    async def clear_highlight(self) -> bool:
+        """Remove the active persistent highlight. Only for adapters that support them (see above)."""
+        result = await self.call(METHOD_CLEAR_HIGHLIGHT, {})
+        return bool(result.get("cleared")) if isinstance(result, dict) else False

@@ -18,6 +18,7 @@ from ..contract import (
     ErrorCode,
     HelloParams,
     HelloResult,
+    HighlightDismissed,
     Navigation,
     SelectionChanged,
     StateChanged,
@@ -39,6 +40,7 @@ EVENT_MODELS = {
     "event.selection_changed": ("selection_changed", SelectionChanged),
     "event.user_action": ("user_action", UserAction),
     "event.navigation": ("navigation", Navigation),
+    "event.highlight_dismissed": ("highlight_dismissed", HighlightDismissed),
 }
 
 

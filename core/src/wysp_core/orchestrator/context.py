@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
 MAX_FOCUS_ENTITIES = 20
+MAX_FACT_BLOCK = 4000  # the adapter already bounds its context to 8 KB; this is a second guard
 MAX_ENUM_SHOWN = 8
 
 
@@ -63,11 +64,29 @@ async def build_system_prompt(session: Session) -> str:
         if ctx.mode:
             data.append(f"Mode: {ctx.mode}")
         if ctx.facts:
-            data.append("Facts: " + json.dumps(ctx.facts, ensure_ascii=False)[:600])
+            # Long multi-line text facts (code, a selection) are shown whole in their own blocks: cutting the
+            # JSON line at 600 characters used to hide them. Everything else stays on the short Facts line.
+            blocks = {k: v for k, v in ctx.facts.items() if isinstance(v, str) and "\n" in v}
+            short = {k: v for k, v in ctx.facts.items() if k not in blocks}
+            data.append("Facts: " + json.dumps(short, ensure_ascii=False)[:600])
+            for key, text in blocks.items():
+                data.append(f"Fact {key} (verbatim, line numbers as in the file):\n{text[:MAX_FACT_BLOCK]}")
         if ctx.focus:
             data.append("Focus: " + ", ".join(ctx.focus))
     except WyspError as exc:
         data.append(f"(context unavailable: {exc.message})")
+    await session.survey.wait()  # a survey in progress gets a few seconds; after that the turn goes on without it
+    survey = session.survey.current
+    if survey is not None and survey.status != "failed" and survey.adapter_id == conn.adapter_id:
+        data.append(survey.render())
+    if session.explorer.has_content():
+        data.append(session.explorer.render())
+    elif session.explorer.phase == "offer":
+        data.append(
+            "The project can be explored (a code map and a study of the main files), and the user has not agreed yet. "
+            "The Panel offers it. Until they agree, you know only what the survey and your reads show: say so, and do "
+            "not describe code you have not read."
+        )
     try:
         obs = await session.observe(Scope(level="focus"))
         rows = []
@@ -80,6 +99,11 @@ async def build_system_prompt(session: Session) -> str:
             data.append("Entities near the focus:\n" + "\n".join(rows))
     except WyspError as exc:
         data.append(f"(observation unavailable: {exc.message})")
+    if session.active_highlight is not None:
+        data.append(
+            f"Highlighted in the application now: {session.active_highlight.ref} "
+            "(stays until the user interacts with it or you call clear_highlight)"
+        )
     if session.board.nodes:
         data.append("On the board now: " + ", ".join(f"{n.label} ({n.provenance})" for n in session.board.nodes[:20]))
     sections.append("<app_data>\n" + "\n".join(data) + "\n</app_data>")

@@ -160,13 +160,89 @@ TOOLS: dict[str, tuple[str | None, ToolSpec]] = {
             ),
         ),
     ),
+    "code_map": (
+        None,
+        ToolSpec(
+            "code_map",
+            "Read the project map the Core built (only after the user agreed to explore): folders, files, their classes "
+            "and signatures, what imports what. No ref: the project root. Give a folder or file ref to look inside it. "
+            "Names and signatures only, not code: read code with the application's read action.",
+            _obj({"ref": {"type": "string", "description": "Folder, file or project ref from the map"}}),
+        ),
+    ),
+    "get_study_plan": (
+        None,
+        ToolSpec(
+            "get_study_plan",
+            "The files to read first when studying the project, in order, with why. Only while a study is in progress.",
+            _obj({}),
+        ),
+    ),
+    "study_read": (
+        None,
+        ToolSpec(
+            "study_read",
+            "Study phase: read the files the Core picked (see get_study_plan), about 12 per call. Returns each file's "
+            "text (numbered lines, the start of the file) and `next_offset` when more of the plan remains: call again "
+            "with that offset until it is null, and never repeat a call. Use this instead of reading files one by one.",
+            _obj(
+                {
+                    "offset": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Where in the plan to start (default 0)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 30,
+                        "description": "How many files (default 12)",
+                    },
+                }
+            ),
+        ),
+    ),
+    "record_understanding": (
+        None,
+        ToolSpec(
+            "record_understanding",
+            "Write down what you learned from files you read (study phase). Only things you read; list the refs. "
+            "Files you did not read with a read action are marked unread.",
+            _obj(
+                {
+                    "topic": {"type": "string", "maxLength": 80},
+                    "summary": {"type": "string", "maxLength": 700},
+                    "files": {"type": "array", "items": {"type": "string"}, "maxItems": 12},
+                },
+                ["topic", "summary"],
+            ),
+        ),
+    ),
+    "finish_study": (
+        None,
+        ToolSpec(
+            "finish_study",
+            "End the study phase. `overview`: a short summary of how the project is organised, from what you read.",
+            _obj({"overview": {"type": "string", "maxLength": 700}}),
+        ),
+    ),
     "highlight": (
         "highlight",
         ToolSpec(
             "highlight",
             "Point at something inside the application itself: an entity ref from the observation, or an "
-            "interface element ref listed in the application description.",
+            "interface element ref listed in the application description. It STAYS highlighted until the user "
+            "interacts with it, you highlight something else, or you call clear_highlight.",
             _obj({"ref": {"type": "string"}}, ["ref"]),
+        ),
+    ),
+    "clear_highlight": (
+        "highlight",
+        ToolSpec(
+            "clear_highlight",
+            "Take down the highlight you left in the application: the user found it, the step is done, or the "
+            "conversation moved on. Does nothing when nothing is highlighted.",
+            _obj({}, []),
         ),
     ),
     "propose_action": (
@@ -410,7 +486,7 @@ class ToolBox:
         return out
 
     async def _t_highlight(self, a: dict[str, Any]) -> dict[str, Any]:
-        ok = await self.s.highlight_ref(str(a["ref"]))
+        ok = await self.s.highlight_ref(str(a["ref"]), persistent=True)
         if ok:
             # Only plain, short facts from the adapter (what was found, warnings), never arbitrary payloads.
             extra = {
@@ -420,6 +496,38 @@ class ToolBox:
             }
             return {"ok": True, **{k: (v[:200] if isinstance(v, str) else v) for k, v in extra.items()}}
         return {"ok": False, "error": self.s.last_highlight_error or "could not highlight that element"}
+
+    async def _t_clear_highlight(self, a: dict[str, Any]) -> dict[str, Any]:
+        return {"ok": True, "cleared": await self.s.clear_highlight("tutor")}
+
+    # ------------------------------------------------------------------------------------- exploration
+    async def _t_code_map(self, a: dict[str, Any]) -> dict[str, Any]:
+        ex = self.s.explorer
+        if ex.map is None:
+            return {
+                "ok": False,
+                "error": "the project has not been mapped: the user has to agree to the exploration first"
+                if ex.cfg
+                else "this application cannot be explored",
+            }
+        ref = str(a["ref"]) if a.get("ref") else None
+        return {"ok": True, "map": ex.map.describe(ref), "stats": ex.map.stats()}
+
+    async def _t_get_study_plan(self, a: dict[str, Any]) -> dict[str, Any]:
+        ex = self.s.explorer
+        if ex.map is None or ex.phase not in ("studying", "ready"):
+            return {"ok": False, "error": "no study in progress"}
+        return {"ok": True, "plan": ex.map.study_plan(), "already_read": ex.files_read()}
+
+    async def _t_study_read(self, a: dict[str, Any]) -> dict[str, Any]:
+        return await self.s.explorer.study_read(a.get("offset", 0) or 0, a.get("limit", 12) or 12)
+
+    async def _t_record_understanding(self, a: dict[str, Any]) -> dict[str, Any]:
+        files = [str(f) for f in (a.get("files") or []) if isinstance(f, str)]
+        return self.s.explorer.record(str(a.get("topic", "")), str(a.get("summary", "")), files)
+
+    async def _t_finish_study(self, a: dict[str, Any]) -> dict[str, Any]:
+        return await self.s.explorer.finish(str(a.get("overview", "")))
 
     async def _t_propose_action(self, a: dict[str, Any]) -> dict[str, Any]:
         await self.s.activity("Preparing an action…")

@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION = "1.1.0"
 
 # Methods, by direction. "A" = adapter to Core, "C" = Core to adapter.
 METHOD_HELLO = "wysp.hello"  # A -> C request
@@ -18,11 +18,13 @@ METHOD_GET_ACTIONS = "adapter.get_actions"
 METHOD_EXECUTE = "adapter.execute"
 METHOD_UNDO = "adapter.undo"
 METHOD_HIGHLIGHT = "adapter.highlight"
+METHOD_CLEAR_HIGHLIGHT = "adapter.clear_highlight"  # 1.1
 METHOD_VERIFY = "adapter.verify"
 EVENT_STATE_CHANGED = "event.state_changed"  # A -> C notifications
 EVENT_SELECTION_CHANGED = "event.selection_changed"
 EVENT_USER_ACTION = "event.user_action"
 EVENT_NAVIGATION = "event.navigation"
+EVENT_HIGHLIGHT_DISMISSED = "event.highlight_dismissed"  # 1.1
 
 # Time budgets in seconds for Core -> adapter requests.
 BUDGETS_S: dict[str, float] = {
@@ -32,6 +34,7 @@ BUDGETS_S: dict[str, float] = {
     METHOD_EXECUTE: 5.0,
     METHOD_UNDO: 5.0,
     METHOD_HIGHLIGHT: 0.5,
+    METHOD_CLEAR_HIGHLIGHT: 0.5,
     METHOD_VERIFY: 2.0,
 }
 
@@ -43,6 +46,7 @@ METHOD_CAPABILITY: dict[str, str] = {
     METHOD_EXECUTE: "execute",
     METHOD_UNDO: "undo",
     METHOD_HIGHLIGHT: "highlight",
+    METHOD_CLEAR_HIGHLIGHT: "highlight",
     METHOD_VERIFY: "verify.native",
 }
 

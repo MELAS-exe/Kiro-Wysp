@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("wysp.pipeline")
 
+MAX_OUTPUT_CHARS = 9000  # a read-only action's text; the adapter already bounds it (8,000 characters)
+
 TEMPLATE_RE = re.compile(r"\$\{(label:)?params\.([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
@@ -111,6 +113,8 @@ async def propose_action(session: Session, args: dict[str, Any]) -> dict[str, An
         return {"ok": False, "error": "invalid parameters", "problems": problems, "params_schema": spec.params_schema}
     if mode == "do" and not conn.manifest.has("execute"):
         mode = "guide"
+    if spec.risk == "read_only" and conn.manifest.has("execute"):
+        mode = "do"  # nothing to guide: the tutor just reads
     obs = await session.observe()
     if mode == "guide":
         return await _start_guide(session, conn, spec, params, obs)
@@ -193,6 +197,7 @@ async def close_watch_done_by_wysp(session: Session, conn: Any) -> None:
         return
     session.watch = None
     session.tm.emit("guide.done_by_wysp", action_id=watch.action_id)
+    await session.clear_highlight("step_done")
     session.audit.append("guide_closed", action_id=watch.action_id, by="wysp")
     await session.apply_board(
         [{"op": "update_step", "id": sid, "status": "done"} for sid in watch.step_ids], validate=False
@@ -215,6 +220,7 @@ async def check_watch(session: Session) -> None:
         return
     session.watch = None
     session.tm.emit("guide.verified", action_id=watch.action_id)
+    await session.clear_highlight("step_done")  # the user found it and did it: stop pointing
     await session.apply_board(
         [{"op": "update_step", "id": sid, "status": "done"} for sid in watch.step_ids], validate=False
     )
@@ -237,7 +243,8 @@ async def _do_action(
 ) -> dict[str, Any]:
     title = localized(spec.title, session.lang)
     preview = None
-    if spec.risk == "irreversible":
+    if spec.risk in ("reversible", "irreversible"):
+        # The dialog shows what would change (for a text edit: a diff) before the user decides.
         try:
             dry = await conn.execute(ActionCall(action_id=spec.id, params=params, request_id="preview", dry_run=True))
             preview = dry.preview
@@ -299,6 +306,10 @@ async def _execute_approved(
         session.undo.push(conn.adapter_id, UndoRecord(proposal.id, spec.id, title, result.undo_token))
 
     post = _postconditions(spec)
+    if spec.risk == "read_only":
+        # A read: its text is the answer. Nothing changed, so there is nothing to verify or to announce.
+        session.explorer.note_inspected(params, conn.manifest.ref_scheme)  # what the tutor has really read
+        return {"ok": True, "status": "done", "output": (result.message or "")[:MAX_OUTPUT_CHARS]}
     if not post:
         await close_watch_done_by_wysp(session, conn)
         await session.refresh_board()
@@ -336,6 +347,7 @@ async def _execute_approved(
             "changed": result.changed,
             "undo_available": bool(result.undo_token),
             "message": f"{title}: done and verified in the application.",
+            "detail": (result.message or "")[:500],
         }
     # Verification failed: undo when possible and report with the evidence.
     summary = check.failure_summary()

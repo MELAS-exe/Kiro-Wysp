@@ -38,6 +38,7 @@ def _models() -> dict[str, object]:
         "event-selection-changed": events.SelectionChanged,
         "event-user-action": events.UserAction,
         "event-navigation": events.Navigation,
+        "event-highlight-dismissed": events.HighlightDismissed,
         "params-observe": events.ObserveParams,
         "params-execute": events.ExecuteParams,
         "params-undo": events.UndoParams,

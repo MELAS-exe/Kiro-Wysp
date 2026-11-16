@@ -5,7 +5,7 @@
     "duration_ms": {
       "default": 2500,
       "maximum": 10000,
-      "minimum": 100,
+      "minimum": 0,
       "title": "Duration Ms",
       "type": "integer"
     },

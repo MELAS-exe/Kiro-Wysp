@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Everything here runs without Blender, IntelliJ, a browser or any LLM, STT or TTS provider:
+# the Core is tested against the mock adapter, the Blender adapter against a fake `bpy`.
+# The IntelliJ plugin builds against the locally installed IDE (no SDK download), so it is built and tested on
+# a developer machine: `apps/intellij-tutor/plugin/gradlew.bat buildPlugin test`.
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - run: uv sync --all-groups --frozen
+      - name: Lint and format
+        run: |
+          uv run --no-sync ruff check .
+          uv run --no-sync ruff format --check .
+      - name: Core boundary (no application vocabulary in core/)
+        run: uv run --no-project python scripts/kiro/hook.py boundaries
+      - name: Generated schemas are up to date
+        run: |
+          uv run --no-sync python -m wysp_core.contract.export
+          git diff --exit-code -- schemas
+      - name: Profiles are valid
+        run: |
+          uv run --no-sync wysp validate-profile apps/blender-tutor/profile
+          uv run --no-sync wysp validate-profile apps/intellij-tutor/profile
+      - name: Contract kit (offline fixtures of both tutors)
+        run: |
+          uv run --no-sync wysp-contract --tutor blender-tutor --offline
+          uv run --no-sync wysp-contract --tutor intellij-tutor --offline
+      - name: Tests
+        run: uv run --no-sync pytest -q -p no:cacheprovider
+
+  panel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w panel
+      - run: npm test -w panel
+      - run: npm run build -w panel

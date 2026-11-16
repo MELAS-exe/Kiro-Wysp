@@ -25,7 +25,7 @@ MAX_ROUNDS = 8
 HISTORY_LIMIT = 12
 LLM_RETRY_DELAY_S = 1.5
 # Tools whose result the model does not need to see before finishing its turn.
-DISPLAY_TOOLS = {"narrate", "show_entities", "add_concept", "annotate", "highlight"}
+DISPLAY_TOOLS = {"narrate", "show_entities", "add_concept", "annotate", "highlight", "clear_highlight"}
 GIST_CHARS = 280
 
 
