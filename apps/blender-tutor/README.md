@@ -50,6 +50,26 @@ Every action is declared in `adapter/actions/<id>.py`. The LLM can only *propose
 | `remove_modifier` | reversible | yes | Delete a modifier; undo recreates it with its settings and position |
 | `apply_modifier` | irreversible | no | Bake a modifier into the mesh; needs an explicit click and shows a preview |
 
+## Lessons
+
+Profile: `profile/lessons/`. The Core offers them through `learner_status`, `lesson` and the exercise tools.
+
+| Lesson id | Title | Exercises (verified on the observation, only the learner's own changes count) |
+|---|---|---|
+| `blender.scene.read` | Read the scene | `select_candle`, `select_pumpkin` (the object is in `focus`) |
+| `blender.modifiers.stack` | The modifier stack | `move_solidify_first` (Pumpkin's Solidify has `props.index == 0`) |
+| `blender.modifiers.bevel` | Round the edges with a Bevel | `bevel_segments` (a Bevel on the selected object has `props.segments == 3`) |
+
+Selecting an object changes the observation's `focus`, so the adapter bumps its state version on every selection change. The Core relies on that to tell a fresh observation from the one taken when the exercise started.
+
+## Live tests
+
+They run the real adapter in a headless Blender 5.2 (set `WYSP_BLENDER` if it is not in the default folder). `test_pedagogy_live.py` starts its own Core on a free port with a temporary `WYSP_HOME`, so a Core you already run is never touched.
+
+```powershell
+uv run pytest -m live -o addopts="" apps\blender-tutor\tests -q
+```
+
 ## Entities
 
 `scene`, `collection`, `object`, `modifier`, `material`, with refs such as `blender://object/Pumpkin` and `blender://object/Pumpkin/modifier/Subdivision` (names are percent-encoded).
@@ -109,7 +129,11 @@ The manifest declares `contract_version` 1.1.0, so the Core uses persistent high
 The extension opens a second connection to the Core's UI protocol (`/ws/ui`), so Blender is just another
 Panel: same messages as the browser Panel, no tutoring logic. The **Wysp** sidebar tab shows the conversation,
 permission prompts (always a click; irreversible actions show their preview), clarification choices and guided
-steps. **Open Board** shows the board as a node tree (`.Wysp Board`) in a new window; observed nodes are teal,
+steps. While a lesson runs, a compact card shows its title, "Step n of m" and progress; an active exercise adds
+its prompt, "Attempts a/b · hints c/d" and two buttons, **Hint** and **I'm done**, that send the same messages
+you could type. Evidence you only declared is labelled "Declared by you, not checked in the application".
+![Exercise card](../../docs/img/blender-panel-exercise.png)
+**Open Board** shows the board as a node tree (`.Wysp Board`) in a new window; observed nodes are teal,
 inferred ones say "likely", examples are grey. Clicking a node highlights it in the scene; **Why?** asks Wysp.
 The board tree is a view: it is rebuilt from the Core's board and removed before the file is saved.
 

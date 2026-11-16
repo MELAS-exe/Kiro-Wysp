@@ -129,3 +129,10 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - A new message dismisses an old clarification (Blender and browser Panels)
   - Primer: items inside a closed menu are not visible; the sidebar is never a target
   - _Owner: C_ · _Gate: J2_
+
+- [x] 21. Live check of the lessons and the exercise engine on real Blender 5.2
+  - `tests/test_pedagogy_live.py` (Core in-process + headless adapter, agent over `/mcp`, scripted learner in `tests/live_driver.py`): `learner_status`, `start_exercise`, evidence from a user change, Wysp's own changes never count (PED-P4), the `move_solidify_first` and `bevel_segments` predicates on real observations
+  - Fix: a selection change now bumps the adapter's state version and calls `on_focus_changed`; before, no "select X" exercise could pass (the Core saw no newer observation) and the persistent-highlight dismissal was never triggered
+  - Open (core, owner A): `ExerciseEngine.evaluate` only checks `own_change_total` on a claim; a later user-origin event passes an exercise that Wysp satisfied (xfail test `test_prop_ped_p4_a_later_user_change_does_not_credit_wysps_selection`)
+  - Done (task 22): the in-Blender panel shows the lesson and exercise card (`ui_state.py`, `ui_panel.py`), screenshots in `docs/img/blender-panel-exercise.png` and `-lesson.png`
+  - _Owner: C_ · _Gate: J2_

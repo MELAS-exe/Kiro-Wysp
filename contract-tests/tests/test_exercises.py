@@ -151,3 +151,18 @@ async def test_the_tools_are_offered_by_capability(make_stack):
     assert {"learner_status", "lesson", "exercise_hint", "declare_done", "start_exercise", "check_exercise"} <= names
     without = {t.name for t in tool_specs(set())}
     assert "start_exercise" not in without and "check_exercise" not in without and "lesson" in without
+
+
+async def test_a_later_user_change_does_not_credit_a_goal_wysp_reached(make_stack):
+    s, t, box = await _setup(make_stack, _exercise())
+    await box.call("start_exercise", {"exercise_id": "move_c3"})
+    s.session.begin_own_change()  # Wysp itself moves the card to the goal
+    s.mock.cards["c3"]["column"] = "doing"
+    s.mock.report_change([C3], origin="wysp")
+    s.session.end_own_change()
+    await asyncio.sleep(0.8)
+    before = t.learner.mastery("flow")
+    s.mock.simulate_user("move_card", {"card": C2, "column": "done"})  # an unrelated change by the learner
+    await asyncio.sleep(0.8)
+    assert t.learner.mastery("flow") == before and not s.ui.of_type("evidence.added")
+    assert t.engine.active.status == "active"

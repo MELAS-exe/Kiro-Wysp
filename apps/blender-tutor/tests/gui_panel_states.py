@@ -182,6 +182,55 @@ def s_diagram() -> None:
     )
 
 
+def s_lesson() -> None:
+    """Lesson in progress, no exercise yet."""
+    s_chat()
+    feed(
+        {
+            "type": "lesson.update",
+            "lesson_id": "blender-tutor.modifiers.bevel",
+            "title": "Round an edge with Bevel",
+            "status": "running",
+            "step": 2,
+            "total": 5,
+        }
+    )
+
+
+def s_exercise() -> None:
+    """Exercise card with a declared-evidence note in the conversation."""
+    reset()
+    state.add_user("I think I am done, please check.")
+    feed(
+        {
+            "type": "evidence.added",
+            "title": "Give the Bevel 3 segments",
+            "scope": "user_action",
+            "evidence": {"type": "declared", "outcomes": [{"ok": True}]},
+        },
+        seg(1, "Thanks. I cannot check that in Blender, so I count it as declared."),
+        {
+            "type": "lesson.update",
+            "lesson_id": "blender-tutor.modifiers.bevel",
+            "title": "Round an edge with Bevel",
+            "status": "running",
+            "step": 4,
+            "total": 5,
+        },
+        {
+            "type": "exercise.update",
+            "exercise_id": "bevel_segments",
+            "prompt": "Give the Candle's Bevel 3 segments.",
+            "skills": ["bevel_modifier"],
+            "status": "active",
+            "attempts": 1,
+            "max_attempts": 3,
+            "hints_used": 1,
+            "hints_total": 2,
+        },
+    )
+
+
 def s_menu() -> None:
     s_chat()
 
@@ -198,6 +247,8 @@ STATES = [
     ("continue", s_continue),
     ("approval", s_approval),
     ("diagram", s_diagram),
+    ("lesson", s_lesson),
+    ("exercise", s_exercise),
     ("offline", s_offline),
     ("menu", s_menu),  # last: the popover stays open until Blender quits
 ]

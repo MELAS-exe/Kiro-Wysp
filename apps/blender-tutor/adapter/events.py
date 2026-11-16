@@ -102,8 +102,13 @@ class SceneWatcher:
             self.adapter.report_change(changed)
             self._derive_user_actions(old, sig, entities)
         if focus != self._focus:
-            self._focus = focus
+            old_focus, self._focus = self._focus, focus
+            # The focus is part of an observation, so it must move the state version. Without this a
+            # pure selection leaves the version unchanged and the Core cannot tell a fresh observation
+            # from the one taken when an exercise started (no "select X" exercise could ever pass).
+            self.adapter.bump()
             self.adapter.report_selection(focus)
+            self.adapter.on_focus_changed(old_focus or [], focus)  # dismisses a persistent highlight
 
     def _derive_user_actions(self, old: dict, new: dict, entities: list[dict]) -> None:
         """Turn modifier-level diffs into user_action events (modifier_added / removed / moved)."""

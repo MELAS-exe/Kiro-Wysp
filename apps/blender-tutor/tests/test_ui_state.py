@@ -509,3 +509,67 @@ def test_permission_preview_lines() -> None:
     assert len(long[0]) == 45 and long[0].endswith("…")
     many = ui_state.preview_lines([str(i) for i in range(10)])
     assert many[-1] == "… 4 more" and len(many) == 7
+
+
+# ------------------------------------------------------------------ lesson and exercise card
+def _lesson(status: str = "running", step: int = 2, total: int = 5) -> dict:
+    return {"type": "lesson.update", "lesson_id": "l", "title": "Bevel", "status": status, "step": step, "total": total}
+
+
+def _exercise(status: str = "active", used: int = 0, total: int = 2) -> dict:
+    return {
+        "type": "exercise.update",
+        "exercise_id": "e",
+        "prompt": "Give the bevel 3 segments",
+        "skills": ["bevel_modifier"],
+        "status": status,
+        "attempts": 1,
+        "max_attempts": 3,
+        "hints_used": used,
+        "hints_total": total,
+    }
+
+
+def test_lesson_card_follows_lesson_and_exercise_updates() -> None:
+    s = ui_state.UiState()
+    assert not s.show_lesson_card
+    s.handle(_lesson())
+    assert s.show_lesson_card and s.lesson["step"] == 2 and s.lesson["total"] == 5
+    s.handle(_lesson("done"))  # only a running lesson is shown, like the browser Panel
+    assert s.lesson is None and not s.show_lesson_card
+    s.handle(_exercise())
+    assert s.show_lesson_card and s.active_exercise["prompt"].startswith("Give")
+    s.handle(_exercise("passed"))
+    assert s.active_exercise is None and not s.show_lesson_card
+
+
+def test_hint_button_disabled_when_hints_are_used_up() -> None:
+    s = ui_state.UiState()
+    s.handle(_exercise(used=1, total=2))
+    assert s.can_hint
+    s.handle(_exercise(used=2, total=2))
+    assert not s.can_hint
+
+
+def test_evidence_label_declared_is_not_a_verification() -> None:
+    s = ui_state.UiState()
+    ok = [{"ok": True}]
+    s.handle(
+        {
+            "type": "evidence.added",
+            "title": "t",
+            "scope": "user_action",
+            "evidence": {"type": "declared", "outcomes": ok},
+        }
+    )
+    s.handle(
+        {
+            "type": "evidence.added",
+            "title": "t",
+            "scope": "user_action",
+            "evidence": {"type": "verified", "outcomes": ok},
+        }
+    )
+    declared, verified = list(s.transcript)
+    assert s.evidence_label(declared) == "Declared by you, not checked in the application"
+    assert s.evidence_label(verified) == "Verified in Blender"

@@ -127,8 +127,12 @@ class ExerciseEngine:
             return None
         if origin != "user" and not claim:
             return None
-        if claim and own_total != a.own_at_start:
-            return Result("refused", "Wysp changed the application since the exercise began, so it cannot count.")
+        if own_total != a.own_at_start:
+            # Wysp acted since the exercise began: whoever changes things next, the result could be Wysp's work.
+            return Result(
+                "refused",
+                "Wysp changed the application since the exercise began, so it cannot count. Offer the exercise again.",
+            )
         if obs.state_version <= a.start_version:
             return Result("retry", "Nothing has changed in the application yet.") if claim else None
         try:

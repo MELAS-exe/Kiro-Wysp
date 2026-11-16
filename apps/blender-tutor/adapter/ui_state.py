@@ -160,6 +160,8 @@ class UiState:
         self.transcript: deque[dict[str, Any]] = deque(maxlen=MAX_TRANSCRIPT)
         self.permission: dict[str, Any] | None = None
         self.clarification: dict[str, Any] | None = None
+        self.lesson: dict[str, Any] | None = None  # only while status is "running", like the browser Panel
+        self.exercise: dict[str, Any] | None = None
         self.revision = 0  # bumped on every visible change; the UI redraws when it moves
         self.board_revision = 0  # bumped when the board changes; the node editor rebuilds then
         self._queue: deque[dict[str, Any]] = deque()  # segments waiting to be "played"
@@ -223,6 +225,29 @@ class UiState:
     def show_continue(self) -> bool:
         """Only when something was cancelled and Wysp is not working."""
         return not self.busy and self.has_cancelled
+
+    @property
+    def active_exercise(self) -> dict[str, Any] | None:
+        ex = self.exercise
+        return ex if ex and ex.get("status") == "active" else None
+
+    @property
+    def show_lesson_card(self) -> bool:
+        return self.lesson is not None or self.active_exercise is not None
+
+    @property
+    def can_hint(self) -> bool:
+        ex = self.active_exercise
+        return bool(ex) and ex.get("hints_used", 0) < ex.get("hints_total", 0)
+
+    @staticmethod
+    def evidence_label(item: dict[str, Any]) -> str:
+        """The note under the conversation for a piece of evidence (same wording as Chat.tsx)."""
+        if item.get("etype") == "declared":
+            return "Declared by you, not checked in the application"
+        if item.get("ok"):
+            return "Verified in Blender" if item.get("scope") == "user_action" else "Checked"
+        return "Could not be verified"
 
     @property
     def has_diagram(self) -> bool:
@@ -365,9 +390,15 @@ class UiState:
         elif t == "evidence.added":
             outcomes = (m.get("evidence") or {}).get("outcomes", [])
             ok = all(o.get("ok") for o in outcomes)
+            etype = str((m.get("evidence") or {}).get("type", ""))
             self.transcript.append(
-                {"kind": "evidence", "text": m.get("title", ""), "scope": m.get("scope", ""), "ok": ok}
+                {"kind": "evidence", "text": m.get("title", ""), "scope": m.get("scope", ""), "ok": ok, "etype": etype}
             )
+        elif t == "lesson.update":
+            lesson = {k: v for k, v in m.items() if k != "type"}
+            self.lesson = lesson if lesson.get("status") == "running" else None
+        elif t == "exercise.update":
+            self.exercise = {k: v for k, v in m.items() if k != "type"}
         elif t == "error":
             self.transcript.append({"kind": "note", "text": str(m.get("message", "")), "tone": "error"})
         else:

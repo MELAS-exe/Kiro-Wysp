@@ -671,6 +671,8 @@ def _item_lines(item: dict, context) -> float:
 def _around_lines(st: UiState) -> float:
     """Rough height, in text lines, of everything drawn above/below the conversation besides the composer."""
     extra = 0.0
+    if st.show_lesson_card:
+        extra += 3.0 + (7.0 if st.active_exercise else 0.0)
     if st.steps:
         extra += 1.5 + 1.3 * len(st.steps)
     if st.clarification:
@@ -708,15 +710,13 @@ def draw_transcript(layout, context, state: UiState) -> None:
             for line in _wrap(f"{marker}{it['text']}", context):
                 block.label(text=line)
         elif kind == "evidence":
-            label = (
-                ("Verified in Blender" if it.get("scope") == "user_action" else "Checked")
-                if it.get("ok")
-                else ("Could not be verified")
-            )
+            label = UiState.evidence_label(it)
+            declared = it.get("etype") == "declared"
             row = col.column(align=True)
             row.active = False
             for i, line in enumerate(_wrap(f"{label}: {it['text']}", context)):
-                row.label(text=line, icon=("CHECKMARK" if it.get("ok") else "CANCEL") if i == 0 else "BLANK1")
+                icon = "QUESTION" if declared else ("CHECKMARK" if it.get("ok") else "CANCEL")
+                row.label(text=line, icon=icon if i == 0 else "BLANK1")
         else:
             row = col.column(align=True)
             row.active = False
@@ -751,10 +751,44 @@ def draw_composer(layout, context, s: PanelSession) -> None:
     row.operator("wysp.send", text="", icon="TRIA_UP")
 
 
+def draw_lesson_card(layout, context, st: UiState) -> None:
+    """Lesson progress and the exercise Wysp is watching (mirrors ExerciseCard.tsx). Buttons only say what you could type."""
+    if not st.show_lesson_card:
+        return
+    box = layout.box()
+    lesson = st.lesson
+    if lesson:
+        head = box.row()
+        head.label(text=str(lesson.get("title") or "Lesson"), icon="BOOKMARKS")
+        step, total = int(lesson.get("step", 0)), int(lesson.get("total", 0))
+        dim = box.row()
+        dim.active = False
+        dim.label(text=f"Step {step} of {total}")
+        if total > 0:
+            box.progress(factor=min(1.0, step / total), type="BAR", text="")
+    ex = st.active_exercise
+    if ex:
+        _draw_text(box, str(ex.get("prompt", "")), context, "PINNED")
+        dim = box.column(align=True)
+        dim.active = False
+        for line in _wrap("Wysp checks it in Blender.", context):
+            dim.label(text=line)
+        dim.label(
+            text=f"Attempts {ex.get('attempts', 0)}/{ex.get('max_attempts', 0)} · "
+            f"hints {ex.get('hints_used', 0)}/{ex.get('hints_total', 0)}"
+        )
+        row = box.row(align=True)
+        hint = row.row(align=True)
+        hint.enabled = st.can_hint
+        hint.operator("wysp.say", text="Hint", icon="LIGHT").text = "Give me a hint."
+        row.operator("wysp.say", text="I'm done", icon="CHECKMARK").text = "I think I am done, please check."
+
+
 def draw_chat_body(layout, context, s: PanelSession) -> None:
     st = s.state
     if st.permission:
         draw_permission(layout, context, st.permission)
+    draw_lesson_card(layout, context, st)
     draw_steps(layout, context, st.steps)
     if st.is_empty and not st.busy and not st.permission:
         draw_hello(layout, "Ask about your scene", "Hold Alt+Space to talk")
