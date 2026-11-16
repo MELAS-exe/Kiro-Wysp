@@ -13,8 +13,9 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - _Owner: C_ · _Gate: J0 + 1 day (Thu 12 Nov)_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2_
 
-- [ ] 2.1 Write property test for main-thread confinement
+- [x] 2.1 Write property test for main-thread confinement
   - **Property BLD-P1: Main-thread confinement**
+  - `tests/test_prop_bld.py` (recording fake bpy, real threads)
   - **Validates: Requirement 2.1**
 
 - [x] 3. Implement observation and context
@@ -22,8 +23,9 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - _Owner: C_ · _Gate: J1 (Mon 16 Nov)_
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 3.1 Write property test for modifier projection
+- [x] 3.1 Write property test for modifier projection
   - **Property BLD-P3: Modifier projection is total**
+  - `tests/test_prop_bld.py` (random RNA layouts, fake) and `tests/test_prop_bld_live.py` (every modifier type in Blender 5.2)
   - **Validates: Requirement 3.2**
 
 - [x] 4. Implement the actions and the undo mechanism
@@ -31,8 +33,9 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - _Owner: C_ · _Gate: J1 (add_modifier, set_modifier_property, select_object first)_
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 2.3_
 
-- [ ] 4.1 Write property test for compensation undo
+- [x] 4.1 Write property test for compensation undo
   - **Property BLD-P2: Compensation undo**
+  - `tests/test_prop_bld_live.py` (Hypothesis inside headless Blender). Found and fixed: undo closures of `set_modifier_property` and `move_modifier` held a stale modifier after a remove + undo
   - **Validates: Requirement 4.3**
 
 - [x] 5. Implement events and origin tagging
@@ -40,9 +43,10 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - _Owner: C_ · _Gate: J1_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 5.1 Write property tests for events
+- [x] 5.1 Write property tests for events
   - **Property BLD-P4: Origin tagging**
   - **Property BLD-P5: Debounce**
+  - `tests/test_prop_bld.py`. Found and fixed: a user change right after a Wysp action was tagged `wysp` (0.6 s window); the adapter now flushes before and after each action
   - **Validates: Requirements 5.1, 5.4**
 
 - [x] 6. End-to-end in text mode (gate J1)
@@ -76,7 +80,7 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - _Owner: C_ · _Gate: J3_
   - _Requirements: 1.1, 4.1_
 
-- [ ] 12. Checkpoint: Blender tutor ready for recording
+- [x] 12. Checkpoint: Blender tutor ready for recording
   - Manual GUI checklist of design.md done on the demo machine
   - Ask the user if questions arise
 

@@ -1,0 +1,13 @@
+{
+  "schema": "action-result",
+  "payload": {
+    "status": "ok",
+    "state_version": 8,
+    "changed": [
+      "mock://card/c1"
+    ],
+    "undo_token": "u1",
+    "message": "moved",
+    "preview": null
+  }
+}

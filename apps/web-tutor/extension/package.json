@@ -17,6 +17,7 @@
     "@types/chrome": "*",
     "fast-check": "4.10.2",
     "happy-dom": "*",
+    "playwright-core": "^1.66.0-alpha-2026-11-09",
     "typescript": "7.0.2",
     "vite": "8.3.7",
     "vitest": "5.1.0",

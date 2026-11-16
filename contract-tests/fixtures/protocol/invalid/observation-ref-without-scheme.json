@@ -1,0 +1,33 @@
+{
+  "schema": "observation",
+  "payload": {
+    "observation_id": "o1",
+    "state_version": 7,
+    "captured_at": "2026-11-16T10:00:00Z",
+    "scope": {
+      "level": "full"
+    },
+    "entities": [
+      {
+        "ref": "not a ref",
+        "kind": "card",
+        "label": "x"
+      }
+    ],
+    "links": [
+      {
+        "from": "mock://card/c1",
+        "to": "mock://board/b1",
+        "kind": "belongs_to"
+      }
+    ],
+    "focus": [
+      "mock://card/c1"
+    ],
+    "truncated": false,
+    "counts": {
+      "card": 1,
+      "board": 1
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "action-spec",
+  "payload": {
+    "id": "move_card",
+    "title": {
+      "en": "Move a card"
+    },
+    "description": "Move a card to another column.",
+    "risk": "reversible",
+    "reversible": true,
+    "preconditions": [],
+    "postconditions": [
+      {
+        "ref": "${params.card}",
+        "path": "props.column",
+        "op": "eq",
+        "value": "${params.column}"
+      }
+    ],
+    "guide": {
+      "ui_path": [
+        {
+          "text": "Drag the card",
+          "target": "${params.card}"
+        }
+      ]
+    }
+  }
+}

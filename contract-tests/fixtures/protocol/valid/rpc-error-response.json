@@ -1,0 +1,14 @@
+{
+  "schema": "rpc-response",
+  "payload": {
+    "jsonrpc": "2.0",
+    "id": 4,
+    "error": {
+      "code": -32012,
+      "message": "no card mock://card/c99",
+      "data": {
+        "ref": "mock://card/c99"
+      }
+    }
+  }
+}

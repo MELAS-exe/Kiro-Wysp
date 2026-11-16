@@ -4,6 +4,8 @@
 //   URL fragment (#wysp_token=...). The fragment never reaches a server, and it is removed from the address at once.
 //   Speaking: the Core synthesises with the voices installed on the machine (POST /api/tts, no token needed).
 
+import { t } from "./i18n";
+
 let token: string | null = null;
 /** The application the host wants the tutor to look at (#wysp_adapter=web-tutor): a browser side panel asks for itself. */
 export let preferredAdapter: string | null = null;
@@ -37,9 +39,9 @@ async function errorText(r: Response, fallback: string): Promise<string> {
 export async function coreListenStart(): Promise<string | null> {
   try {
     const r = await post("/api/listen/start", { body: "{}", headers: { "Content-Type": "application/json" } });
-    return r.ok ? null : `Microphone: ${await errorText(r, `error ${r.status}`)}`;
+    return r.ok ? null : t("voice.micError", { error: await errorText(r, t("voice.httpError", { status: r.status })) });
   } catch {
-    return "Microphone: the Core is not reachable";
+    return t("voice.micUnreachable");
   }
 }
 
@@ -47,11 +49,11 @@ export async function coreListenStart(): Promise<string | null> {
 export async function coreListenStop(): Promise<{ text: string } | { error: string }> {
   try {
     const r = await post("/api/listen/stop", { body: "{}", headers: { "Content-Type": "application/json" } });
-    if (!r.ok) return { error: `Speech recognition: ${await errorText(r, `error ${r.status}`)}` };
+    if (!r.ok) return { error: t("voice.sttError", { error: await errorText(r, t("voice.httpError", { status: r.status })) }) };
     const j = (await r.json()) as { text?: string };
     return { text: (j.text ?? "").trim() };
   } catch {
-    return { error: "Speech recognition: the Core is not reachable" };
+    return { error: t("voice.sttUnreachable") };
   }
 }
 

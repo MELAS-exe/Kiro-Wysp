@@ -1,0 +1,8 @@
+{
+  "schema": "predicate",
+  "payload": {
+    "path": "label",
+    "op": "resembles",
+    "value": "x"
+  }
+}

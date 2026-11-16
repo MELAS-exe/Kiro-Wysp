@@ -1,6 +1,10 @@
 package dev.wysp.intellij
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.fileEditor.FileEditor
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.CaretEvent
@@ -25,12 +29,12 @@ import com.intellij.util.Alarm
  * `event.selection_changed`; document and file changes are debounced (300 ms) into `event.state_changed`,
  * tagged `wysp` when they happen within the origin window after a Wysp action.
  */
-class Events(private val project: Project, private val service: WyspService, parent: Disposable) {
+class Events(private val project: Project, private val service: WyspService, private val parent: Disposable) {
     private val selectionAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, parent)
     private val stateAlarm = Alarm(Alarm.ThreadToUse.POOLED_THREAD, parent)
-    private val dirty = LinkedHashSet<String>()
-    private var batchOrigin = "user"
-    private var lastFocus: List<String> = emptyList()
+    private val batch = ChangeBatch()
+    private val selection = SelectionTracker()
+    private val problemTracker = ProblemTracker()
     @Volatile private var wyspMoved = false
 
     init {
@@ -57,6 +61,12 @@ class Events(private val project: Project, private val service: WyspService, par
                 changed(vf)
             }
         }, parent)
+        project.messageBus.connect(parent).subscribe(
+            DaemonCodeAnalyzer.DAEMON_EVENT_TOPIC,
+            object : DaemonCodeAnalyzer.DaemonListener {
+                override fun daemonFinished(fileEditors: Collection<FileEditor>) = analysisFinished(fileEditors)
+            },
+        )
         // Indexing finished: symbols are skipped while the IDE indexes, so a survey taken then is incomplete.
         project.messageBus.connect(parent).subscribe(
             DumbService.DUMB_MODE,
@@ -90,9 +100,10 @@ class Events(private val project: Project, private val service: WyspService, par
             val ours = wyspMoved
             wyspMoved = false
             service.focusOf(project).thenAccept { focus ->
-                if (focus != lastFocus) {
-                    lastFocus = focus
-                    if (!ours) service.notify("event.selection_changed", mapOf("focus" to focus))
+                if (selection.onFocus(focus, ours)) {
+                    // A caret move is a change of state: advance the version, or "select X" exercises never pass.
+                    service.bump()
+                    service.notify("event.selection_changed", mapOf("focus" to focus))
                 }
             }
         }, DEBOUNCE_MS)
@@ -103,24 +114,35 @@ class Events(private val project: Project, private val service: WyspService, par
         val path = Observer(project).relPath(vf) ?: return // outside the project: not our state
         if (Observer.isNoise(path)) return // IDE settings and build output change on their own
         val origin = service.origin.current()
-        synchronized(dirty) {
-            dirty += if (vf.isDirectory) Refs.dir(path) else Refs.file(path)
-            if (origin == "wysp") batchOrigin = "wysp"
-        }
-        stateAlarm.cancelAllRequests()
-        stateAlarm.addRequest({ flush() }, DEBOUNCE_MS)
+        markChanged(if (vf.isDirectory) Refs.dir(path) else Refs.file(path), origin)
     }
 
-    private fun flush() {
-        val (changed, origin) = synchronized(dirty) {
-            val c = dirty.take(50)
-            val o = batchOrigin
-            dirty.clear()
-            batchOrigin = "user"
-            c to o
-        }
-        if (changed.isEmpty()) return
-        service.notify("event.state_changed", mapOf("state_version" to service.bump(), "changed" to changed, "origin" to origin))
+    private fun markChanged(ref: String, origin: String) {
+        batch.add(ref, origin)?.let { send(it) } // another origin: the pending batch goes out on its own
+        stateAlarm.cancelAllRequests()
+        stateAlarm.addRequest({ batch.take()?.let { send(it) } }, DEBOUNCE_MS)
+    }
+
+    private fun send(b: ChangeBatch.Batch) {
+        service.notify("event.state_changed", mapOf("state_version" to service.bump(), "changed" to b.changed, "origin" to b.origin))
+    }
+
+    /** The IDE finished analysing: if the problems of a file changed, say so (the edit event came before the analysis). */
+    private fun analysisFinished(editors: Collection<FileEditor>) {
+        if (!service.connected || project.isDisposed) return
+        val files = editors.mapNotNull { it.file }.distinct()
+        if (files.isEmpty()) return
+        ReadAction.nonBlocking<Unit> {
+            val observer = Observer(project)
+            for (vf in files) {
+                val path = observer.relPath(vf) ?: continue
+                if (Observer.isNoise(path) || Privacy.isSensitivePath(path)) continue
+                val doc = FileDocumentManager.getInstance().getCachedDocument(vf) ?: continue
+                if (problemTracker.changed(path, observer.problemSignature(doc))) {
+                    markChanged(Refs.file(path), service.origin.current())
+                }
+            }
+        }.expireWith(parent).submit(AppExecutorUtil.getAppExecutorService())
     }
 
     companion object {

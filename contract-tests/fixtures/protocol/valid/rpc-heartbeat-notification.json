@@ -1,0 +1,10 @@
+{
+  "schema": "rpc-request",
+  "payload": {
+    "jsonrpc": "2.0",
+    "method": "wysp.heartbeat",
+    "params": {
+      "state_version": 9
+    }
+  }
+}

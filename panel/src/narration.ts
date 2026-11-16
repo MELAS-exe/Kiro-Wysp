@@ -35,6 +35,7 @@ function stopAudio(): void {
 export function stopSpeech(): void {
   clearTimers();
   playing = false;
+  synthesizing = false;
   prefetched.clear();
   stopAudio();
   if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
@@ -51,7 +52,6 @@ export function interruptNarration(): void {
 function finish(seg: Segment): void {
   clearTimers();
   playing = false;
-  prefetched.clear();
   stopAudio();
   const st = useStore.getState();
   st.markSegment(seg.id, "played");
@@ -61,15 +61,19 @@ function finish(seg: Segment): void {
   pump();
 }
 
-// Neural synthesis takes about as long as the speech lasts: start on queued segments while the current one plays.
+// Neural synthesis takes about as long as the speech lasts, so the next sentence is synthesised while the current one
+// plays. Never more than that: one synthesis ahead, for the next queued speakable segment only, and only once the
+// current segment's own synthesis is done (a long queue would otherwise delay the sentence that is about to play).
 let neuralCore = false;
 void coreHasNeuralVoice().then((v) => (neuralCore = v));
 const prefetched = new Map<string, Promise<Blob | null>>();
+let synthesizing = false; // the segment being played is still waiting for its own audio
 function prefetch(lang: string): void {
-  if (!neuralCore) return;
-  for (const seg of useStore.getState().queue) {
-    if (!prefetched.has(seg.id) && seg.speaker !== false) prefetched.set(seg.id, coreSpeak(seg.text, lang));
-  }
+  const st = useStore.getState();
+  const next = st.queue.find((s) => s.speaker !== false);
+  for (const id of [...prefetched.keys()]) if (id !== next?.id) prefetched.delete(id); // cancelled or no longer next
+  if (!neuralCore || !playing || synthesizing || !st.voiceOn || !next || prefetched.has(next.id)) return;
+  prefetched.set(next.id, coreSpeak(next.text, lang));
 }
 
 /** The Core's local voice: used when the browser has no speech voices (the IDE's embedded browser). */
@@ -78,8 +82,11 @@ function speakViaCore(seg: Segment, lang: string, duration: number): void {
   timer = setTimeout(() => playing && playingId === seg.id && finish(seg), duration * 2.5 + 6000);
   const pending = prefetched.get(seg.id) ?? coreSpeak(seg.text, lang);
   prefetched.delete(seg.id);
+  synthesizing = true;
   void pending.then((blob) => {
     if (!playing || playingId !== seg.id) return; // interrupted meanwhile
+    synthesizing = false;
+    prefetch(lang); // the next sentence starts synthesising while this one is spoken
     if (!blob) {
       clearTimers();
       timer = setTimeout(() => finish(seg), duration); // no voice on this machine: the caption stands alone
@@ -97,6 +104,7 @@ function speakViaCore(seg: Segment, lang: string, duration: number): void {
 function play(seg: Segment): void {
   const st = useStore.getState();
   playing = true;
+  synthesizing = false;
   playingId = seg.id;
   st.setCurrent(seg);
   st.markSegment(seg.id, "playing");
@@ -129,9 +137,12 @@ function play(seg: Segment): void {
   }
 }
 
+let popping = false; // the player itself took the head of the queue: its prefetched audio is about to be used
 function pump(): void {
   if (playing) return;
+  popping = true;
   const next = useStore.getState().popQueue();
+  popping = false;
   if (next) play(next);
 }
 
@@ -141,6 +152,8 @@ export function startNarrationPlayer(): () => void {
     if (s.queue.length > prev.queue.length) {
       pump();
       prefetch(useStore.getState().session?.lang ?? "en");
+    } else if (s.queue.length < prev.queue.length && !popping) {
+      prefetch(useStore.getState().session?.lang ?? "en"); // a cancel or a pop: drop prefetched audio that is no longer next
     }
     if (prev.current && !s.current && !playing) return;
     // The store cleared the current segment (cancel): stop audio and timers at once.

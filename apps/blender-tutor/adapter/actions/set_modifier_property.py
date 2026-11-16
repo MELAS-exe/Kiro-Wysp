@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import bpy
 from wysp_adapter_sdk import ActionOutcome, ErrorCode, WyspError
 
 from ..rna_props import check_and_coerce, settable_properties
@@ -61,7 +62,14 @@ def run(p: dict, dry: bool) -> ActionOutcome:
     except (TypeError, ValueError, OverflowError, RuntimeError) as exc:
         raise WyspError(ErrorCode.PRECONDITION_FAILED, f"Blender refused {pid}={value!r}: {exc}") from exc
 
+    obj_name, mod_name = obj.name, mod.name
+
     def undo() -> None:
-        setattr(mod, pid, before)
+        # Look the modifier up again: the one captured above may have been removed and recreated since
+        # (undoing a remove_modifier makes a new modifier), and a stale reference must never be written to.
+        o = bpy.data.objects.get(obj_name)
+        m = o.modifiers.get(mod_name) if o else None
+        if m is not None:
+            setattr(m, pid, before)
 
     return ActionOutcome(changed=[p["target"]], undo=undo, message=f"{mod.name}.{pid}: {before} → {getattr(mod, pid)}")

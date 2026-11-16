@@ -1,7 +1,9 @@
 // Panel state. Components only render this store and send protocol messages: no tutoring logic here.
 import { create } from "zustand";
 import { applyPatch, emptyBoard } from "./board/applyOps";
+import { setSessionLang } from "./i18n";
 import { preferredAdapter } from "./coreVoice";
+import { applyMode, loadMode, type LayoutMode } from "./layoutMode";
 import { CoreSocket, coreUrl } from "./protocol";
 import type { AdapterInfo, Board, CoreMessage, ExerciseState, ExploreState, LessonState, LogLevel, PanelMessage, PermissionRequest, Segment } from "./protocol";
 
@@ -46,6 +48,7 @@ interface PanelState {
   // One thing fills the panel at a time: the conversation or the diagram.
   view: "chat" | "board";
   explore: ExploreState | null;
+  mode: LayoutMode;
 
   handle: (m: CoreMessage) => void;
   send: (m: PanelMessage) => boolean;
@@ -58,6 +61,7 @@ interface PanelState {
   addUser: (text: string, source: string) => void;
   setSelected: (id: string | null) => void;
   setView: (v: "chat" | "board") => void;
+  setMode: (m: LayoutMode) => void;
   dismissPermission: () => void;
   dismissClarification: () => void;
 }
@@ -87,6 +91,7 @@ export const useStore = create<PanelState>((set, get) => ({
   selectedNode: null,
   view: "chat",
   explore: null,
+  mode: "side",
 
   send: (m) => socket?.send(m) ?? false,
   setVoiceOn: (on) => set({ voiceOn: on }),
@@ -114,12 +119,17 @@ export const useStore = create<PanelState>((set, get) => ({
     set((s) => ({ clarification: null, transcript: [...s.transcript, { kind: "user", id: nextId("u"), text, source }] })),
   setSelected: (id) => set({ selectedNode: id }),
   setView: (view) => set({ view }),
+  setMode: (mode) => {
+    applyMode(mode);
+    set({ mode });
+  },
   dismissPermission: () => set({ permission: null }),
   dismissClarification: () => set({ clarification: null }),
 
   handle: (m) => {
     switch (m.type) {
       case "session.state":
+        setSessionLang(m.lang);
         set({
           session: {
             session_id: m.session_id,
@@ -217,6 +227,7 @@ export const useStore = create<PanelState>((set, get) => ({
 }));
 
 export function connect(): () => void {
+  useStore.getState().setMode(loadMode());
   const { handle } = useStore.getState();
   socket = new CoreSocket(
     coreUrl(),

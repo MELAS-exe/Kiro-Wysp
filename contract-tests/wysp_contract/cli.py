@@ -2,6 +2,7 @@
 
     wysp-contract --tutor blender-tutor --offline     validate the fixture (fast, no application launched)
     wysp-contract --tutor blender-tutor               full run against the real adapter (not implemented yet)
+    wysp-contract --mock                              observation property checks on the in-process mock adapter
 
 The online harness is adapter-contract task 9. Until then the live checks of the Blender adapter are
 run by apps/blender-tutor/tests/test_blender_live.py (headless Blender).
@@ -38,11 +39,36 @@ def validate_fixture(path: Path) -> list[str]:
     return problems
 
 
+MOCK_SAFE_CALLS = [
+    {"action_id": "create_card", "params": {"title": "Kit card", "column": "todo"}},
+    {"action_id": "select_card", "params": {"card": "mock://card/c1"}},
+]
+
+
+def run_mock() -> int:
+    """Run the observation property checks (CON-P2, P3, P7, P10) on the in-process mock adapter."""
+    from wysp_core.contract import Manifest
+    from wysp_mock.kanban import MockKanban, manifest
+
+    from .checks import run_observation_checks
+
+    mock = MockKanban()
+    findings = run_observation_checks(mock.handle, Manifest.model_validate(manifest()), MOCK_SAFE_CALLS)
+    for f in findings:
+        print(f, file=sys.stderr if not f.ok else sys.stdout)
+    return 0 if all(f.ok for f in findings) else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="wysp-contract")
-    parser.add_argument("--tutor", required=True)
+    parser.add_argument("--tutor")
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--mock", action="store_true", help="run the observation checks on the in-process mock")
     args = parser.parse_args(argv)
+    if args.mock:
+        return run_mock()
+    if not args.tutor:
+        parser.error("--tutor is required unless --mock is given")
     fixture = REPO / "apps" / args.tutor / "contract.fixture.yaml"
     if not fixture.exists():
         print(f"no fixture at {fixture}", file=sys.stderr)

@@ -251,6 +251,9 @@ async function forward(message: CsToSw): Promise<void> {
       });
       break;
     case "selection_changed":
+      // A focus-only change is a state change too: exercises such as "click the Region drop-down" only pass
+      // when state_version advanced, so bump it before the Core re-reads the page.
+      await bumpVersion();
       client.notify("event.selection_changed", { focus: message.focus });
       break;
     case "user_action":
@@ -270,33 +273,38 @@ async function forward(message: CsToSw): Promise<void> {
   }
 }
 
-chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
-  if (
-    sender.id !== chrome.runtime.id ||
-    !sender.tab ||
-    typeof message !== "object" ||
-    message === null
-  )
-    return false;
-  // Events and panel requests only count from allowlisted pages (the content script checks too).
-  if (!originAllowed(sender.tab.url, config.allowlist)) return false;
-  if ("wyspUi" in message) {
-    // The launcher click is a user gesture: sidePanel.open must be the first thing done here (no await before it).
-    const tabId = sender.tab.id;
-    if ((message as { wyspUi?: unknown }).wyspUi !== "open_panel" || tabId === undefined) {
-      sendResponse({ ok: false });
+chrome.runtime.onMessage.addListener(
+  (message: unknown, sender, sendResponse) => {
+    if (
+      sender.id !== chrome.runtime.id ||
+      !sender.tab ||
+      typeof message !== "object" ||
+      message === null
+    )
       return false;
+    // Events and panel requests only count from allowlisted pages (the content script checks too).
+    if (!originAllowed(sender.tab.url, config.allowlist)) return false;
+    if ("wyspUi" in message) {
+      // The launcher click is a user gesture: sidePanel.open must be the first thing done here (no await before it).
+      const tabId = sender.tab.id;
+      if (
+        (message as { wyspUi?: unknown }).wyspUi !== "open_panel" ||
+        tabId === undefined
+      ) {
+        sendResponse({ ok: false });
+        return false;
+      }
+      chrome.sidePanel.open({ tabId }).then(
+        () => sendResponse({ ok: true }),
+        () => sendResponse({ ok: false }),
+      );
+      return true; // the response is sent asynchronously
     }
-    chrome.sidePanel.open({ tabId }).then(
-      () => sendResponse({ ok: true }),
-      () => sendResponse({ ok: false }),
-    );
-    return true; // the response is sent asynchronously
-  }
-  if (!("wyspEvent" in message)) return false;
-  void forward(message as CsToSw);
-  return false;
-});
+    if (!("wyspEvent" in message)) return false;
+    void forward(message as CsToSw);
+    return false;
+  },
+);
 async function onNavigation(details: {
   tabId: number;
   frameId: number;
@@ -407,7 +415,9 @@ async function boot(): Promise<void> {
 }
 /** The toolbar icon opens the side panel (the panel page is set in the manifest). */
 function enableToolbarPanel(): void {
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => undefined);
+  void chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch(() => undefined);
 }
 enableToolbarPanel();
 
@@ -430,4 +440,3 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 void boot(); // every worker start (including restarts) reconnects and sends wysp.hello again
-

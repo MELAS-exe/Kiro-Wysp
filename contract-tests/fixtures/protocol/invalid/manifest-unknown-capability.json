@@ -1,0 +1,31 @@
+{
+  "schema": "manifest",
+  "payload": {
+    "adapter_id": "mock-kanban",
+    "app": {
+      "name": "Mock Kanban",
+      "version": "1.0"
+    },
+    "contract_version": "1.1.0",
+    "integration_level": "native",
+    "ref_scheme": "mock",
+    "capabilities": [
+      "observe",
+      "teleport"
+    ],
+    "entity_kinds": [
+      {
+        "kind": "card",
+        "label": "Card",
+        "description": "A task card"
+      }
+    ],
+    "volatile_props": [
+      "updated_at"
+    ],
+    "locales": [
+      "en"
+    ],
+    "profile_id": null
+  }
+}

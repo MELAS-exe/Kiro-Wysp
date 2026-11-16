@@ -58,7 +58,7 @@ class TurnRunner:
             t_ctx = time.monotonic()
             system = await build_system_prompt(s)
             context_ms = round((time.monotonic() - t_ctx) * 1000, 1)
-            toolbox = ToolBox(s)
+            toolbox = ToolBox(s, self.cancel)
             tools = toolbox.specs()
             s.tm.emit(
                 "turn.start",

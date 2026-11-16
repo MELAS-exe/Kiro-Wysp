@@ -1,0 +1,7 @@
+{
+  "schema": "hello-result",
+  "payload": {
+    "contract_version": "1.1.0",
+    "core_version": "0.1.0"
+  }
+}

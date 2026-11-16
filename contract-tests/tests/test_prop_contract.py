@@ -2,7 +2,7 @@
 
 The MockKanban is driven in-process (no WebSocket): `AdapterRuntime.handle` is exactly what the SDK client calls
 for every JSON-RPC request, so these properties run in milliseconds and still exercise the real SDK code path.
-CON-P7 (postconditions) needs the Core's predicate evaluator and is covered in test_core_with_mock.py.
+CON-P7 (postconditions) uses the Core's predicate evaluator (substitution then evaluation on a fresh observation).
 """
 
 from __future__ import annotations
@@ -465,3 +465,30 @@ def test_prop_check_observation_flags_oversized_observations(n: int) -> None:
     ents = [Entity(ref=f"t://e/{i}", kind="a", label="x") for i in range(n)]
     obs = Observation(observation_id="o", state_version=1, captured_at=datetime.now(UTC), entities=ents)
     assert any("exceed" in p for p in check_observation(obs))
+
+
+# ------------------------------------------------------------------------------------------- CON-P7
+@FAST
+@given(ops_st)
+def test_prop_postconditions_hold_after_every_successful_execute(ops) -> None:
+    """CON-P7: after each successful `execute`, every postcondition of the action, once its placeholders are
+    substituted, is true on a fresh observation (and dry runs change nothing the postconditions could see)."""
+    from wysp_core.contract import ActionSpec
+    from wysp_core.contract.predicates import evaluate, substitute
+
+    mock, _ = new_mock()
+    specs = {s["id"]: ActionSpec.model_validate(s) for s in mock.handle("adapter.get_actions", {})}
+    checked = 0
+    for op in ops:
+        call = to_call(mock, op)
+        if call is None or op[0].startswith("u_"):
+            continue
+        action_id, params, _ = call
+        result = execute(mock, action_id, params)
+        assert result["status"] == "ok"
+        obs = observe(mock)  # fresh: taken after the action
+        for post in specs[action_id].postconditions:
+            outcome = evaluate(substitute(post, params), obs)
+            assert outcome.ok, f"{action_id}{params}: postcondition failed: {outcome}"
+            checked += 1
+    assert checked >= 0

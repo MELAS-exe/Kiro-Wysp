@@ -351,6 +351,10 @@ class Observer(private val project: Project) {
         return out.distinctBy { it.startOffset to it.description }
     }
 
+    /** Order-independent identity of the problems of a document (line + message), for change detection. */
+    fun problemSignature(doc: Document): Set<String> =
+        problems(doc).map { "${doc.getLineNumber(it.startOffset.coerceIn(0, doc.textLength))}:${it.severity.name}:${it.description}" }.toSet()
+
     private fun addProblems(c: Collector, doc: Document, path: String, fileRef: String) {
         val perLine = HashMap<Int, Int>()
         for (info in problems(doc)) {

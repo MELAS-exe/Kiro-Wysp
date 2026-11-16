@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface State {
@@ -21,11 +22,11 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     return (
       <div role="alert" style={{ padding: 24 }}>
         <p>
-          <strong>The Panel hit an error and stopped drawing.</strong>
+          <strong>{t("error.boundary.title")}</strong>
         </p>
         <p className="muted">{this.state.error.message}</p>
         <button className="primary" onClick={() => location.reload()}>
-          Reload the Panel
+          {t("error.boundary.reload")}
         </button>
       </div>
     );

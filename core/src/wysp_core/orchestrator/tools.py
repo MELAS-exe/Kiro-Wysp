@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..board import node_id, project
 from ..contract import Observation, Scope, WyspError
-from ..llm import ToolCall, ToolSpec
+from ..llm import CancelToken, ToolCall, ToolSpec
 from . import pipeline
 
 if TYPE_CHECKING:
@@ -372,8 +372,9 @@ def summarize_observation(obs: Observation, limit: int = MAX_OBSERVE_ENTITIES) -
 
 
 class ToolBox:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, cancel: CancelToken | None = None) -> None:
         self.s = session
+        self.cancel = cancel  # the running turn's token: once set, nothing more is published for that turn (CORE-P7)
         self.turn_ended = False  # set by ask_clarification
         self.narrated = False
 
@@ -530,6 +531,8 @@ class ToolBox:
             board_result["concepts"] = await self._t_add_concept({"items": b["concepts"]})
         count = 0
         for seg in a["segments"]:
+            if self.cancel is not None and self.cancel.cancelled:
+                break  # interrupted mid-call: no segment may follow `narration.cancel`
             cues = [
                 {"at_word": int(c.get("at_word", 0)), "op": c["op"], "target": str(c["target"])}
                 for c in seg.get("cues", [])

@@ -1,0 +1,8 @@
+{
+  "schema": "evidence",
+  "payload": {
+    "id": "e1",
+    "type": "guessed",
+    "created_at": "2026-11-16T10:00:01Z"
+  }
+}

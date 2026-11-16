@@ -1,4 +1,5 @@
 // Voice input: push-to-talk with the browser's speech recognition. Speaking interrupts the narration (barge-in).
+import { t } from "./i18n";
 import { coreListenStart, coreListenStop, hasCoreListen } from "./coreVoice";
 import { interruptNarration } from "./narration";
 import { voiceDecision } from "./permissions";
@@ -36,22 +37,22 @@ let finalText = "";
 /** Route a final transcript: answers a pending permission request by voice when allowed, else it is a message. */
 export function handleTranscript(text: string): void {
   const st = useStore.getState();
-  const t = text.trim();
-  if (!t) return;
+  const spoken = text.trim();
+  if (!spoken) return;
   const perm = st.permission;
   if (perm) {
-    const d = voiceDecision(t, perm);
+    const d = voiceDecision(spoken, perm);
     if (d === "approve" || d === "deny") {
       st.send({ type: "permission.respond", request_id: perm.request_id, decision: d, via: "voice" });
       return;
     }
     if (d === "needs_click") {
-      note("This action needs a click: use the Approve button.");
+      note(t("voice.needsClick"));
       return;
     }
   }
-  st.addUser(t, "voice");
-  st.send({ type: "user.message", text: t, source: "voice" });
+  st.addUser(spoken, "voice");
+  st.send({ type: "user.message", text: spoken, source: "voice" });
 }
 
 
@@ -83,7 +84,7 @@ function startCore(): void {
 async function stopCore(): Promise<void> {
   if (coreState !== "recording") return;
   coreState = "transcribing";
-  useStore.getState().setListening(true, "Transcribing...");
+  useStore.getState().setListening(true, t("voice.transcribing"));
   if (await coreStart) return; // the start failed and was reported
   const r = await coreListenStop();
   coreState = "idle";
@@ -114,7 +115,7 @@ export function startListening(): void {
   };
   rec.onerror = (e) => {
     useStore.setState((s) => ({
-      transcript: [...s.transcript, { kind: "note", id: `v${Date.now()}`, text: `Microphone: ${e.error}`, tone: "error" as const }],
+      transcript: [...s.transcript, { kind: "note", id: `v${Date.now()}`, text: t("voice.micError", { error: e.error }), tone: "error" as const }],
     }));
   };
   rec.onend = () => {

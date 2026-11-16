@@ -1,0 +1,7 @@
+{
+  "schema": "action-call",
+  "payload": {
+    "action_id": "move_card",
+    "params": {}
+  }
+}

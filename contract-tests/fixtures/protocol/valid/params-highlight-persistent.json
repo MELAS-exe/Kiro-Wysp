@@ -1,0 +1,8 @@
+{
+  "schema": "params-highlight",
+  "payload": {
+    "ref": "mock://card/c1",
+    "style": "outline",
+    "duration_ms": 0
+  }
+}

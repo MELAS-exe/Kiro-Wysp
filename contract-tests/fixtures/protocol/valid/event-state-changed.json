@@ -1,0 +1,10 @@
+{
+  "schema": "event-state-changed",
+  "payload": {
+    "state_version": 9,
+    "changed": [
+      "mock://card/c1"
+    ],
+    "origin": "wysp"
+  }
+}

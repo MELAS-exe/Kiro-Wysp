@@ -1,0 +1,7 @@
+{
+  "schema": "action-result",
+  "payload": {
+    "status": "maybe",
+    "state_version": 1
+  }
+}

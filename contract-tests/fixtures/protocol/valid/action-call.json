@@ -1,0 +1,12 @@
+{
+  "schema": "action-call",
+  "payload": {
+    "action_id": "move_card",
+    "params": {
+      "card": "mock://card/c1",
+      "column": "done"
+    },
+    "request_id": "r1",
+    "dry_run": false
+  }
+}

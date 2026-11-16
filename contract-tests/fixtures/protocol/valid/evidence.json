@@ -1,0 +1,25 @@
+{
+  "schema": "evidence",
+  "payload": {
+    "id": "e1",
+    "type": "verified",
+    "source": "core",
+    "skills": [
+      "move_card"
+    ],
+    "outcomes": [
+      {
+        "ok": true,
+        "path": "props.column",
+        "op": "eq",
+        "actual": "done",
+        "expected": "done",
+        "children": []
+      }
+    ],
+    "observation_id": "o1",
+    "state_version": 8,
+    "created_at": "2026-11-16T10:00:01Z",
+    "hints_used": 0
+  }
+}

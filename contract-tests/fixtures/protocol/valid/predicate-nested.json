@@ -1,0 +1,19 @@
+{
+  "schema": "predicate",
+  "payload": {
+    "all": [
+      {
+        "path": "entities[?kind=='card'] | length(@)",
+        "op": "gte",
+        "value": 1
+      },
+      {
+        "not": {
+          "ref": "mock://card/c9",
+          "path": "label",
+          "op": "exists"
+        }
+      }
+    ]
+  }
+}

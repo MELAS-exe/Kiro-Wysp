@@ -43,9 +43,16 @@ class BlenderAdapter(AdapterRuntime):
         return obs
 
     def handle(self, method: str, params: dict):
-        result = super().handle(method, params)
         is_dry = bool((params.get("call") or {}).get("dry_run"))
-        if method in ("adapter.execute", "adapter.undo") and not is_dry:
+        changes_scene = method in ("adapter.execute", "adapter.undo") and not is_dry
+        if changes_scene:
+            self.watcher.check_now("user")  # whatever the user did before this action is theirs (BLD-P4)
+        try:
+            result = super().handle(method, params)
+        finally:
+            if changes_scene:
+                self.watcher.check_now("wysp")  # the diff now holds only what the action changed
+        if changes_scene:
             # Blender's own history gets a step, so Ctrl+Z also reverts what Wysp did.
             try:
                 bpy.ops.ed.undo_push(message="Wysp: " + method.split(".")[-1])
@@ -73,9 +80,9 @@ class BlenderAdapter(AdapterRuntime):
         """Contract 1.1: remove the persistent highlight. {"cleared": False} when nothing was shown."""
         return highlight_mod.clear_active()
 
-    def on_focus_changed(self, old: list[str], new: list[str]) -> None:
+    def on_focus_changed(self, old: list[str], new: list[str], origin: str | None = None) -> None:
         """Called by the SceneWatcher (main thread) when the selection or active object changed."""
-        ref = highlight_mod.dismissed_by_selection(old, new, self.origin.current())
+        ref = highlight_mod.dismissed_by_selection(old, new, origin or self.origin.current())
         if ref is not None:
             self.report_highlight_dismissed(ref)
 

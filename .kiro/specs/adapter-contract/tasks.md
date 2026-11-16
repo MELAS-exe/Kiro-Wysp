@@ -18,7 +18,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: A_ · _Gate: J0_
   - _Requirements: 2.1, 2.2, 3.1, 3.2, 3.3, 5.1, 5.2, 6.1, 7.1, 9.1, 10.1, 10.2, 10.3_
 
-- [ ] 2.1 Write property test for schema round trip
+- [x] 2.1 Write property test for schema round trip
   - **Property CON-P1: Schema round trip**
   - **Validates: Requirements 10.1, 10.2**
 
@@ -32,17 +32,17 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - **Property CON-P4: Digest invariance**
   - **Validates: Requirement 6.5**
 
-- [ ] 3.2 Write property test for safe placeholder substitution
+- [x] 3.2 Write property test for safe placeholder substitution
   - **Property CON-P11: Safe placeholder substitution**
   - **Validates: Requirement 5.3**
 
-- [ ] 4. Generate the TypeScript types
+- [x] 4. Generate the TypeScript types
   - `sdk/ts` package with script `gen:types` (json-schema-to-typescript over `schemas/`) writing `sdk/ts/src/generated/`
   - CI fails when generated types differ from the committed ones
   - _Owner: A_ · _Gate: J0_
   - _Requirements: 10.2_
 
-- [ ] 5. Write cross-language golden protocol fixtures
+- [x] 5. Write cross-language golden protocol fixtures
   - `contract-tests/fixtures/protocol/valid/*.json` and `invalid/*.json` (hello, observe result, action spec, results, events, errors)
   - Python test validating them with the models; TypeScript test validating them with ajv against `schemas/`
   - _Owner: A_ · _Gate: J0_
@@ -71,16 +71,16 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: C_ · _Gate: J0 + 1 day_
   - _Requirements: 1.2, 1.5, 1.6, 6.2, 6.7, 9.2_
 
-- [ ] 7.1 Write unit tests for the Python SDK
+- [x] 7.1 Write unit tests for the Python SDK
   - Dispatcher ordering, reconnect, budgets, error mapping, against the harness of task 9 or a local echo server
   - _Owner: C_
   - _Requirements: 1.5, 1.6, 9.3_
 
-- [ ] 8. Build the TypeScript adapter SDK
+- [x] 8. Build the TypeScript adapter SDK
   - `sdk/ts/src/`: `AdapterClient` designed for MV3 service workers (heartbeat ≤ 20 s, reconnect, re-hello, no in-memory-only state), `defineAction()` helper, ajv validation, error helpers
   - _Owner: C_ · _Gate: Sun 22 Nov (after the Blender end-to-end of J1)_
 
-- [ ] 8.1 Write unit tests for the TypeScript SDK
+- [x] 8.1 Write unit tests for the TypeScript SDK
   - Vitest with a mock WebSocket: hello order, heartbeat timing, reconnect, request routing
   - _Owner: C_
   - _Requirements: 1.5, 1.6_
@@ -92,7 +92,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: A_ · _Gate: J1 (online checks needed by C on Mon 16 Nov)_
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 9.1 Implement observation property checks in the Kit
+- [x] 9.1 Implement observation property checks in the Kit
   - **Property CON-P2: Observation referential integrity**
   - **Property CON-P3: Ref and digest stability**
   - **Property CON-P7: Postconditions hold**
@@ -104,7 +104,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: A_ · _Gate: J1_
   - _Requirements: 12.2, 11.3_
 
-- [ ] 11. Write the adapter author guide
+- [x] 11. Write the adapter author guide
   - `docs/adapter-guide.md`: "build your own tutor in four steps" (manifest, observe, actions, profile), with the mock adapter as a worked example; linked from the root README
   - _Owner: C (review: A)_ · _Gate: J3_
   - _Requirements: 2.1, 5.1, 11.1_

@@ -2,8 +2,8 @@
 
 A depsgraph handler only marks the scene dirty (cheap, it runs on every redraw-worthy change). The
 main-thread `poll()` then diffs per-entity hashes at most every 250 ms (1 s when idle), so bursts of
-updates become one `event.state_changed`. Changes within a short window after a Wysp action are
-tagged origin "wysp"; everything else is "user".
+updates become one `event.state_changed`. The adapter flushes right before and right after every Wysp action,
+so changes caused by Wysp are tagged origin "wysp" and everything seen by `poll()` is "user".
 """
 
 from __future__ import annotations
@@ -87,7 +87,13 @@ class SceneWatcher:
         self._next = now + (FAST_INTERVAL_S if (self.dirty or self.fast_poll) else IDLE_INTERVAL_S)
         self.check_now()
 
-    def check_now(self) -> None:
+    def check_now(self, origin: str = "user") -> None:
+        """Diff the scene against the last look and report it, all tagged with `origin`.
+
+        The caller decides who caused the changes: `poll()` sees only user changes, because the adapter
+        flushes right before and right after each Wysp action (see BlenderAdapter.handle), so a diff never
+        mixes a user change with a Wysp change (BLD-P4).
+        """
         self.dirty = False
         entities, _links, _trunc = observe.build_entities(bpy.context.scene)
         sig = {e["ref"]: (e["kind"], _entity_hash(e)) for e in entities}
@@ -99,8 +105,8 @@ class SceneWatcher:
         changed = sorted(r for r in set(sig) | set(old) if sig.get(r) != old.get(r))
         self._sig = sig
         if changed:
-            self.adapter.report_change(changed)
-            self._derive_user_actions(old, sig, entities)
+            self.adapter.report_change(changed, origin)
+            self._derive_user_actions(old, sig, entities, origin)
         if focus != self._focus:
             old_focus, self._focus = self._focus, focus
             # The focus is part of an observation, so it must move the state version. Without this a
@@ -108,15 +114,15 @@ class SceneWatcher:
             # from the one taken when an exercise started (no "select X" exercise could ever pass).
             self.adapter.bump()
             self.adapter.report_selection(focus)
-            self.adapter.on_focus_changed(old_focus or [], focus)  # dismisses a persistent highlight
+            self.adapter.on_focus_changed(old_focus or [], focus, origin)  # dismisses a persistent highlight
 
-    def _derive_user_actions(self, old: dict, new: dict, entities: list[dict]) -> None:
+    def _derive_user_actions(self, old: dict, new: dict, entities: list[dict], origin: str = "user") -> None:
         """Turn modifier-level diffs into user_action events (modifier_added / removed / moved)."""
         for ref, (kind, h) in new.items():
             if kind == "modifier" and ref not in old:
-                self.adapter.report_user_action("modifier_added", ref)
+                self.adapter.report_user_action("modifier_added", ref, origin=origin)
             elif kind == "modifier" and old.get(ref, (None, h))[1] != h:
-                self.adapter.report_user_action("modifier_changed", ref)
+                self.adapter.report_user_action("modifier_changed", ref, origin=origin)
         for ref, (kind, _h) in old.items():
             if kind == "modifier" and ref not in new:
-                self.adapter.report_user_action("modifier_removed", ref)
+                self.adapter.report_user_action("modifier_removed", ref, origin=origin)

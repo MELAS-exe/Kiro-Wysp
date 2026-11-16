@@ -59,19 +59,21 @@ Depends on core-orchestrator task 4 (UI protocol) and task 6 (board golden fixtu
   - **Property PAN-P5: No voice approval for irreversible actions**
   - **Validates: Requirement 5.2**
 
-- [ ] 8. Implement the exercise card, evidence badge and lesson progress
+- [x] 8. Implement the exercise card, evidence badge and lesson progress
   - _Owner: B_ · _Gate: J2_
   - _Requirements: 5.4, 5.5_
 
-- [ ] 9. Accessibility pass
+- [x] 9. Accessibility pass
   - Keyboard navigation, accessible names, contrast, axe checks in component tests, French strings complete
+  - Done: keyboard, names, tabs, dialog trap + Esc, aria-live, reduced motion, contrast script, axe tests. i18n: `panel/src/i18n/{en,fr}.json` with `t()` / `useT()` (language from the Core's session `lang`, else `?lang=` / browser, default en); every Panel string moved, tests check identical keys, interpolation, English fallback and a French render.
   - _Owner: B_ · _Gate: J3_
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 10. Prepare the window setup for the demo
+- [x] 10. Prepare the window setup for the demo
   - Script `scripts/open_panel.py` opening a Chrome app window at a given size and position next to Blender or the browser
+  - Also `scripts/demo_up.ps1`, `docs/demo-setup.md`, and `compact`/`side`/`full` modes (`?mode=`, menu Layout, remembered)
   - _Owner: B_ · _Gate: J3_
   - _Requirements: 1.4_
 
-- [ ] 11. Checkpoint: Panel ready for recording
+- [x] 11. Checkpoint: Panel ready for recording
   - Ask the user if questions arise

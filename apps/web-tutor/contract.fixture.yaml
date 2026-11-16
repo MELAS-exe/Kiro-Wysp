@@ -3,12 +3,26 @@
 # the site allowed and the pairing token set in the extension options.
 tutor: web-tutor
 launch:
-  kind: manual
-  # A Playwright launcher (`launch.kind: playwright`) is not written yet: the kit has no online harness either.
-  instructions: >
-    npm.cmd run build -w apps/web-tutor/extension; npm.cmd run preview -w apps/web-tutor/demo-dashboard;
-    chrome://extensions > Developer mode > Load unpacked > apps/web-tutor/extension/dist; options page:
-    Core URL = {url}, paste ~/.wysp/token, grant http://localhost:5180; open http://localhost:5180 and keep the tab active.
+  kind: playwright
+  # Playwright launcher: loads dist/ in Chromium, points it at the Core, serves the dashboard on a free port.
+  # {node}, {repo}, {url}, {token_file}, {page}, {stop_file} are filled in by the launcher. The token is read
+  # from the file, never passed on the command line.
+  # Online run: uv run --no-sync python contract-tests/launchers/playwright_launcher.py --tutor web-tutor
+  # (needs `npm.cmd run build -w apps/web-tutor/extension`). The `wysp-contract` CLI has no online harness yet.
+  command:
+    - "{node}"
+    - "{repo}/apps/web-tutor/extension/tests/live/playwright_driver.mjs"
+    - "--core"
+    - "{url}"
+    - "--token-file"
+    - "{token_file}"
+    - "--page"
+    - "{page}"
+    - "--serve"
+    - "--stop-file"
+    - "{stop_file}"
+    - "--seconds"
+    - "600"
   connect_timeout_s: 60
 expect:
   entity_kinds: [page, region, heading, control, table, list, chart, status]

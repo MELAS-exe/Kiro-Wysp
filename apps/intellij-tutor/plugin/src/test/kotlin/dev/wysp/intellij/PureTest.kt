@@ -157,3 +157,53 @@ class OriginTaggerTest {
         assertEquals("user", tagger.current())
     }
 }
+
+class EventPolicyTest {
+    @Test
+    fun `selection change advances only for the user and only when the focus changes`() {
+        val s = SelectionTracker()
+        assertTrue(s.onFocus(listOf("a", "a#m"), ours = false))
+        assertFalse(s.onFocus(listOf("a", "a#m"), ours = false)) // same focus: nothing to send
+        assertFalse(s.onFocus(listOf("a"), ours = true)) // Wysp moved the caret: not the learner's
+        assertTrue(s.onFocus(listOf("a", "a#n"), ours = false))
+    }
+
+    @Test
+    fun `a user edit is not swallowed by a pending wysp batch`() {
+        val b = ChangeBatch()
+        assertNull(b.add("f1", "wysp"))
+        val closed = b.add("f2", "user")!!
+        assertEquals("wysp", closed.origin)
+        assertEquals(listOf("f1"), closed.changed)
+        val rest = b.take()!!
+        assertEquals("user", rest.origin)
+        assertEquals(listOf("f2"), rest.changed)
+        assertNull(b.take())
+    }
+
+    @Test
+    fun `same origin changes share one batch`() {
+        val b = ChangeBatch()
+        b.add("f1", "user"); b.add("f2", "user"); b.add("f1", "user")
+        assertEquals(listOf("f1", "f2"), b.take()!!.changed)
+    }
+
+    @Test
+    fun `problem tracker reports only real changes`() {
+        val t = ProblemTracker()
+        assertFalse(t.changed("a.java", emptySet())) // first sighting, no problems
+        assertTrue(t.changed("a.java", setOf("1:ERROR:x")))
+        assertFalse(t.changed("a.java", setOf("1:ERROR:x")))
+        assertTrue(t.changed("a.java", emptySet())) // fixed: the Core must hear about it
+    }
+
+    @Test
+    fun `origin window tags wysp during and shortly after an action only`() {
+        var now = 0L
+        val o = OriginTagger(600) { now }
+        assertEquals("user", o.current())
+        o.begin(); assertEquals("wysp", o.current()); o.end()
+        now = 599; assertEquals("wysp", o.current())
+        now = 601; assertEquals("user", o.current())
+    }
+}

@@ -1,7 +1,9 @@
+import { useT } from "../i18n";
 import { useStore } from "../store";
 
 /** Asks before Wysp studies the project, then shows how far it is. Nothing is read until the user says yes. */
 export function ExploreCard() {
+  const t = useT();
   const e = useStore((s) => s.explore);
   const send = useStore((s) => s.send);
   if (!e || e.phase === "none" || e.phase === "declined") return null;
@@ -10,18 +12,18 @@ export function ExploreCard() {
 
   if (e.phase === "offer")
     return (
-      <section className="explore" aria-label="Explore this project">
-        <strong>Explore this project?</strong>
-        <p>
-          I can map the code (folders, classes, what depends on what), then read the main files and take notes, so what I tell you comes from
-          the code. Nothing is read until you say yes.
-        </p>
+      <section
+        className="explore"
+        aria-label={t("explore.offerAria")}
+      >
+        <strong>{t("explore.offerTitle")}</strong>
+        <p>{t("explore.offerBody")}</p>
         <div className="row">
           <button className="primary" onClick={start}>
-            Start
+            {t("explore.start")}
           </button>
           <button className="ghost" onClick={stop}>
-            Not now
+            {t("explore.notNow")}
           </button>
         </div>
       </section>
@@ -29,15 +31,27 @@ export function ExploreCard() {
 
   if (e.phase === "mapping" || e.phase === "studying")
     return (
-      <section className="explore" aria-label="Exploring the project" aria-live="polite">
-        <strong>{e.phase === "mapping" ? "Mapping the code" : "Reading the main files"}</strong>
-        <p className="muted">
-          {e.files} files, {e.symbols} symbols mapped
-          {e.phase === "studying" ? ` · ${e.read} files read · ${e.briefs} notes` : ""}
-        </p>
+      <section className="explore" aria-label={t("explore.working")}>
+        <div role="status">
+          <strong>
+            {e.phase === "mapping"
+              ? t("explore.mapping")
+              : t("explore.studying")}
+          </strong>
+          <p className="muted">
+            {e.phase === "studying"
+              ? t("explore.countsStudying", {
+                  files: e.files,
+                  symbols: e.symbols,
+                  read: e.read,
+                  briefs: e.briefs,
+                })
+              : t("explore.counts", { files: e.files, symbols: e.symbols })}
+          </p>
+        </div>
         <div className="row">
           <button className="ghost" onClick={stop}>
-            Stop
+            {t("explore.stop")}
           </button>
         </div>
       </section>
@@ -45,10 +59,15 @@ export function ExploreCard() {
 
   // ready, stopped, failed: one quiet line with the way back in.
   return (
-    <section className="explore quiet" aria-label="Project exploration">
-      <span className="muted">{e.note || (e.phase === "failed" ? "Exploration failed." : "Project explored.")}</span>
+    <section className="explore quiet" aria-label={t("explore.quiet")}>
+      <span className="muted">
+        {e.note ||
+          (e.phase === "failed" ? t("explore.failed") : t("explore.done"))}
+      </span>
       <button className="ghost" onClick={start}>
-        {e.phase === "ready" && e.briefs > 0 ? "Study again" : "Try again"}
+        {e.phase === "ready" && e.briefs > 0
+          ? t("explore.studyAgain")
+          : t("explore.tryAgain")}
       </button>
     </section>
   );

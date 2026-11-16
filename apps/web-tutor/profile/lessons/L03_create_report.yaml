@@ -1,0 +1,32 @@
+id: web-tutor.reports.create
+title: {en: "Create and save a report"}
+skills: [report_creation]
+prerequisites: [web-tutor.filters.region]
+board:
+  layout: tree
+  focus: web://localhost:5180/region~orders
+steps:
+  - explain:
+      en: "A report keeps a set of figures under a name. You create it from the Orders area."
+    show: [web://localhost:5180/region~orders/button~create-report]
+    guide: {target: "web://localhost:5180/region~orders/button~create-report"}
+  - explain:
+      en: "The dialog asks for a name, the metrics to include and a format. Save is disabled for an empty name."
+    show: [web://localhost:5180/dialog~create-report]
+  - explain:
+      en: "After Save, the report appears in the Saved reports list and a status message confirms it."
+    show: [web://localhost:5180/region~saved-reports/list~saved-reports]
+    guide: {target: "web://localhost:5180/region~saved-reports/list~saved-reports"}
+exercises:
+  - id: save_weekly_report
+    prompt:
+      en: "Create a report named Weekly Revenue with the Revenue and Orders metrics, in CSV format, and save it."
+    skills: [report_creation]
+    success:
+      all:
+        - {ref: "web://localhost:5180/region~saved-reports/list~saved-reports", path: "props.items", op: contains, value: "Weekly Revenue (Revenue, Orders; CSV)"}
+        - {path: "entities[?kind=='status'] | [0].props.text", op: eq, value: "Report saved: Weekly Revenue"}
+    hints:
+      - {en: "Click Create report under the Orders table. If a Weekly Revenue report is already saved, use Reset demo first."}
+      - {en: "Type the name, tick Orders next to Revenue, choose CSV, then click Save."}
+    max_attempts: 3

@@ -12,9 +12,10 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation, Board, BoardNode } from "../protocol";
 import { LiveCaption } from "../components/Caption";
+import { t, useT } from "../i18n";
 import { useStore } from "../store";
 import { NODE_W, computeLayout, type Positions } from "./layout";
 import { provenanceStyle } from "./provenance";
@@ -26,8 +27,17 @@ interface WispData extends Record<string, unknown> {
   vertical: boolean;
 }
 
+/** Text alternative of a node: what it is and how much to trust it (provenance is never colour or border only). */
+export function nodeAriaLabel(n: BoardNode, annotations: Annotation[] = []): string {
+  const prov = t(`board.aria.${n.provenance}`);
+  const conf = n.confidence < 1 ? t("board.aria.confidence", { percent: Math.round(n.confidence * 100) }) : "";
+  const notes = annotations.map((a) => t("board.aria.note", { text: a.text })).join("");
+  return `${n.kind} ${n.label}, ${prov}${conf}${notes}`;
+}
+
 const WispNode = memo(function WispNode({ data }: NodeProps<Node<WispData>>) {
   const { node, focused, annotations, vertical } = data;
+  const t = useT();
   const send = useStore((s) => s.send);
   const style = provenanceStyle(node.provenance);
   return (
@@ -46,16 +56,16 @@ const WispNode = memo(function WispNode({ data }: NodeProps<Node<WispData>>) {
           <span
             className="eye"
             role="img"
-            aria-label="observed in the application"
-            title="Observed in the application"
+            aria-label={t("board.observedAria")}
+            title={t("board.observedTitle")}
           >
             ◉
           </span>
         ) : (
-          <span className="tag">{style.tag}</span>
+          <span className="tag">{t(`board.tag.${node.provenance}`)}</span>
         )}
         {node.confidence < 1 && (
-          <span className="conf" title="confidence">
+          <span className="conf" title={t("board.confidence")}>
             {Math.round(node.confidence * 100)}%
           </span>
         )}
@@ -78,13 +88,13 @@ const WispNode = memo(function WispNode({ data }: NodeProps<Node<WispData>>) {
       ))}
       <button
         className="why nodrag"
-        aria-label={`Why is ${node.label} here?`}
+        aria-label={t("board.whyAria", { label: node.label })}
         onClick={(e) => {
           e.stopPropagation();
           send({ type: "board.ask_why", node_id: node.id });
         }}
       >
-        Why?
+        {t("board.why")}
       </button>
       <Handle
         type="source"
@@ -100,6 +110,15 @@ function Flow({ board }: { board: Board }) {
   const send = useStore((s) => s.send);
   const setSelected = useStore((s) => s.setSelected);
   const [positions, setPositions] = useState<Positions>({});
+  const lastSent = useRef({ id: "", t: 0 });
+  // Click and keyboard (Tab to a node, Enter or Space) both select; a click fires both events, so send once.
+  const select = (id: string) => {
+    const now = Date.now();
+    if (lastSent.current.id === id && now - lastSent.current.t < 300) return;
+    lastSent.current = { id, t: now };
+    setSelected(id);
+    send({ type: "board.select", node_id: id });
+  };
   const { fitView } = useReactFlow();
   // Portrait (a narrow tool window): flows run top to bottom.
   const [portrait, setPortrait] = useState(
@@ -148,6 +167,8 @@ function Flow({ board }: { board: Board }) {
         id: n.id,
         type: "wisp",
         position: positions[n.id] ?? { x: 0, y: 0 },
+        ariaLabel: nodeAriaLabel(n, board.annotations.filter((a) => a.target === n.id)),
+        ariaRole: "group" as const,
         data: {
           node: n,
           focused: board.focus.includes(n.id),
@@ -181,7 +202,7 @@ function Flow({ board }: { board: Board }) {
             id: `order:${a.id}>${b.id}`,
             source: a.id,
             target: b.id,
-            label: "then",
+            label: t("board.then"),
             className: "wedge order",
             markerEnd: { type: MarkerType.ArrowClosed },
           });
@@ -199,9 +220,17 @@ function Flow({ board }: { board: Board }) {
       minZoom={0.08}
       maxZoom={1.6}
       nodesConnectable={false}
-      onNodeClick={(_, n) => {
-        setSelected(n.id);
-        send({ type: "board.select", node_id: n.id });
+      onNodeClick={(_, n) => select(n.id)}
+      onKeyDown={(e) => {
+        const el = e.target as HTMLElement;
+        if ((e.key === "Enter" || e.key === " ") && el.classList.contains("react-flow__node") && el.dataset.id) {
+          e.preventDefault();
+          select(el.dataset.id);
+        }
+      }}
+      onSelectionChange={({ nodes: sel }) => {
+        const only = sel.length === 1 ? sel[0] : undefined;
+        if (only) select(only.id);
       }}
       colorMode="dark"
     >
@@ -212,20 +241,22 @@ function Flow({ board }: { board: Board }) {
 }
 
 function Legend() {
+  const t = useT();
   return (
-    <div className="legend" aria-label="Legend">
-      <span className="swatch observed" /> observed in the app
-      <span className="swatch inferred" /> likely
-      <span className="swatch illustrative" /> example
+    <div className="legend" role="group" aria-label={t("board.legend")}>
+      <span className="swatch observed" /> {t("board.legend.observed")}
+      <span className="swatch inferred" /> {t("board.legend.inferred")}
+      <span className="swatch illustrative" /> {t("board.legend.illustrative")}
     </div>
   );
 }
 
 function Steps({ board }: { board: Board }) {
+  const t = useT();
   if (board.steps.length === 0) return null;
   const icon = { pending: "○", active: "◉", done: "✓", failed: "✕" } as const;
   return (
-    <ol className="steps" aria-label="Steps">
+    <ol className="steps" aria-label={t("board.steps")}>
       {board.steps.map((s) => (
         <li key={s.id} className={s.status}>
           <span className="stepicon" aria-hidden>
@@ -239,12 +270,13 @@ function Steps({ board }: { board: Board }) {
 }
 
 export function BoardView() {
+  const t = useT();
   const board = useStore((s) => s.board);
   return (
     <div className="boardwrap">
       {board.stale && (
-        <div className="stale">
-          The application disconnected: this board may be out of date.
+        <div className="stale" role="status">
+          {t("board.stale")}
         </div>
       )}
       {board.nodes.length === 0 ? (
@@ -256,9 +288,9 @@ export function BoardView() {
             width={96}
             height={96}
           />
-          <p>Ask me about what you are working on.</p>
+          <p>{t("board.emptyTitle")}</p>
           <p className="muted">
-            Real elements of your project will appear here, marked as observed.
+            {t("board.emptyBody")}
           </p>
         </div>
       ) : (

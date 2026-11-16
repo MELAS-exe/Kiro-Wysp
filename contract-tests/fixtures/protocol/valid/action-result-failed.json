@@ -1,0 +1,10 @@
+{
+  "schema": "action-result",
+  "payload": {
+    "status": "failed",
+    "state_version": 8,
+    "changed": [],
+    "undo_token": null,
+    "message": "nothing changed"
+  }
+}

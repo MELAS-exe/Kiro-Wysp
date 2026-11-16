@@ -1,4 +1,4 @@
-﻿# Web tutor (browser connector)
+# Web tutor (browser connector)
 
 An optional third tutor. A Chrome Manifest V3 extension implements the Wysp adapter contract (integration level `interface`) from the DOM and the accessibility tree of the pages you allow. It uses the same Core, Panel and protocol as the Blender and IntelliJ tutors; the Core has no web-specific code. Spec: `.kiro/specs/web-tutor/`.
 
@@ -74,11 +74,20 @@ $env:WYSP_MCP_URL = "http://127.0.0.1:8765/mcp"   # while the extension is held 
 uv run --no-sync python apps/web-tutor/extension/tests/live/mcp_probe.py --token-file ~/.wysp/token
 ```
 
+Live pedagogy and origin-tagging checks (second Core, Chromium through Playwright, real mouse and keyboard input; build the extension first):
+
+```
+uv run --no-sync pytest -m live -o addopts="" -p no:cacheprovider apps/web-tutor/extension/tests/live/test_pedagogy_live.py
+uv run --no-sync python contract-tests/launchers/playwright_launcher.py --tutor web-tutor   # online contract run
+```
+
+Both start their own Core and dashboard on free ports (the Core accepts the extension through `WYSP_ALLOWED_ORIGINS=chrome-extension://cnmikeniefgoeibijogfncggjkafakhk`) and close everything they start. The lessons name the dashboard as `localhost:5180`; the live test rewrites that in a temp copy of the profile.
+
 `live_check.mjs` loads the built extension through the DevTools pipe in a throw-away profile, adds the page origin as a host permission in a copy of the manifest (the optional-permission prompt cannot be answered without a user), and prints whether the adapter connected. It never prints the token.
 
 ## Known limits
 
-- No Playwright launcher for the contract kit yet (`contract.fixture.yaml` uses `launch.kind: manual`; the kit has no online harness). The fixture is replayed against the extension logic in `tests/fixture.test.ts`.
+- The `wysp-contract` CLI has no online harness yet, so `launch.kind: playwright` is run by `contract-tests/launchers/playwright_launcher.py` (see Tests). The fixture is also replayed against the extension logic in `tests/fixture.test.ts`.
 - Only the top frame is read. Closed shadow roots and cross-origin iframes are not.
 - `select_option` supports native selects only.
 - The optional host permission prompt was not exercised by an automated browser test. `tests/live/panel_access_check.mjs` (Playwright Chromium, second Core) covers the launcher, options, side panel page, fallback and highlight; headless Chromium has no side panel UI, so the real side panel opening beside a page is only checked by hand. Screenshots: `docs/img/web-tutor-*.png`.

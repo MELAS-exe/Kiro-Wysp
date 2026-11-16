@@ -1,0 +1,11 @@
+{
+  "schema": "event-user-action",
+  "payload": {
+    "kind": "drag",
+    "target": "mock://card/c1",
+    "details": {
+      "to": "done"
+    },
+    "origin": "user"
+  }
+}

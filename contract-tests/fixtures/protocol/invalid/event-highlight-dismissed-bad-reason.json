@@ -1,0 +1,7 @@
+{
+  "schema": "event-highlight-dismissed",
+  "payload": {
+    "ref": "mock://card/c1",
+    "reason": "timeout"
+  }
+}

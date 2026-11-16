@@ -7,5 +7,5 @@ export default defineConfig({
   plugins: [react()],
   server: { host: "127.0.0.1", port: 5173, strictPort: true },
   build: { outDir: "dist", sourcemap: false, chunkSizeWarningLimit: 1500 },
-  test: { environment: "node", include: ["src/**/*.test.ts"] },
+  test: { environment: "node", include: ["src/**/*.test.{ts,tsx}"] },
 });

@@ -56,17 +56,17 @@ Depends on adapter-contract tasks 2, 8 and 9. Use the `browser-adapter` agent fo
   - **Property WEB-P4: Overlay invisibility**
   - **Validates: Requirements 3.5, 6.2**
 
-- [ ] 8. Contract fixture and Playwright launcher
+- [x] 8. Contract fixture and Playwright launcher
   - `contract.fixture.yaml`, Playwright launcher script for the kit (`launch.kind: playwright`), kit green in CI
   - _Owner: C (launcher support in the kit: A)_ · _Gate: J2_
   - _Requirements: 9.1_
 
-- [ ] 9. Write the web profile
+- [x] 9. Write the web profile
   - `profile.yaml`, `concepts.yaml` (≥ 10 concepts), lessons L01 dashboard tour, L02 filters with the "Transylvania" exercise, L03 create a report (guided, verified in the saved list), validated by `wysp validate-profile`
   - _Owner: B_ · _Gate: J2_
   - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 10. End-to-end on the same Core (gate J2)
+- [x] 10. End-to-end on the same Core (gate J2)
   - Explain the region filter, guided report creation verified in the saved list; prove that `git diff` of `core/` is empty for this spec's work
   - _Owner: C with A and B_ · _Gate: J2 (Fri 27 Nov)_
   - _Requirements: 9.2, 8.2, 8.3_
@@ -76,7 +76,7 @@ Depends on adapter-contract tasks 2, 8 and 9. Use the `browser-adapter` agent fo
   - _Owner: C_ · _Gate: J3_
   - _Requirements: 1.1, 1.2, 4.3_
 
-- [ ] 12. Checkpoint: web tutor ready for recording
+- [x] 12. Checkpoint: web tutor ready for recording
   - Ask the user if questions arise
 
 ## Status of 2026-11-16 (optional extra, built by the browser-adapter agent)
@@ -86,3 +86,11 @@ Depends on adapter-contract tasks 2, 8 and 9. Use the `browser-adapter` agent fo
 - Action ids follow the design table (scroll_into_view, ill_field, ...). webNavigation and larms permissions were added to the design's list: see the README for the reasons.
 - Gaps found, none needing a Core change: the Core accepts a browser origin only through WYSP_ALLOWED_ORIGINS (set chrome-extension://<id>); an observation has no acts field, so the 
 ot_allowed fact of Requirement 1.4 is carried by counts.not_allowed and by the context facts.
+
+## Status of 2026-11-17 (browser-adapter agent)
+
+- Done and verified: 6.1 (WEB-P5 as a real test over random interleavings of trusted user input and approved Wysp actions: `apps/web-tutor/extension/tests/live/test_pedagogy_live.py::test_prop_web_p5_origin_tagging_over_random_interleavings`), 8, 9 (L03 `lessons/L03_create_report.yaml` with the exercise `save_weekly_report`, `wysp validate-profile` clean), 10, 12.
+- Live checks (`uv run --no-sync pytest -m live -o addopts="" apps/web-tutor/extension/tests/live/test_pedagogy_live.py`, 10 tests, about 2.5 min): a second Core and a second dashboard port, Playwright Chromium with the built extension, real mouse and keyboard input. They cover learner_status with the 3 web lessons, `find_region_filter` (click on Region verified), `show_only_transylvania` (Salem is not enough, Transylvania passes), `save_weekly_report` (PDF does not pass, CSV does), and PED-P4 (the same changes made through `propose_action` with approval never count).
+- Bug fixed: a focus-only change sent `event.selection_changed` without advancing `state_version`, so "click the Region drop-down" could never pass (the Blender adapter had the same bug). The service worker now bumps the version before forwarding the event (`src/sw/background.ts`).
+- Task 8: `launch.kind: playwright` in `contract.fixture.yaml`, launcher `contract-tests/launchers/playwright_launcher.py` (starts a throw-away Core, a dashboard on a free port and `tests/live/playwright_driver.mjs`, then runs the kit's observation checks, the dry-run calls, the invalid calls and the catalog check). The `wysp-contract` CLI itself has no online harness (`cli.py`, owner A): it still needs a call to this launcher for `launch.kind: playwright`. CI wiring is also open.
+- No file of `core/` was changed by this work.

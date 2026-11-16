@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n";
+import { rich } from "../i18n/rich";
 import { interruptNarration } from "../narration";
 import { useStore } from "../store";
 import { ExerciseCard } from "./ExerciseCard";
@@ -17,10 +19,13 @@ export function Chat() {
   const dismissClarification = useStore((s) => s.dismissClarification);
   const listening = useStore((s) => s.listening);
   const interim = useStore((s) => s.interim);
+  const mode = useStore((s) => s.mode);
+  const t = useT();
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   // Show Wysp's sentences as they are spoken, not all at once when they arrive.
-  const visible = transcript.filter((t) => !(t.kind === "wysp" && (t.state === "queued" || t.state === "skipped")));
+  const all = transcript.filter((t) => !(t.kind === "wysp" && (t.state === "queued" || t.state === "skipped")));
+  const visible = mode === "compact" ? all.slice(-2) : all; // compact: the last exchange only
   const hasCancelled = transcript.some((t) => t.kind === "wysp" && (t.state === "cancelled" || t.state === "skipped"));
   const busy = status !== "idle";
 
@@ -39,45 +44,46 @@ export function Chat() {
   };
 
   return (
-    <section className="chat" aria-label="Conversation">
-      <div className="transcript" role="log" aria-live="off">
+    <section className="chat" aria-label={t("chat.conversation")}>
+      <div className="transcript" role="log" aria-live="polite" aria-label={t("chat.history")} tabIndex={0}>
         {visible.length === 0 && !clarification && (
           <div className="hello">
             <img className="mascot" src="/wysp-mark.png" alt="" width={96} height={96} />
-            <p>Ask about your project</p>
+            <p>{t("chat.ask")}</p>
             <p className="muted small">
-              Hold <kbd>Space</kbd> to talk. <kbd>Esc</kbd> interrupts.
+              {rich("chat.hintTalk", { space: <kbd>Space</kbd>, esc: <kbd>Esc</kbd> })}
             </p>
           </div>
         )}
-        {visible.map((t) => {
-          if (t.kind === "user")
+        {visible.map((item) => {
+          if (item.kind === "user")
             return (
-              <div key={t.id} className="msg user">
-                {t.text}
+              <div key={item.id} className="msg user">
+                <span className="sr-only">{t("chat.you")}</span>
+                {item.text}
               </div>
             );
-          if (t.kind === "wysp")
+          if (item.kind === "wysp")
             return (
-              <div key={t.id} className={`msg wysp ${t.state}`}>
-                {t.segment.marker && <span className="marker">{t.segment.marker}</span>}
-                {t.segment.text}
+              <div key={item.id} className={`msg wysp ${item.state}`}>
+                {item.segment.marker && <span className="marker">{item.segment.marker}</span>}
+                {item.segment.text}
               </div>
             );
-          if (t.kind === "evidence")
+          if (item.kind === "evidence")
             return (
-              <div key={t.id} className={`msg evidence ${t.etype === "declared" ? "declared" : t.ok ? "ok" : "bad"}`}>
-                {t.etype === "declared"
-                  ? "Declared by you, not checked in the application"
-                  : t.ok
-                    ? "Verified in the application"
-                    : "Could not be verified"}
-                : {t.title}
+              <div key={item.id} className={`msg evidence ${item.etype === "declared" ? "declared" : item.ok ? "ok" : "bad"}`}>
+                {item.etype === "declared"
+                  ? t("chat.evidence.declared")
+                  : item.ok
+                    ? t("chat.evidence.ok")
+                    : t("chat.evidence.bad")}
+                : {item.title}
               </div>
             );
           return (
-            <div key={t.id} className={`msg note ${t.tone}`}>
-              {t.text}
+            <div key={item.id} className={`msg note ${item.tone}`}>
+              {item.text}
             </div>
           );
         })}
@@ -94,9 +100,9 @@ export function Chat() {
           </div>
         )}
         {busy && (
-          <div className="msg wait" aria-live="polite">
+          <div className="msg wait">
             <span className="dots" aria-hidden />
-            {activity || (status === "thinking" ? "Thinking" : status === "acting" ? "Working in the application" : "")}
+            {activity || (status === "thinking" ? t("activity.thinking") : status === "acting" ? t("activity.acting") : "")}
           </div>
         )}
         <div ref={endRef} />
@@ -106,12 +112,12 @@ export function Chat() {
       {(busy || hasCancelled) && (
         <div className="quick">
           {busy ? (
-            <button className="secondary" onClick={interruptNarration} aria-label="Interrupt (Esc)">
-              Stop
+            <button className="secondary" onClick={interruptNarration} aria-keyshortcuts="Escape" title={t("chat.stopTitle")}>
+              {t("chat.stop")}
             </button>
           ) : (
             <button className="secondary" onClick={() => send({ type: "user.continue" })}>
-              Continue
+              {t("chat.continue")}
             </button>
           )}
         </div>
@@ -126,19 +132,33 @@ export function Chat() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={listening ? interim || "Listening..." : "Ask about your project"}
-          aria-label="Message"
+          placeholder={listening ? interim || t("caption.listening") : t("chat.ask")}
+          aria-label={t("chat.message")}
           autoComplete="off"
         />
         {voiceSupported && (
           <button
             type="button"
             className={`icon${listening ? " on" : ""}`}
-            aria-label="Hold to talk"
-            title="Hold to talk"
+            aria-label={t("chat.holdToTalk")}
+            aria-pressed={listening}
+            title={t("chat.holdToTalk")}
             onPointerDown={startListening}
             onPointerUp={stopListening}
             onPointerLeave={() => listening && stopListening()}
+            onKeyDown={(e) => {
+              if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+                e.preventDefault();
+                startListening();
+              }
+            }}
+            onKeyUp={(e) => {
+              if (e.key === " " || e.key === "Enter") {
+                e.preventDefault();
+                stopListening();
+              }
+            }}
+            onBlur={() => listening && stopListening()}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
               <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="currentColor" />
@@ -146,7 +166,7 @@ export function Chat() {
             </svg>
           </button>
         )}
-        <button type="submit" className="icon primary" disabled={!text.trim()} aria-label="Send" title="Send">
+        <button type="submit" className="icon primary" disabled={!text.trim()} aria-label={t("chat.send")} title={t("chat.send")}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

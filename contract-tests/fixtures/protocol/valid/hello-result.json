@@ -1,0 +1,9 @@
+{
+  "schema": "hello-result",
+  "payload": {
+    "session_id": "s1",
+    "contract_version": "1.1.0",
+    "core_version": "0.1.0",
+    "heartbeat_interval_s": 20.0
+  }
+}

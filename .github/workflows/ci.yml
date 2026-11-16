@@ -37,6 +37,8 @@ jobs:
         run: |
           uv run --no-sync wysp-contract --tutor blender-tutor --offline
           uv run --no-sync wysp-contract --tutor intellij-tutor --offline
+      - name: Contract kit (observation property checks on the mock adapter)
+        run: uv run --no-sync wysp-contract --mock
       - name: Tests
         run: uv run --no-sync pytest -q -p no:cacheprovider
 
@@ -52,3 +54,19 @@ jobs:
       - run: npm run typecheck -w panel
       - run: npm test -w panel
       - run: npm run build -w panel
+
+  sdk-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Generated types are up to date
+        run: |
+          npm run gen:types -w sdk/ts
+          git diff --exit-code -- sdk/ts/src/generated
+      - run: npm run typecheck -w sdk/ts
+      - run: npm test -w sdk/ts

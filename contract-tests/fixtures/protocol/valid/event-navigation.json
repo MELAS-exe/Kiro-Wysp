@@ -1,0 +1,7 @@
+{
+  "schema": "event-navigation",
+  "payload": {
+    "url": "http://127.0.0.1:5174/board",
+    "title": "Board"
+  }
+}

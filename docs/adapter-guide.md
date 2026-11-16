@@ -129,6 +129,8 @@ The IntelliJ adapter (`Observe.kt`, `Imports.kt`) and `apps/intellij-tutor/profi
 3. **Validate the profile:** `uv run wysp validate-profile apps/<your-tutor>/profile`.
 4. **Read the Core's session log** after a real run: `uv run wysp logs summary`. Every adapter call has its duration there.
 5. For a live check, run the Core with `--llm scripted --scenario <file>` so no model is involved.
+6. **Run the observation checks of the kit on your adapter.** `wysp_contract.checks` (`check_observe_integrity`, `check_ref_stability`, `check_postconditions`) take one callable `request(method, params)`, so you can hand them your adapter's `handle` method directly. They verify what the contract promises about observations: refs unique and resolvable, kinds declared, 500 entities and 256 KB at most, no digest change without a change, and every postcondition true after each safe call. `uv run wysp-contract --mock` runs them on the mock adapter.
+7. **Read the mock adapter as a second worked example.** `contract-tests/wysp_mock/kanban.py` (a Kanban board with six actions of every risk level, undo tokens, user-origin events) is what the Core's own tests run against; `contract-tests/tests/test_prop_contract.py` shows property tests of an adapter (undo round trip, invalid calls change nothing, monotonic `state_version`). In TypeScript, `defineAction()` and `ActionRegistry` from `@wysp/adapter-sdk/actions` declare an action once and validate its params with ajv (not for Manifest V3 pages: ajv needs `unsafe-eval`).
 
 ## 10. The profile
 

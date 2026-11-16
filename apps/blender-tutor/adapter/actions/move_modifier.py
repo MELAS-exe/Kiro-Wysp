@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import bpy
 from wysp_adapter_sdk import ActionOutcome, ErrorCode, WyspError
 
 from ._common import MODIFIER_REF, action_spec, get_modifier, index_of
@@ -38,9 +39,16 @@ def run(p: dict, dry: bool) -> ActionOutcome:
     if current != target:
         obj.modifiers.move(current, target)
 
+    obj_name, mod_name = obj.name, mod.name
+
     def undo() -> None:
-        now = index_of(obj, mod)
-        if now != current and 0 <= current < len(obj.modifiers):
-            obj.modifiers.move(now, current)
+        # Resolve by name at undo time: the modifier may have been removed and recreated since (see remove_modifier).
+        o = bpy.data.objects.get(obj_name)
+        m = o.modifiers.get(mod_name) if o else None
+        if m is None:
+            return
+        now = index_of(o, m)
+        if now != current and 0 <= current < len(o.modifiers):
+            o.modifiers.move(now, current)
 
     return ActionOutcome(changed=[p["target"]], undo=undo, message=f"Moved '{mod.name}' from {current} to {target}")

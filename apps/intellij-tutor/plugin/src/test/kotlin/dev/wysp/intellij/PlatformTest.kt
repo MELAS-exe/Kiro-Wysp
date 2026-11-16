@@ -47,6 +47,36 @@ class PlatformTest : BasePlatformTestCase() {
         assertTrue(Json.write(obs).length < 256 * 1024)
     }
 
+    /** Lesson L01/L02 shape: at level full the focus holds the file ref and a symbol ref with '#'. */
+    fun testFullObservationFocusHasFileAndSymbolRefs() {
+        myFixture.configureByText("Greeter.java", source)
+        val obs = Observer(project).observe(mapOf("level" to "full"), snapshot(), 1)
+        @Suppress("UNCHECKED_CAST")
+        val focus = obs["focus"] as List<String>
+        assertTrue(focus.toString(), focus.any { '#' in it })
+        assertTrue(focus.toString(), focus.contains(Refs.file("Greeter.java")))
+    }
+
+    /** Lesson L02: problems are entities under the file ref at level full, and disappear once fixed. */
+    fun testProblemsAreListedUnderTheFileAndDisappearWhenFixed() {
+        myFixture.configureByText("Broken.java", "public class Broken {\n    void f() { int x = missing; }\n}\n")
+        myFixture.doHighlighting()
+        fun problems(): List<Map<String, Any?>> =
+            entities(Observer(project).observe(mapOf("level" to "full"), snapshot(), 1)).filter { it["kind"] == "problem" }
+        val before = problems()
+        assertTrue(before.toString(), before.isNotEmpty())
+        assertTrue(before.all { it["parent"] == Refs.file("Broken.java") })
+        val sigBefore = Observer(project).problemSignature(myFixture.editor.document)
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) {
+            val doc = myFixture.editor.document
+            val i = doc.text.indexOf("missing")
+            doc.replaceString(i, i + "missing".length, "1")
+        }
+        myFixture.doHighlighting()
+        assertTrue(problems().toString(), problems().isEmpty())
+        assertNotSame(sigBefore, Observer(project).problemSignature(myFixture.editor.document))
+        assertTrue(Observer(project).problemSignature(myFixture.editor.document).isEmpty())
+    }
     fun testLinesRefResolvesToWholeLines() {
         myFixture.configureByText("Greeter.java", source)
         val plan = Highlighter(project, testRootDisposable).resolve(Refs.lines("Greeter.java", 4, 5))

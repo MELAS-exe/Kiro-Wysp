@@ -1,0 +1,7 @@
+{
+  "schema": "params-highlight",
+  "payload": {
+    "ref": "mock://card/c1",
+    "duration_ms": 20000
+  }
+}

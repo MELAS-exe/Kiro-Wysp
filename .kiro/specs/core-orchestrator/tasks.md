@@ -50,7 +50,7 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: A_ · _Gate: J1_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 6.1 Write property tests for the board
+- [x] 6.1 Write property tests for the board
   - **Property CORE-P1: Provenance soundness**
   - **Property CORE-P2: The LLM cannot create observed facts**
   - **Property CORE-P3: Patch convergence**
@@ -66,7 +66,7 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: A_ · _Gate: J1_
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8_
 
-- [ ] 7.1 Write property tests for the gate and the pipeline
+- [x] 7.1 Write property tests for the gate and the pipeline
   - **Property CORE-P4: Gate policy**
   - **Property CORE-P5: Audit completeness**
   - **Property CORE-P6: Verify or undo**
@@ -88,7 +88,7 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: B (review: A)_ · _Gate: J1 (text), J2 (with voice)_
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 9.1 Write property tests for interruption and resume
+- [x] 9.1 Write property tests for interruption and resume
   - **Property CORE-P7: Interruption**
   - **Property CORE-P8: Resume**
   - **Validates: Requirements 6.2, 6.3**
@@ -114,7 +114,7 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: A_ · _Gate: J2, only if on schedule_
   - _Requirements: 11.1_
 
-- [ ] 14. Checkpoint: Core ready for both tutors
+- [x] 14. Checkpoint: Core ready for both tutors
   - All required tasks done, scenario tests green, boundary check clean, no application vocabulary in `core/`
   - Ask the user if questions arise
 
@@ -132,7 +132,7 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - Measured live on Groq: "how do I make a cube" 111 s / 5 requests -> 2.6 s / 1 request; "diagram of the steps" 35 s -> 3.8 s
   - _Owner: A_ · _Gate: J2_
 
-- [ ] 17. Survey the application when it becomes active (decision of 2026-11-13: contract stays 1.0.0, on by default, opt-out)
+- [x] 17. Survey the application when it becomes active (decision of 2026-11-13: contract stays 1.0.0, on by default, opt-out)
   - `session/survey.py` (survey task, bounded rendering, retry, stale refresh), hook in `Session._on_new_active` and `state_changed`, survey block in `build_system_prompt`, `--no-survey` / `WYSP_SURVEY=off`
   - Tests: CORE-P13, CORE-P14 (Hypothesis) and scenario tests with the mock adapter (survey fills `observed_refs`, a slow survey does not block, opt-out, retry, stale refresh)
   - Then the adapters: IntelliJ project-wide pass inside `level=full` (file tree, symbols, project problems; sensitive and noise filters reused, no code text), Blender cap fix and scene facts
@@ -145,14 +145,14 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: A (Core), B (Panel)_ - _Gate: J2_
   - _Requirements: 14.1, 14.2_
 
-- [ ] 20. Project exploration: code map and study phase (decision of 2026-11-15, the user asks first)
+- [x] 20. Project exploration: code map and study phase (decision of 2026-11-15, the user asks first)
   - Profile `explore` section; `session/explore.py` (code map, crawl with budget, study plan, brief, coverage, persistence); tools `code_map`, `get_study_plan`, `record_understanding`, `finish_study`; `explore.start` / `explore.stop` / `explore.state` in the UI protocol; `study` inbox event and the tutor agent's instructions; Panel card (offer, progress, stop); survey retries with longer backoff; "Wysp" in the speech hints
   - IntelliJ adapter: `observe {level: full, root: <dir|file|project>}` returns that subtree with symbols, sizes and resolved dependencies (`intellij-tutor` Requirement 12)
   - Tests: CORE-P15, CORE-P16, scenario tests with a synthetic project tree, platform test for the subtree observation
   - _Owner: A (Core), C (adapter), B (Panel)_ - _Gate: J2_
   - _Requirements: 15.1-15.9_
 
-- [ ] 19. Persistent highlights' (contract 1.1.0, decision of 2026-11-13)
+- [x] 19. Persistent highlights' (contract 1.1.0, decision of 2026-11-13)
   - Contract: `duration_ms` 0, `adapter.clear_highlight`, `event.highlight_dismissed`; Core: active highlight, `clear_highlight` tool, clearing rules, prompt; mock adapter and Python SDK; IntelliJ adapter (persistent code and UI highlights, dismissal when the user clicks, edits or moves into the element); Blender stays on timed highlights until it moves to 1.1
   - Tests: contract kit and Core scenario tests with the mock adapter, platform test for the IntelliJ highlighter
   - _Owner: A (contract, Core), C (adapters)_ - _Gate: J2_
