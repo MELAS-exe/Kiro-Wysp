@@ -1,10 +1,13 @@
 package dev.wysp.intellij.actions
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import dev.wysp.intellij.ErrorCode
+import dev.wysp.intellij.Highlighter
 import dev.wysp.intellij.Refs
 import dev.wysp.intellij.WyspError
+import dev.wysp.intellij.WyspProjectService
 
 /** show_tool_window: open and focus a tool window by id. UI state only. */
 class ShowToolWindow : WyspAction {
@@ -33,6 +36,11 @@ class ShowToolWindow : WyspAction {
         if (!tw.isAvailable) throw WyspError(ErrorCode.PRECONDITION_FAILED, "the ${tw.id} tool window is not available in this project")
         if (dryRun) return ActionOutcome(preview = mapOf("would_show" to tw.id))
         tw.activate(null, true)
+        // Opening a panel is also pointing at it: frame it for a few seconds so the student sees which one.
+        runCatching {
+            val highlighter = project.service<WyspProjectService>().highlighter
+            highlighter.highlight(Highlighter.Plan.ToolWindowPlan(tw.id), 4000)
+        }
         return ActionOutcome(changed = listOf(Refs.toolWindow(tw.id)), message = "Opened the ${tw.id} tool window")
     }
 }

@@ -13,6 +13,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
@@ -56,6 +57,19 @@ class Events(private val project: Project, private val service: WyspService, par
                 changed(vf)
             }
         }, parent)
+        // Indexing finished: symbols are skipped while the IDE indexes, so a survey taken then is incomplete.
+        project.messageBus.connect(parent).subscribe(
+            DumbService.DUMB_MODE,
+            object : DumbService.DumbModeListener {
+                override fun exitDumbMode() {
+                    if (!service.connected || project.isDisposed) return
+                    service.notify(
+                        "event.state_changed",
+                        mapOf("state_version" to service.bump(), "changed" to listOf(Refs.project(project.name)), "origin" to "unknown"),
+                    )
+                }
+            },
+        )
         ApplicationManager.getApplication().messageBus.connect(parent).subscribe(
             VirtualFileManager.VFS_CHANGES,
             object : BulkFileListener {

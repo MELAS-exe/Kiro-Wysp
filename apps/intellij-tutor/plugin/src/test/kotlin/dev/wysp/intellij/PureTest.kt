@@ -29,6 +29,8 @@ class RefsTest {
             assertEquals(Ref.Symbol(path, parts), Refs.parse(Refs.symbol(path, parts)))
             val line = rnd.nextInt(1, 5000)
             assertEquals(Ref.Problem(path, line, 2), Refs.parse(Refs.problem(path, line, 2)))
+            assertEquals(Ref.Lines(path, line, line + 3), Refs.parse(Refs.lines(path, line, line + 3)))
+            assertEquals(Ref.Lines(path, line, line), Refs.parse(Refs.lines(path, line)))
             val name = randomSegment(rnd) + "/" + randomSegment(rnd)
             assertEquals(Ref.Run(name), Refs.parse(Refs.run(name)))
             assertEquals(Ref.Label(name), Refs.parse(Refs.label(name)))

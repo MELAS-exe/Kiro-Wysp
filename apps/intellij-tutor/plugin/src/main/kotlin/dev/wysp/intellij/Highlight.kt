@@ -2,7 +2,15 @@ package dev.wysp.intellij
 
 import com.intellij.ide.projectView.ProjectView
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ScrollType
+import com.intellij.openapi.editor.event.CaretEvent
+import com.intellij.openapi.editor.event.CaretListener
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.editor.event.EditorMouseListener
 import com.intellij.openapi.editor.markup.EffectType
 import com.intellij.openapi.editor.markup.HighlighterLayer
 import com.intellij.openapi.editor.markup.HighlighterTargetArea
@@ -25,6 +33,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.ui.JBUI
 import dev.wysp.intellij.actions.resolveSymbol
+import java.awt.AWTEvent
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Component
@@ -35,6 +44,9 @@ import java.awt.KeyboardFocusManager
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.RenderingHints
+import java.awt.Toolkit
+import java.awt.event.AWTEventListener
+import java.awt.event.MouseEvent
 import java.awt.Window
 import javax.swing.AbstractButton
 import javax.swing.JComponent
@@ -44,13 +56,24 @@ import javax.swing.SwingUtilities
 import javax.swing.Timer
 import javax.swing.text.JTextComponent
 
-/** Points at things for the user. Every method runs on the EDT and changes UI state only. */
-class Highlighter(private val project: Project, private val parent: Disposable) {
+/**
+ * Points at things for the user. Every method runs on the EDT and changes UI state only.
+ *
+ * A highlight with `durationMs <= 0` is persistent (contract 1.1): no timer; it stays until [clear], until another
+ * highlight replaces it, or until the user interacts with what it points at, which is reported to `dismissed`.
+ */
+class Highlighter(
+    private val project: Project,
+    private val parent: Disposable,
+    private val dismissed: (String) -> Unit = {},
+) {
     private var current: Disposable? = null
+    private var currentRef: String? = null
+    private var armedAtMs = 0L
 
     /** What to point at, found in a background read action (PSI and highlighting data are slow on the EDT). */
     sealed class Plan {
-        class Code(val path: String, val vf: VirtualFile, val range: IntRange?) : Plan()
+        class Code(val path: String, val vf: VirtualFile, val range: IntRange?, val wholeLines: Boolean = false) : Plan()
         class InProjectView(val vf: VirtualFile, val what: String) : Plan()
         class ToolWindowPlan(val id: String) : Plan()
         class Label(val text: String) : Plan()
@@ -74,6 +97,15 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
                     ?: throw WyspError(ErrorCode.TARGET_NOT_FOUND, "no problem ${r.n} on line ${r.line} of ${r.path} (fixed already?)")
                 Plan.Code(r.path, vf, range)
             }
+            is Ref.Lines -> {
+                val vf = file(r.path)
+                val doc = FileDocumentManager.getInstance().getDocument(vf) ?: throw WyspError(ErrorCode.TARGET_NOT_FOUND, "cannot read ${r.path}")
+                if (doc.lineCount == 0 || r.from > doc.lineCount) {
+                    throw WyspError(ErrorCode.TARGET_NOT_FOUND, "${r.path} has ${doc.lineCount} lines, no line ${r.from}")
+                }
+                val to = minOf(r.to, doc.lineCount)
+                Plan.Code(r.path, vf, doc.getLineStartOffset(r.from - 1) until maxOf(doc.getLineEndOffset(to - 1), doc.getLineStartOffset(r.from - 1) + 1), wholeLines = true)
+            }
             is Ref.Dir -> Plan.InProjectView(file(r.path), r.path)
             is Ref.Module -> {
                 val m = ModuleManager.getInstance(project).findModuleByName(r.name)
@@ -89,26 +121,88 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
         }
     }
 
-    /** On the EDT: show the plan for `durationMs`, replacing the previous highlight. */
-    fun highlight(plan: Plan, durationMs: Int): Map<String, Any?> {
+    /** On the EDT: show the plan for `durationMs` (0: until cleared), replacing the previous highlight. */
+    fun highlight(plan: Plan, durationMs: Int, ref: String? = null): Map<String, Any?> {
         clear()
+        val persistent = durationMs <= 0
         val life = Disposer.newDisposable("wysp-highlight")
         Disposer.register(parent, life)
         current = life
-        Timer(durationMs.coerceIn(500, 30_000)) { if (current === life) clear() else Disposer.dispose(life) }.apply {
-            isRepeats = false
-            start()
+        currentRef = ref
+        // Our own scrolling, opening and caret placement happen in this window and never count as the user's.
+        armedAtMs = System.currentTimeMillis() + GRACE_MS
+        if (!persistent) {
+            Timer(durationMs.coerceIn(500, 30_000)) { if (current === life) clear() else Disposer.dispose(life) }.apply {
+                isRepeats = false
+                start()
+            }
         }
-        return when (plan) {
-            is Plan.Code -> code(life, plan.path, plan.vf, plan.range)
-            is Plan.InProjectView -> inProjectView(life, plan.vf, plan.what)
-            is Plan.ToolWindowPlan -> toolWindow(life, plan.id)
-            is Plan.Label -> label(life, plan.text)
+        return try {
+            when (plan) {
+                is Plan.Code -> code(life, plan.path, plan.vf, plan.range, plan.wholeLines, persistent)
+                is Plan.InProjectView -> inProjectView(life, plan.vf, plan.what, persistent)
+                is Plan.ToolWindowPlan -> toolWindow(life, plan.id, persistent)
+                is Plan.Label -> label(life, plan.text, persistent)
+            }
+        } catch (e: Throwable) {
+            if (current === life) clear() // nothing was shown: nothing stays active
+            throw e
         }
     }
+
     fun clear() {
         current?.let { Disposer.dispose(it) }
         current = null
+        currentRef = null
+    }
+
+    /** Take the highlight down on request. True when there was one. */
+    fun clearActive(): Boolean {
+        val had = current != null
+        clear()
+        return had
+    }
+
+    /** The user interacted with what is highlighted: take it down and say so. */
+    private fun dismiss(life: Disposable) {
+        if (current !== life || System.currentTimeMillis() < armedAtMs) return
+        val ref = currentRef
+        clear()
+        if (ref != null) dismissed(ref)
+    }
+
+    /** A mouse press anywhere on screen inside `bounds()` (screen coordinates) is the user using the highlighted control. */
+    private fun dismissOnClickIn(life: Disposable, bounds: () -> Rectangle?) {
+        val listener = AWTEventListener { e ->
+            if (e is MouseEvent && e.id == MouseEvent.MOUSE_PRESSED) {
+                val r = bounds() ?: return@AWTEventListener
+                if (r.contains(e.locationOnScreen)) dismiss(life)
+            }
+        }
+        Toolkit.getDefaultToolkit().addAWTEventListener(listener, AWTEvent.MOUSE_EVENT_MASK)
+        Disposer.register(life) { Toolkit.getDefaultToolkit().removeAWTEventListener(listener) }
+    }
+
+    /** Code: a click, a caret move or an edit inside the highlighted range (any click or edit, when a whole file is pointed at). */
+    private fun dismissOnUseOf(life: Disposable, editor: Editor, range: IntRange?) {
+        fun inside(offset: Int) = range == null || offset in range.first..(range.last + 1)
+        editor.addEditorMouseListener(object : EditorMouseListener {
+            override fun mousePressed(event: EditorMouseEvent) {
+                val offset = editor.logicalPositionToOffset(editor.xyToLogicalPosition(event.mouseEvent.point))
+                if (inside(offset)) dismiss(life)
+            }
+        }, life)
+        EditorFactory.getInstance().eventMulticaster.addCaretListener(object : CaretListener {
+            override fun caretPositionChanged(event: CaretEvent) {
+                if (event.editor === editor && range != null && inside(editor.caretModel.offset)) dismiss(life)
+            }
+        }, life)
+        EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {
+            override fun documentChanged(event: DocumentEvent) {
+                if (event.document !== editor.document) return
+                if (range == null || (event.offset <= range.last + 1 && event.offset + event.oldLength >= range.first)) dismiss(life)
+            }
+        }, life)
     }
 
     private fun file(path: String): VirtualFile =
@@ -116,33 +210,60 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
             ?: throw WyspError(ErrorCode.TARGET_NOT_FOUND, "no $path in the project")
 
     // ---------------------------------------------------------------------------------------------- code
-    private fun code(life: Disposable, path: String, vf: VirtualFile, range: IntRange?): Map<String, Any?> {
+    private fun code(life: Disposable, path: String, vf: VirtualFile, range: IntRange?, wholeLines: Boolean = false, persistent: Boolean = false): Map<String, Any?> {
         val offset = range?.first ?: 0
         val editor = FileEditorManager.getInstance(project).openTextEditor(OpenFileDescriptor(project, vf, offset), false)
             ?: throw WyspError(ErrorCode.TARGET_NOT_FOUND, "cannot open $path in an editor")
         if (range == null) {
-            pointAt(life, editor.contentComponent, Rectangle(0, editor.scrollingModel.verticalScrollOffset, 0, 0), vf.name, frame = false)
+            // A whole file: open it and frame the editor, so it is obvious which one is meant.
+            pointAt(life, editor.component, null, vf.name, frame = true, persistent = persistent)
+            if (persistent) dismissOnUseOf(life, editor, null)
             return mapOf("ok" to true, "located" to true)
         }
         val end = minOf(range.last + 1, editor.document.textLength)
         editor.scrollingModel.scrollTo(editor.offsetToLogicalPosition(range.first), ScrollType.CENTER)
         val attrs = TextAttributes(null, BACKGROUND, ACCENT, EffectType.ROUNDED_BOX, Font.PLAIN).apply { errorStripeColor = ACCENT }
-        val h = editor.markupModel.addRangeHighlighter(range.first, end, HighlighterLayer.SELECTION - 1, attrs, HighlighterTargetArea.EXACT_RANGE)
+        val h = editor.markupModel.addRangeHighlighter(range.first, end, HighlighterLayer.SELECTION - 1, attrs,
+            if (wholeLines) HighlighterTargetArea.LINES_IN_RANGE else HighlighterTargetArea.EXACT_RANGE)
         Disposer.register(life) { if (!editor.isDisposed) editor.markupModel.removeHighlighter(h) }
+        if (persistent) dismissOnUseOf(life, editor, range)
         return mapOf("ok" to true, "located" to true)
     }
 
-    private fun inProjectView(life: Disposable, vf: VirtualFile, what: String): Map<String, Any?> {
+    private fun inProjectView(life: Disposable, vf: VirtualFile, what: String, persistent: Boolean = false): Map<String, Any?> {
         val tw = ToolWindowManager.getInstance(project).getToolWindow("Project")
             ?: throw WyspError(ErrorCode.TARGET_NOT_FOUND, "the Project tool window is not available")
-        tw.show {
-            ProjectView.getInstance(project).select(null, vf, false)
+        var framed = false
+        fun frameWholeWindow() {
+            if (framed || Disposer.isDisposed(life)) return
+            framed = true
+            pointAt(life, tw.component, null, what, frame = true, persistent = persistent)
+            if (persistent) dismissOnClickIn(life) { screenBounds(tw.component) }
         }
-        pointAt(life, tw.component, null, what, frame = false)
+        tw.show {
+            // Selecting (and expanding the tree down to the item) finishes later: frame the row once it is there.
+            ProjectView.getInstance(project).selectCB(null, vf, false).doWhenDone {
+                if (framed || Disposer.isDisposed(life)) return@doWhenDone
+                val tree = ProjectView.getInstance(project).currentProjectViewPane?.tree
+                val path = tree?.selectionPath
+                if (tree == null || path == null) return@doWhenDone frameWholeWindow()
+                tree.scrollPathToVisible(path)
+                // The whole row, recomputed on every paint so the frame stays on it when the tree scrolls.
+                val row = { tree.getPathBounds(path)?.let { r -> Rectangle(tree.visibleRect.x, r.y, tree.visibleRect.width, r.height) } }
+                framed = true
+                pointAt(life, tree, null, what, frame = true, persistent = persistent, rectOf = row)
+                if (persistent) dismissOnClickIn(life) { row()?.let { screenBounds(tree, it) } }
+            }
+        }
+        // If the tree never answers, still show where to look.
+        Timer(2500) { frameWholeWindow() }.apply {
+            isRepeats = false
+            start()
+        }
         return mapOf("ok" to true, "located" to true)
     }
 
-    private fun toolWindow(life: Disposable, id: String): Map<String, Any?> {
+    private fun toolWindow(life: Disposable, id: String, persistent: Boolean = false): Map<String, Any?> {
         val manager = ToolWindowManager.getInstance(project)
         val tw = manager.getToolWindow(id)
             ?: manager.toolWindowIds.firstOrNull { it.equals(id, ignoreCase = true) }?.let { manager.getToolWindow(it) }
@@ -151,15 +272,16 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
                 "no tool window '$id'. Available: ${manager.toolWindowIds.sorted().joinToString(", ")}",
             )
         tw.show {
-            pointAt(life, tw.component, null, tw.stripeTitle, frame = true)
+            pointAt(life, tw.component, null, tw.stripeTitle, frame = true, persistent = persistent)
         }
+        if (persistent) dismissOnClickIn(life) { screenBounds(tw.component) }
         return mapOf("ok" to true, "located" to true)
     }
 
     // --------------------------------------------------------------------------------------------- label
     private class Target(val text: String, val component: Component, val rect: Rectangle?)
 
-    private fun label(life: Disposable, wanted: String): Map<String, Any?> {
+    private fun label(life: Disposable, wanted: String, persistent: Boolean = false): Map<String, Any?> {
         val targets = visibleTargets()
         val i = LabelMatch.best(wanted, targets.map { it.text })
         if (i == null) {
@@ -171,7 +293,8 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
             )
         }
         val t = targets[i]
-        pointAt(life, t.component, t.rect, t.text, frame = true)
+        pointAt(life, t.component, t.rect, t.text, frame = true, persistent = persistent)
+        if (persistent) dismissOnClickIn(life) { screenBounds(t.component, t.rect) }
         return mapOf("ok" to true, "located" to true, "matched" to t.text)
     }
 
@@ -213,12 +336,20 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
     }
 
     // -------------------------------------------------------------------------------------------- pointer
-    private fun pointAt(life: Disposable, target: Component, rect: Rectangle?, text: String, frame: Boolean) {
-        val r = rect ?: Rectangle(0, 0, target.width, target.height)
+    private fun pointAt(
+        life: Disposable,
+        target: Component,
+        rect: Rectangle?,
+        text: String,
+        frame: Boolean,
+        persistent: Boolean = false,
+        rectOf: (() -> Rectangle?)? = null,
+    ) {
+        val r = rectOf?.invoke() ?: rect ?: Rectangle(0, 0, target.width, target.height)
         if (frame && target is JComponent) {
             runCatching {
                 val glass = IdeGlassPaneUtil.find(target)
-                val painter = FramePainter(target, r)
+                val painter = FramePainter(target, rectOf ?: { r })
                 glass.addPainter(target, painter, life)
                 painter.setNeedsRepaint(true, target.rootPane)
                 Disposer.register(life) { target.rootPane?.repaint() }
@@ -226,21 +357,32 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
         }
         val balloon = JBPopupFactory.getInstance()
             .createHtmlTextBalloonBuilder("<b>Wysp</b>: ${escape(LabelMatch.visible(listOf(text)).firstOrNull() ?: "here")}", MessageType.INFO, null)
-            .setHideOnClickOutside(true)
+            // A persistent pointer outlives the user's other clicks and actions; only using the target, or Wysp, ends it.
+            .setHideOnClickOutside(!persistent)
             .setHideOnKeyOutside(false)
+            .setHideOnAction(!persistent)
             .createBalloon()
         Disposer.register(life, balloon)
         val point = if (rect == null && !frame) Point(minOf(r.width / 2, JBUI.scale(160)), r.y + JBUI.scale(16)) else Point(r.x + r.width / 2, r.y + r.height)
         balloon.show(RelativePoint(target, point), Balloon.Position.below)
     }
 
+    /** Where a component (or a rectangle inside it) is on screen, or null when it is not showing any more. */
+    private fun screenBounds(c: Component, inside: Rectangle? = null): Rectangle? {
+        if (!c.isShowing) return null
+        val origin = c.locationOnScreen
+        val r = inside ?: Rectangle(0, 0, c.width, c.height)
+        return Rectangle(origin.x + r.x, origin.y + r.y, r.width, r.height)
+    }
+
     private fun escape(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    private class FramePainter(private val target: Component, private val rect: Rectangle) : AbstractPainter() {
+    private class FramePainter(private val target: Component, private val rectOf: () -> Rectangle?) : AbstractPainter() {
         override fun needsRepaint(): Boolean = true
 
         override fun executePaint(component: Component, g: Graphics2D) {
             if (!target.isShowing) return
+            val rect = rectOf() ?: return
             val r = SwingUtilities.convertRectangle(target, rect, component)
             val pad = JBUI.scale(3)
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
@@ -253,7 +395,9 @@ class Highlighter(private val project: Project, private val parent: Disposable) 
     companion object {
         // Accessible names of layout regions, not of controls a student would click.
         private val LANDMARKS = Regex("(?i)^(status bar|left toolbar|right toolbar|main toolbar.*|application icon|.* - intellij idea)$")
-        val ACCENT: Color = JBColor(Color(0xF5A623), Color(0xF5A623))
-        val BACKGROUND: Color = JBColor(Color(0xFFF1C9), Color(0x4D4020))
+        val ACCENT: Color = JBColor(Color(0x6503FC), Color(0xCA84FC)) // the mascot's violet on light themes, its lilac on dark
+        val BACKGROUND: Color = JBColor(Color(0xF0E2FF), Color(0x3B2470))
+        /** After showing a highlight, the IDE's own scrolling and caret placement for this long never count as the user's. */
+        const val GRACE_MS = 1500L
     }
 }

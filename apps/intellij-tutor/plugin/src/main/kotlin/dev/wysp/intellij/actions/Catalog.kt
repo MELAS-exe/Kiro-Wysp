@@ -11,7 +11,11 @@ import java.util.concurrent.atomic.AtomicLong
  * action ids. Keeps undo records for reversible actions (bounded).
  */
 class Catalog {
-    val actions: List<WyspAction> = listOf(OpenFile(), GoToSymbol(), ShowToolWindow(), RenameSymbol())
+    val actions: List<WyspAction> = listOf(
+        OpenFile(), GoToSymbol(), ShowToolWindow(), RenameSymbol(),
+        ReadCode(), SearchCode(), FindUsages(), ListFiles(),
+        ReplaceLines(), InsertLines(), CreateFile(), ReformatCode(), OptimizeImports(),
+    )
     private val byId = actions.associateBy { it.spec["id"] as String }
     private val undo = object : LinkedHashMap<String, () -> List<String>>() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, () -> List<String>>?) = size > 100

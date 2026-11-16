@@ -1,12 +1,17 @@
 package dev.wysp.intellij.ui
 
 import com.intellij.ide.BrowserUtil
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.impl.content.ToolWindowContentUi
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.content.ContentFactory
@@ -40,6 +45,7 @@ class WyspToolWindowFactory : ToolWindowFactory, DumbAware {
                 else -> "Core not reachable (retrying)"
             }
             connect.text = if (s == "stopped" || s == "refused") "Connect" else "Disconnect"
+            bar.isVisible = s != "connected" // minimal: the strip only shows when something needs attention
         }
         connect.addActionListener {
             if (service.status == "stopped" || service.status == "refused") service.connect() else service.disconnect()
@@ -49,11 +55,15 @@ class WyspToolWindowFactory : ToolWindowFactory, DumbAware {
         refresh()
         root.add(bar, BorderLayout.NORTH)
 
+        var reload: (() -> Unit)? = null
+        // The token is read fresh each time (the Core may have rotated it) and only travels in the URL fragment.
+        fun panelUrl() = PanelBrowser.withToken(settings.panelUrl, settings.readToken())
         val url = settings.panelUrl
-        val browser = PanelBrowser.create(url, content)
+        val browser = PanelBrowser.create(panelUrl(), content)
         if (browser != null) {
             root.add(browser.component, BorderLayout.CENTER)
-            bar.add(JButton("Reload").apply { addActionListener { browser.load(settings.panelUrl) } })
+            // A fresh query string skips any cached copy of the Panel page (its assets are content-hashed).
+            reload = { browser.load(PanelBrowser.fresh(panelUrl())) }
         } else {
             val fallback = JPanel(FlowLayout(FlowLayout.LEFT))
             fallback.add(JBLabel("This IDE cannot embed a browser. Open the Panel in your browser:"))
@@ -61,5 +71,22 @@ class WyspToolWindowFactory : ToolWindowFactory, DumbAware {
             root.add(fallback, BorderLayout.CENTER)
         }
         toolWindow.contentManager.addContent(content)
+
+        // Minimal chrome: no "Wysp" label in the tool window header; the connection and reload live in its gear menu.
+        toolWindow.component.putClientProperty(ToolWindowContentUi.HIDE_ID_LABEL, "true")
+        val toggle = object : DumbAwareAction() {
+            override fun update(e: AnActionEvent) {
+                val off = service.status == "stopped" || service.status == "refused"
+                e.presentation.text = if (off) "Connect to Wysp Core" else "Disconnect from Wysp Core"
+            }
+            override fun actionPerformed(e: AnActionEvent) = connect.doClick()
+            override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        }
+        val reloadAction = object : DumbAwareAction("Reload Wysp Panel") {
+            override fun update(e: AnActionEvent) { e.presentation.isEnabled = reload != null }
+            override fun actionPerformed(e: AnActionEvent) { reload?.invoke() }
+            override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        }
+        toolWindow.setAdditionalGearActions(DefaultActionGroup(reloadAction, toggle))
     }
 }

@@ -24,10 +24,24 @@ async def main_async(args: argparse.Namespace) -> int:
     async def handler(ws: ServerConnection) -> None:
         hello = json.loads(await ws.recv())
         if hello.get("params", {}).get("token") != token:
-            await ws.send(json.dumps({"jsonrpc": "2.0", "id": hello.get("id"), "error": {"code": -32019, "message": "bad token"}}))
+            await ws.send(
+                json.dumps({"jsonrpc": "2.0", "id": hello.get("id"), "error": {"code": -32019, "message": "bad token"}})
+            )
             return
-        await ws.send(json.dumps({"jsonrpc": "2.0", "id": hello["id"], "result": {
-            "session_id": "probe", "contract_version": "1.0.0", "core_version": "probe", "heartbeat_interval_s": 20}}))
+        await ws.send(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": hello["id"],
+                    "result": {
+                        "session_id": "probe",
+                        "contract_version": "1.0.0",
+                        "core_version": "probe",
+                        "heartbeat_interval_s": 20,
+                    },
+                }
+            )
+        )
         pending: dict[str, asyncio.Future] = {}
 
         async def reader() -> None:
@@ -50,9 +64,15 @@ async def main_async(args: argparse.Namespace) -> int:
             method, _, raw = line.partition(" ")
             fut = asyncio.get_running_loop().create_future()
             pending[f"p{i}"] = fut
-            await ws.send(json.dumps({"jsonrpc": "2.0", "id": f"p{i}", "method": method, "params": json.loads(raw or "{}")}))
+            await ws.send(
+                json.dumps({"jsonrpc": "2.0", "id": f"p{i}", "method": method, "params": json.loads(raw or "{}")})
+            )
             reply = await asyncio.wait_for(fut, 15)
-            print(f"== {method}", json.dumps(reply.get("result", reply.get("error")), indent=1, ensure_ascii=False)[: args.max], flush=True)
+            print(
+                f"== {method}",
+                json.dumps(reply.get("result", reply.get("error")), indent=1, ensure_ascii=False)[: args.max],
+                flush=True,
+            )
         task.cancel()
         done.set()
 

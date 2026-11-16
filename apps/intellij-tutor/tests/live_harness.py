@@ -90,6 +90,33 @@ async def run_checks(rpc: Rpc, manifest: Manifest, fixture: dict[str, Any], repo
         m = await rpc.call("adapter.observe", {"scope": {"level": level}})
         return Observation.model_validate(m["result"])
 
+    async def settled(timeout_s: float = 10.0) -> Observation:
+        """An observation once the IDE's background analysis has caught up (two equal digests in a row).
+
+        Problems are derived data: the IDE recomputes them asynchronously after any edit, and their refs carry line
+        numbers, so a single snapshot taken right after a change (or its undo) can still show the old ones.
+        """
+        prev = await observe()
+        end = time.time() + timeout_s
+        while time.time() < end:
+            await asyncio.sleep(0.8)
+            cur = await observe()
+            if digest(cur, manifest.volatile_props) == digest(prev, manifest.volatile_props):
+                return cur
+            prev = cur
+        return prev
+
+    async def same_as(before: Observation, timeout_s: float = 10.0) -> bool:
+        """True once the state matches `before` again, allowing the analysis time to settle."""
+        end = time.time() + timeout_s
+        while True:
+            now = await observe()
+            if digest(now, manifest.volatile_props) == digest(before, manifest.volatile_props):
+                return True
+            if time.time() > end:
+                return False
+            await asyncio.sleep(0.8)
+
     # Wait until the IDE is ready (indexing and the build-tool sync answer BUSY), then open a file to look at.
     deadline = time.time() + 300
     while time.time() < deadline:
@@ -112,7 +139,9 @@ async def run_checks(rpc: Rpc, manifest: Manifest, fixture: dict[str, Any], repo
         problems = check_observation(obs, kinds)
         size = len(json.dumps(m["result"]))
         report.check(f"observe {level}: integrity", not problems, problems[:5])
-        report.check(f"observe {level}: budget", m["_ms"] < 1000 and size <= 256 * 1024, {"ms": m["_ms"], "bytes": size})
+        report.check(
+            f"observe {level}: budget", m["_ms"] < 1000 and size <= 256 * 1024, {"ms": m["_ms"], "bytes": size}
+        )
     obs = await observe("full")
     for _ in range(30):  # problems come from the IDE's own analysis, which runs after indexing and sync
         if any(e.kind == "problem" for e in obs.entities):
@@ -120,16 +149,24 @@ async def run_checks(rpc: Rpc, manifest: Manifest, fixture: dict[str, Any], repo
         await asyncio.sleep(1)
         obs = await observe("full")
     report.check("observe: enough entities", len(obs.entities) >= expect["min_entities"], len(obs.entities))
-    report.check("observe: kinds seen", {e.kind for e in obs.entities} >= {"project", "module", "file", "symbol", "problem"}, sorted({e.kind for e in obs.entities}))
+    report.check(
+        "observe: kinds seen",
+        {e.kind for e in obs.entities} >= {"project", "module", "file", "symbol", "problem"},
+        sorted({e.kind for e in obs.entities}),
+    )
 
     m = await rpc.call("adapter.get_context", {})
     ctx = Context.model_validate(m["result"])
     size = len(json.dumps(m["result"], ensure_ascii=False).encode("utf-8"))
-    report.check("get_context: size and budget", size <= MAX_CONTEXT_BYTES and m["_ms"] < 1000, {"bytes": size, "ms": m["_ms"], "summary": ctx.summary})
+    report.check(
+        "get_context: size and budget",
+        size <= MAX_CONTEXT_BYTES and m["_ms"] < 1000,
+        {"bytes": size, "ms": m["_ms"], "summary": ctx.summary},
+    )
 
     for call in fixture.get("safe_calls", []):
         name = f"safe {call['action_id']} {json.dumps(call['params'])}"
-        before = await observe()
+        before = await settled()
         m = await rpc.call("adapter.execute", {"call": {**call, "request_id": f"r{rpc.n}", "dry_run": False}})
         if "error" in m:
             report.check(name, False, m["error"])
@@ -138,47 +175,82 @@ async def run_checks(rpc: Rpc, manifest: Manifest, fixture: dict[str, Any], repo
         spec = by_id[call["action_id"]]
         after = await observe()
         outcomes = [evaluate(substitute(p, call["params"]), after) for p in spec.postconditions]
-        report.check(name + ": postconditions", all(o.ok for o in outcomes), [o.model_dump() for o in outcomes if not o.ok])
+        report.check(
+            name + ": postconditions", all(o.ok for o in outcomes), [o.model_dump() for o in outcomes if not o.ok]
+        )
         if spec.reversible:
             report.check(name + ": undo token", bool(res.undo_token), res.model_dump())
             if res.undo_token:
                 u = await rpc.call("adapter.undo", {"token": res.undo_token})
                 ActionResult.model_validate(u.get("result") or {"status": "failed", "state_version": 0})
-                restored = await observe()
-                same = digest(restored, manifest.volatile_props) == digest(before, manifest.volatile_props)
+                same = await same_as(before)
                 report.check(name + ": undo restores the digest", "result" in u and same, u.get("error"))
                 again = await rpc.call("adapter.undo", {"token": res.undo_token})
-                report.check(name + ": token is single-use", again.get("error", {}).get("code") == -32015, again.get("error"))
+                report.check(
+                    name + ": token is single-use", again.get("error", {}).get("code") == -32015, again.get("error")
+                )
 
     for call in fixture.get("dry_run_calls", []):
         name = f"dry-run {call['action_id']}"
-        before = await observe()
+        before = await settled()
         m = await rpc.call("adapter.execute", {"call": {**call, "request_id": f"r{rpc.n}", "dry_run": True}})
         res = ActionResult.model_validate(m.get("result") or {"status": "failed", "state_version": 0})
-        after = await observe()
-        same = digest(after, manifest.volatile_props) == digest(before, manifest.volatile_props)
-        report.check(name, "result" in m and res.preview is not None and not res.undo_token and same, m.get("error") or res.preview)
+        same = await same_as(before)
+        report.check(
+            name,
+            "result" in m and res.preview is not None and not res.undo_token and same,
+            m.get("error") or res.preview,
+        )
 
     for call in fixture.get("invalid_calls", []):
         name = f"invalid {call['action_id']} {json.dumps(call['params'])}"
-        before = await observe()
+        before = await settled()
         params = {k: v for k, v in call.items() if k != "expect_error"}
         m = await rpc.call("adapter.execute", {"call": {**params, "request_id": f"r{rpc.n}", "dry_run": False}})
         code = (m.get("error") or {}).get("code")
-        after = await observe()
-        same = digest(after, manifest.volatile_props) == digest(before, manifest.volatile_props)
-        report.check(name, code == call["expect_error"] and same, {"code": code, "message": (m.get("error") or {}).get("message"), "unchanged": same})
+        same = await same_as(before)
+        report.check(
+            name,
+            code == call["expect_error"] and same,
+            {"code": code, "message": (m.get("error") or {}).get("message"), "unchanged": same},
+        )
 
     # Highlights: code, tool window, a visible label, and a label that is not there.
     for ref in fixture.get("highlights", []):
         m = await rpc.call("adapter.highlight", {"ref": ref, "style": "pulse", "duration_ms": 1500})
-        report.check(f"highlight {ref}", "result" in m and m["_ms"] < 1500, m.get("error") or {"ms": m["_ms"], **m.get("result", {})})
+        report.check(
+            f"highlight {ref}",
+            "result" in m and m["_ms"] < 1500,
+            m.get("error") or {"ms": m["_ms"], **m.get("result", {})},
+        )
         await asyncio.sleep(0.4)
     m = await rpc.call("adapter.highlight", {"ref": "intellij://ui/label/No Such Button Anywhere", "duration_ms": 1000})
     err = m.get("error") or {}
-    report.check("highlight missing label lists visible labels", err.get("code") == -32012 and bool((err.get("data") or {}).get("visible")), err.get("message", "")[:300])
+    report.check(
+        "highlight missing label lists visible labels",
+        err.get("code") == -32012 and bool((err.get("data") or {}).get("visible")),
+        err.get("message", "")[:300],
+    )
 
     await asyncio.sleep(1.0)
+    # Persistent highlight (contract 1.1): no timer; clearing says there was one, then there is none.
+    first_ref = (fixture.get("highlights") or [None])[0]
+    if first_ref:
+        m = await rpc.call("adapter.highlight", {"ref": first_ref, "style": "pulse", "duration_ms": 0})
+        report.check("persistent highlight (duration 0)", "result" in m, m.get("error") or {"ms": m["_ms"]})
+        await asyncio.sleep(2.5)  # past any timer a non-persistent highlight would have
+        m = await rpc.call("adapter.clear_highlight", {})
+        report.check(
+            "clear_highlight clears the persistent one",
+            (m.get("result") or {}).get("cleared") is True,
+            m.get("error") or m.get("result"),
+        )
+        m = await rpc.call("adapter.clear_highlight", {})
+        report.check(
+            "clear_highlight with none is not an error",
+            (m.get("result") or {}).get("cleared") is False,
+            m.get("error") or m.get("result"),
+        )
     kinds_seen = {}
     for n in rpc.notifications:
         kinds_seen[n["method"]] = kinds_seen.get(n["method"], 0) + 1
@@ -187,17 +259,24 @@ async def run_checks(rpc: Rpc, manifest: Manifest, fixture: dict[str, Any], repo
     noise = [c for c in changes if any("/." in ref or "/build/" in ref for ref in c["changed"])]
     report.check("IDE settings and build output are not reported", not noise, noise[:3])
     renamed = [c for c in changes if any(ref.endswith("Library.java") for ref in c["changed"])]
-    report.check("state changes from Wysp actions are tagged wysp", bool(renamed) and all(c["origin"] == "wysp" for c in renamed), renamed[-3:])
+    report.check(
+        "state changes from Wysp actions are tagged wysp",
+        bool(renamed) and all(c["origin"] == "wysp" for c in renamed),
+        renamed[-3:],
+    )
 
 
 async def main_async(args: argparse.Namespace) -> int:
     fixture = yaml.safe_load(FIXTURE.read_text(encoding="utf-8"))
-    fixture.setdefault("highlights", [
-        "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc",
-        "intellij://file/src/main/java/dev/wysp/sample/Main.java",
-        "intellij://ui/toolwindow/Project",
-        "intellij://ui/label/Project",
-    ])
+    fixture.setdefault(
+        "highlights",
+        [
+            "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc",
+            "intellij://file/src/main/java/dev/wysp/sample/Main.java",
+            "intellij://ui/toolwindow/Project",
+            "intellij://ui/label/Project",
+        ],
+    )
     token = Path(args.token_file).read_text(encoding="utf-8").strip()
     report = Report()
     done = asyncio.Event()
@@ -205,13 +284,33 @@ async def main_async(args: argparse.Namespace) -> int:
     async def handler(ws: ServerConnection) -> None:
         hello = json.loads(await ws.recv())
         if hello.get("method") != "wysp.hello" or hello.get("params", {}).get("token") != token:
-            await ws.send(json.dumps({"jsonrpc": "2.0", "id": hello.get("id"), "error": {"code": -32019, "message": "bad pairing token"}}))
+            await ws.send(
+                json.dumps(
+                    {"jsonrpc": "2.0", "id": hello.get("id"), "error": {"code": -32019, "message": "bad pairing token"}}
+                )
+            )
             report.check("hello token", False)
             return
         manifest = Manifest.model_validate(hello["params"]["manifest"])
-        report.check("hello manifest", manifest.adapter_id == "intellij-tutor" and manifest.ref_scheme == "intellij", manifest.app.model_dump())
-        await ws.send(json.dumps({"jsonrpc": "2.0", "id": hello["id"], "result": {
-            "session_id": "harness", "contract_version": "1.0.0", "core_version": "harness", "heartbeat_interval_s": 20}}))
+        report.check(
+            "hello manifest",
+            manifest.adapter_id == "intellij-tutor" and manifest.ref_scheme == "intellij",
+            manifest.app.model_dump(),
+        )
+        await ws.send(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": hello["id"],
+                    "result": {
+                        "session_id": "harness",
+                        "contract_version": "1.1.0",
+                        "core_version": "harness",
+                        "heartbeat_interval_s": 20,
+                    },
+                }
+            )
+        )
         rpc = Rpc(ws)
         reader = asyncio.create_task(rpc.reader())
         try:

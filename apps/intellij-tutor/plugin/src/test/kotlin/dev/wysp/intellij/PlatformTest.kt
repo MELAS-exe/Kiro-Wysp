@@ -47,13 +47,27 @@ class PlatformTest : BasePlatformTestCase() {
         assertTrue(Json.write(obs).length < 256 * 1024)
     }
 
+    fun testLinesRefResolvesToWholeLines() {
+        myFixture.configureByText("Greeter.java", source)
+        val plan = Highlighter(project, testRootDisposable).resolve(Refs.lines("Greeter.java", 4, 5))
+        plan as Highlighter.Plan.Code
+        assertTrue(plan.wholeLines)
+        val doc = myFixture.editor.document
+        assertEquals(doc.getLineStartOffset(3), plan.range!!.first)
+        assertEquals(doc.getLineEndOffset(4), plan.range!!.last + 1)
+        assertEquals(Ref.Lines("a/B.java", 4, 6), Refs.parse(Refs.lines("a/B.java", 4, 6)))
+        assertNull(Refs.parse("intellij://lines/a/B.java:6-4"))
+        assertNull(Refs.parse("intellij://lines/a/B.java:0"))
+    }
+
     fun testContextCarriesCodeAtCaretOnly() {
         myFixture.configureByText("Greeter.java", source)
         val ctx = Observer(project).context(snapshot())
         @Suppress("UNCHECKED_CAST")
         val facts = ctx["facts"] as Map<String, Any?>
         val code = facts["code_at_caret"] as String
-        assertTrue(code, code.startsWith("public String greet"))
+        assertTrue(code, Regex("""^\s*\d+\| public String greet""").containsMatchIn(code))
+        assertTrue(facts.toString(), Regex("""\d+-\d+""").matches(facts["code_at_caret_lines"] as String))
         assertFalse(code.contains("main"))
         assertTrue(ctx["summary"].toString(), ctx["summary"].toString().contains("Greeter.greet"))
     }
@@ -69,6 +83,104 @@ class PlatformTest : BasePlatformTestCase() {
             val obs = Json.write(Observer(project).observe(mapOf("level" to "full"), snapshot(), 1))
             assertFalse(obs, obs.contains("do-not-leak"))
         }
+    }
+
+    /** Survey (level full, no root): the whole project tree, by names only; sensitive files and noise stay out. */
+    fun testFullObservationSurveysTheProjectTree() {
+        myFixture.addFileToProject("src/app/Main.java", "class Main {}")
+        myFixture.addFileToProject("src/app/util/Helper.java", "class Helper {}")
+        myFixture.addFileToProject(".env", "API_KEY=sk-live-do-not-leak")
+        myFixture.addFileToProject("keys/server.pem", "-----BEGIN-----")
+        myFixture.addFileToProject("build/out.txt", "build output")
+        myFixture.configureByText("Greeter.java", source)
+        val obs = Observer(project).observe(mapOf("level" to "full"), snapshot(), 3)
+        val ents = entities(obs)
+        val labels = ents.map { it["label"] }
+        assertTrue(labels.toString(), labels.containsAll(listOf("Main.java", "Helper.java", "util", "Greeter.java")))
+        val text = Json.write(obs)
+        assertFalse(text, text.contains(".env"))
+        assertFalse(text, text.contains("server.pem"))
+        assertFalse(text, text.contains("out.txt"))
+        assertFalse(text, text.contains("do-not-leak"))
+        // Referential integrity and counts: each ref once, parents present.
+        val refs = ents.map { it["ref"] }
+        assertEquals(refs.size, refs.toSet().size)
+        for (e in ents) e["parent"]?.let { assertTrue("parent $it", it in refs.toSet()) }
+        @Suppress("UNCHECKED_CAST")
+        val counts = obs["counts"] as Map<String, Int>
+        assertEquals(ents.count { it["kind"] == "file" }, counts["file"])
+        // A focus observation does not walk the tree.
+        val focusLabels = entities(Observer(project).observe(mapOf("level" to "focus"), snapshot(), 3)).map { it["label"] }
+        assertFalse(focusLabels.toString(), focusLabels.contains("Helper.java"))
+    }
+
+    /** Persistent highlight (contract 1.1): stays until cleared; the user editing it ends it; our own moves do not. */
+    fun testPersistentHighlightEndsWhenTheUserEditsIt() {
+        myFixture.configureByText("Greeter.java", source)
+        val dismissed = mutableListOf<String>()
+        val h = Highlighter(project, testRootDisposable) { dismissed += it }
+        val ref = Refs.symbol("Greeter.java", listOf("Greeter", "greet"))
+        val plan = h.resolve(ref) as Highlighter.Plan.Code
+        val at = plan.range!!.first + 1
+
+        // No timer: it is still there after a clear request asks for it, and clearing says so.
+        h.highlight(plan, 0, ref)
+        assertTrue(h.clearActive())
+        assertFalse("nothing left to clear", h.clearActive())
+
+        // An edit right after showing is Wysp's own doing (or the IDE's), not the user's.
+        h.highlight(plan, 0, ref)
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) { myFixture.editor.document.insertString(at, " ") }
+        assertTrue("grace period: $dismissed", dismissed.isEmpty())
+
+        // The user edits inside the highlighted range later on: it comes down and the Core is told.
+        Thread.sleep(Highlighter.GRACE_MS + 200)
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) { myFixture.editor.document.insertString(at, " ") }
+        assertEquals(listOf(ref), dismissed)
+        assertFalse("already down", h.clearActive())
+
+        // A timed highlight (a narration cue) never reports a dismissal and replaces a persistent one.
+        h.highlight(plan, 0, ref)
+        h.highlight(plan, 1500, ref)
+        assertTrue(h.clearActive())
+    }
+
+    /** Exploration: `observe {level: full, root: dir}` returns that folder's files with symbols and project imports. */
+    fun testSubtreeObservationForExploration() {
+        myFixture.addFileToProject("src/app/Movement.java", "package app;\npublic class Movement { public int id() { return 1; } }")
+        myFixture.addFileToProject("src/app/Service.java", "package app;\nimport app.Movement;\nimport java.util.List;\npublic class Service { Movement m; void run() {} }")
+        myFixture.addFileToProject("src/app/.env", "API_KEY=sk-live-do-not-leak")
+        myFixture.addFileToProject("src/other/Elsewhere.java", "package other;\npublic class Elsewhere {}")
+        myFixture.configureByText("Greeter.java", source)
+        val dir = Refs.dir("src/app")
+        val obs = Observer(project).observe(mapOf("level" to "full", "root" to dir), snapshot(), 5)
+        val ents = entities(obs)
+        val byLabel = ents.associateBy { it["label"] }
+        // Only this folder's subtree: its files, their symbols, the ancestors; not the sibling folder or the editor's file.
+        assertTrue(ents.toString(), byLabel.containsKey("Movement.java") && byLabel.containsKey("Service.java"))
+        assertFalse(byLabel.containsKey("Elsewhere.java"))
+        assertFalse(byLabel.containsKey("Greeter.java"))
+        val labels = ents.filter { it["kind"] == "symbol" }.map { it["label"] }
+        assertTrue(labels.toString(), labels.containsAll(listOf("Movement", "Service", "run", "id")))
+        // Dependencies are refs of project files only: java.util.List is a library and does not appear.
+        @Suppress("UNCHECKED_CAST")
+        val deps = (byLabel["Service.java"]!!["props"] as Map<String, Any?>)["depends_on"] as List<String>
+        assertEquals(listOf(Refs.file("src/app/Movement.java")), deps)
+        @Suppress("UNCHECKED_CAST")
+        assertEquals("done", (byLabel["Movement.java"]!!["props"] as Map<String, Any?>)["symbols"])
+        // Sensitive files never appear, by name or by content.
+        val text = Json.write(obs)
+        assertFalse(text, text.contains(".env"))
+        assertFalse(text, text.contains("do-not-leak"))
+        // No code bodies: signatures and names only.
+        assertFalse(text, text.contains("return 1"))
+        // Referential integrity: every parent is in the observation.
+        val refs = ents.map { it["ref"] }.toSet()
+        for (e in ents) e["parent"]?.let { assertTrue("parent $it", it in refs) }
+        // One file: its symbols and dependencies, nothing else.
+        val one = entities(Observer(project).observe(mapOf("level" to "full", "root" to Refs.file("src/app/Service.java")), snapshot(), 6))
+        assertTrue(one.any { it["label"] == "run" })
+        assertFalse(one.any { it["label"] == "Movement.java" })
     }
 
     /** Property IJ-P4: renaming a symbol and undoing restores the original file text. */

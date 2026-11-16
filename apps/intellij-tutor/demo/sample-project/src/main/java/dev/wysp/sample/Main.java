@@ -13,5 +13,6 @@ public class Main {
         for (Book book : library.ranking()) {
             System.out.printf("%-12s %.1f stars%n", book.getTitle(), library.calc(book));
         }
+        System.out.println("Here are the 5 best books:" + library.topRated(5));
     }
 }

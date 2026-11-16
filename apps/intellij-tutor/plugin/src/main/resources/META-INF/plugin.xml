@@ -18,7 +18,7 @@
         <applicationConfigurable parentId="tools" instance="dev.wysp.intellij.ui.WyspConfigurable"
                                  id="dev.wysp.intellij.settings" displayName="Wysp Tutor"/>
         <toolWindow id="Wysp" anchor="right" factoryClass="dev.wysp.intellij.ui.WyspToolWindowFactory"
-                    icon="AllIcons.Toolwindows.ToolWindowHierarchy"/>
+                    icon="/icons/wyspToolWindow.svg"/>
     </extensions>
 
     <actions>

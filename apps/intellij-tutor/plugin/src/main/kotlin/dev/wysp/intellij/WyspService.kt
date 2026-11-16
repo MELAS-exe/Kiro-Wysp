@@ -133,6 +133,7 @@ class WyspService : Disposable {
             params["ref"] as? String ?: "",
             (params["duration_ms"] as? Number)?.toInt() ?: 2500,
         )
+        "adapter.clear_highlight" -> clearHighlight()
         else -> CompletableFuture.failedFuture(WyspError(ErrorCode.METHOD_NOT_FOUND, "unknown method $method"))
     }
 
@@ -193,7 +194,14 @@ class WyspService : Disposable {
         )
         val highlighter = project.service<WyspProjectService>().highlighter
         return busyAfter(inBackground(project) { highlighter.resolve(ref) }, 2000)
-            .thenCompose { target -> onEdt(ModalityState.any()) { highlighter.highlight(target, durationMs) as Any? } }
+            .thenCompose { target -> onEdt(ModalityState.any()) { highlighter.highlight(target, durationMs, ref) as Any? } }
+    }
+
+    /** Contract 1.1: take the persistent highlight down. `cleared` says whether there was one. */
+    fun clearHighlight(): CompletableFuture<Any?> {
+        val project = activeProject() ?: return CompletableFuture.completedFuture(mapOf("cleared" to false))
+        val highlighter = project.service<WyspProjectService>().highlighter
+        return onEdt(ModalityState.any()) { mapOf("cleared" to highlighter.clearActive()) as Any? }
     }
 
     // ---------------------------------------------------------------------------------------- threading

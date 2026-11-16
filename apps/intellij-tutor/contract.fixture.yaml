@@ -17,6 +17,16 @@ expect:
     - go_to_symbol
     - show_tool_window
     - rename_symbol
+    - read_code
+    - search_code
+    - find_usages
+    - list_files
+    - replace_lines
+    - insert_lines
+    - create_file
+    - reformat_code
+    - optimize_imports
+# create_file is not in safe_calls: in a Git project the IDE opens a modal "Add File to Git" question that the harness cannot answer
 safe_calls:
   - {action_id: open_file, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java"}}
   - {action_id: open_file, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Main.java", line: 5}}
@@ -24,8 +34,18 @@ safe_calls:
   - {action_id: show_tool_window, params: {id: Project}}
   - {action_id: show_tool_window, params: {id: Structure}}
   - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc", new_name: averageRating}}
+  - {action_id: read_code, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", from_line: 1, to_line: 12}}
+  - {action_id: search_code, params: {query: "Library"}}
+  - {action_id: find_usages, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc"}}
+  - {action_id: list_files, params: {target: "intellij://dir/src/main/java/dev/wysp/sample"}}
+  - {action_id: replace_lines, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", from_line: 8, to_line: 8, old_text: "/** A small library: add books, rate them, find the best ones. */", new_text: "/** A small library (edited by the contract kit). */"}}
+  - {action_id: insert_lines, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", after_line: 8, anchor_text: "/** A small library: add books, rate them, find the best ones. */", new_text: "// inserted by the contract kit"}}
+  - {action_id: reformat_code, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java"}}
+  - {action_id: optimize_imports, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java"}}
 dry_run_calls:
   - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Book.java#Book.rate", new_name: addRating}}
+  - {action_id: replace_lines, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", from_line: 8, to_line: 8, old_text: "/** A small library: add books, rate them, find the best ones. */", new_text: "x"}}
+  - {action_id: create_file, params: {target: "intellij://file/src/main/java/dev/wysp/sample/KitScratch2.java", text: "class KitScratch2 {}\n"}}
 invalid_calls:
   - {action_id: open_file, params: {target: "intellij://file/src/Nope.java"}, expect_error: -32012}
   - {action_id: open_file, params: {target: "intellij://file/../outside.txt"}, expect_error: -32012}
@@ -38,4 +58,12 @@ invalid_calls:
   - {action_id: rename_symbol, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java#Library.calc"}, expect_error: -32602}
   - {action_id: run_configuration, params: {name: Main}, expect_error: -32011}
   - {action_id: no_such_action, params: {}, expect_error: -32011}
+  - {action_id: read_code, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", from_line: 9999, to_line: 10000}, expect_error: -32012}
+  - {action_id: read_code, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", from_line: 0, to_line: 3}, expect_error: -32602}
+  - {action_id: replace_lines, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", from_line: 8, to_line: 8, old_text: "not the text of line 8", new_text: "x"}, expect_error: -32013}
+  - {action_id: replace_lines, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", from_line: 8, to_line: 8, new_text: "x"}, expect_error: -32602}
+  - {action_id: insert_lines, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", after_line: 8, new_text: "x"}, expect_error: -32602}
+  - {action_id: create_file, params: {target: "intellij://file/src/main/java/dev/wysp/sample/Library.java", text: "x"}, expect_error: -32013}
+  - {action_id: create_file, params: {target: "intellij://file/.env", text: "A=1"}, expect_error: -32013}
+  - {action_id: create_file, params: {target: "intellij://file/.idea/x.xml", text: "<a/>"}, expect_error: -32013}
 skip: []

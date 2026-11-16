@@ -15,11 +15,27 @@ primer: >
   Refs: intellij://file/<path> (paths relative to the project root), intellij://file/<path>#<Class.member>
   for a symbol, intellij://problem/<path>:<line>:<n>, intellij://dir/<path>, intellij://module/<name>,
   intellij://run/<name>. Pointing (highlight tool or cue): any of those refs frames the code or selects
-  the item; intellij://ui/toolwindow/<id> opens a tool window (Project, Structure, Problems View, Run,
+  the item; intellij://lines/<path>:<from>-<to> (or :<n> for one line, 1-based, as numbered in the code
+  facts) tints those whole lines in the editor: to explain code line by line, send one narration segment
+  per line or small group and put a highlight cue on its lines (at_word 0), e.g.
+  intellij://lines/src/main/java/dev/Foo.java:12-14. The code facts (code_at_caret, selection, with
+  "  12| " line prefixes) show the code at the caret. To see other code use the read tools with
+  propose_action (mode do, no approval needed): read_code (a file's lines), search_code (text in the
+  project), find_usages (where a symbol is used), list_files (a folder). To change code, read the exact
+  lines first, then propose replace_lines / insert_lines with old_text or anchor_text copied from them
+  (without the "  12| " prefix), keeping the file's indentation; create_file, reformat_code and
+  optimize_imports also exist. Prefer guiding the student to type small changes themselves; write code
+  for them when they ask, and explain the diff they approve. intellij://ui/toolwindow/<id> opens a tool window (Project, Structure, Problems View, Run,
   Debug, Terminal, Commit, Find, TODO, Services, Gradle, Maven); intellij://ui/label/<text> points at
   any visible button, tab, menu or label by its text, e.g. intellij://ui/label/Commit or
   intellij://ui/label/Run%20'Main'. Only what is visible right now can be found: items of a closed menu
   or context menu appear only once the student opens it, so name the shortcut or menu path in words.
+  POINT AT WHAT YOU NAME. When you walk the student through folders, files or the structure of the project,
+  give every segment that names a folder or a file a highlight cue (at_word 0) whose target is that
+  intellij://dir/<path> or intellij://file/<path>: the row of the Project tree (a folder) or the editor (a file)
+  is framed while you speak. Open the Project tool window first with the highlight tool on
+  intellij://ui/toolwindow/Project. Never describe a folder or file without pointing at it. To make the
+  student find something themselves, use the highlight tool (it stays until they use it).
 speech_hints: [IntelliJ, IDE, refactor, refactoring, rename, Shift F6, caret, editor, tool window, Project view,
   Structure, Problems, inspection, quick fix, Alt Enter, run configuration, debugger, breakpoint, usages,
   Search Everywhere, class, interface, function, method, field, variable, constructor, Kotlin, Java, Gradle,
@@ -39,3 +55,20 @@ skills:
   - {id: problems_and_fixes, title: {en: "Read problems and apply quick fixes"}, prerequisites: [code_structure]}
   - {id: rename_refactoring, title: {en: "Rename safely with a refactoring"}, prerequisites: [code_navigation]}
   - {id: run_and_debug, title: {en: "Run and debug with run configurations"}, prerequisites: [project_navigation]}
+
+explore:
+  # What the Core may map and study when the student agrees (see .kiro/specs/core-orchestrator, Requirement 15).
+  root_kind: project
+  containers: [directory]
+  files: [file]
+  details: [symbol]
+  depends_prop: depends_on   # a file's property listing the project files it imports
+  pending_prop: symbols      # "pending": the file's symbols were not read yet, ask again for that file
+  busy_prop: dumb_mode       # the project entity says true while the IDE indexes: wait and ask again
+  entry_symbols: [main]
+  read_action: read_code     # the read-only action study_read uses (one call reads the whole plan)
+  read_target_param: target
+  read_params: {from_line: 1, to_line: 90}
+  priority_globs: ["README*", "HANDOVER*", "docs/*.md", "*Application*", "*Main*", "*Controller*", "*Service*",
+    "*Config*", "pom.xml", "build.gradle*", "application*.yml", "application*.yaml", "application*.properties"]
+  skip_globs: ["*/test/*", "*/tests/*", "*.json", "*.lock", "*.png", "*.jpg", "*.svg", "*.jar", "*.class", "*.log"]

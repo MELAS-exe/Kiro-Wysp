@@ -19,17 +19,10 @@ public class Library {
         return books.stream().filter(b -> b.getTitle().equalsIgnoreCase(title)).findFirst();
     }
 
-    /** The average rating of a book, or 0 when nobody rated it yet. (The name could be clearer.) */
-    public double calc(Book book) {
-        List<Integer> r = book.getRatings();
-        if (r.isEmpty()) {
-            return 0;
-        }
-        int total = 0;
-        for (int stars : r) {
-            total += stars;
-        }
-        return (double) total / r.size();
+    /** The average rating of a book, or 0 when nobody rated it. */
+    public double averageRating(Book book) {
+        return book.getRatings().stream().mapToInt(Integer::intValue).average().orElse(0);
+    }
     }
 
     /** Books sorted from the best rated to the worst. */
@@ -43,5 +36,10 @@ public class Library {
         int count = books.size();
         String unused = "left here on purpose: the IDE flags it";
         return count;
+    }
+
+    public List<Book> topRated(int n) {
+        List<Book> rankings = ranking();
+        return rankings.subList(0, Math.clamp(n, 0, rankings.size()));
     }
 }

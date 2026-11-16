@@ -19,6 +19,8 @@ sealed class Ref {
         val name: String get() = parts.last()
     }
     data class Problem(val path: String, val line: Int, val n: Int) : Ref()
+    /** Whole lines `from..to` (1-based, inclusive) of a file: what a line-by-line explanation points at. */
+    data class Lines(val path: String, val from: Int, val to: Int) : Ref()
     data class Run(val name: String) : Ref()
     data class ToolWindow(val id: String) : Ref()
     data class Label(val text: String) : Ref()
@@ -37,6 +39,9 @@ object Refs {
     /** A symbol: name parts are joined by `.`; a part containing `.` is encoded so the split stays exact. */
     fun symbol(path: String, parts: List<String>) = file(path) + "#" + parts.joinToString(".") { enc(it).replace(".", "%2E") }
     fun problem(path: String, line: Int, n: Int) = PREFIX + "problem/" + encPath(path) + ":" + line + ":" + n
+    /** `intellij://lines/<path>:<from>-<to>`; a single line is `:<n>`. */
+    fun lines(path: String, from: Int, to: Int = from) =
+        PREFIX + "lines/" + encPath(path) + ":" + from + if (to != from) "-$to" else ""
     fun run(name: String) = PREFIX + "run/" + enc(name)
     fun toolWindow(id: String) = PREFIX + "ui/toolwindow/" + enc(id)
     fun label(text: String) = PREFIX + "ui/label/" + enc(text)
@@ -72,6 +77,16 @@ object Refs {
                 val line = body.substring(a + 1, b).toIntOrNull() ?: return null
                 val n = body.substring(b + 1).toIntOrNull() ?: return null
                 decPath(body.substring(0, a))?.let { Ref.Problem(it, line, n) }
+            }
+            "lines" -> {
+                val colon = body.lastIndexOf(':')
+                if (colon <= 0) return null
+                val range = body.substring(colon + 1)
+                val dash = range.indexOf('-')
+                val from = (if (dash < 0) range else range.substring(0, dash)).toIntOrNull() ?: return null
+                val to = if (dash < 0) from else range.substring(dash + 1).toIntOrNull() ?: return null
+                if (from < 1 || to < from) return null
+                decPath(body.substring(0, colon))?.let { Ref.Lines(it, from, to) }
             }
             "run" -> Ref.Run(dec(body))
             "ui" -> when {
