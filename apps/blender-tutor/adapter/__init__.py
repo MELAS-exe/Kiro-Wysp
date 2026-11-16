@@ -13,7 +13,7 @@ from pathlib import Path
 
 import bpy
 from bpy.props import BoolProperty, StringProperty
-from bpy.types import AddonPreferences, Operator, Panel
+from bpy.types import AddonPreferences, Operator
 
 log = logging.getLogger("wysp.blender")
 
@@ -193,41 +193,7 @@ class WYSP_OT_disconnect(Operator):
         return {"FINISHED"}
 
 
-class WYSP_PT_panel(Panel):
-    bl_label = "Wysp"
-    bl_idname = "WYSP_PT_panel"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "Wysp"
-    bl_order = 0
-
-    def draw(self, context):
-        from . import ui_panel
-
-        layout = self.layout
-        client = _adapter.client if _adapter is not None else None
-        status = client.status if client else "not connected"
-        layout.label(text=f"Blender link: {status}", icon="LINKED" if status == "connected" else "UNLINKED")
-        if client is not None and client.last_error and status != "connected":
-            layout.label(text=client.last_error[:60], icon="ERROR")
-        row = layout.row()
-        row.operator("wysp.connect", icon="LINKED")
-        row.operator("wysp.disconnect", icon="UNLINKED")
-        session = ui_panel.get()
-        if session is not None and session.state.connected:
-            info = session.state.session
-            model = info.get("model") or info.get("llm") or "?"
-            layout.label(text=f"Model: {model}"[:48], icon="LIGHT_SUN")
-            layout.prop(context.window_manager, "wysp_logging")
-            row = layout.row(align=True)
-            row.operator("wysp.board_open", icon="NODETREE")
-            row.operator("wysp.board_here", text="", icon="SEQ_STRIP_DUPLICATE")
-        session = ui_panel.get()
-        if session is not None and session.voice is not None and not session.voice.available:
-            layout.label(text="Voice off: no voice on the Core", icon="MUTE_IPO_OFF")
-
-
-_CLASSES = (WYSP_Preferences, WYSP_OT_connect, WYSP_OT_disconnect, WYSP_PT_panel)
+_CLASSES = (WYSP_Preferences, WYSP_OT_connect, WYSP_OT_disconnect)
 
 
 @bpy.app.handlers.persistent
@@ -268,8 +234,9 @@ _HANDLERS = (
 
 
 def register() -> None:
-    from . import board_tree, ui_panel
+    from . import board_tree, ui_icons, ui_panel
 
+    ui_icons.register()
     for cls in _CLASSES + board_tree.CLASSES + ui_panel.CLASSES:
         bpy.utils.register_class(cls)
     ui_panel.register_props()
@@ -282,7 +249,7 @@ def register() -> None:
 
 
 def unregister() -> None:
-    from . import board_tree, ui_panel
+    from . import board_tree, ui_icons, ui_panel
 
     disconnect()
     for lst, fn in _HANDLERS:
@@ -296,3 +263,4 @@ def unregister() -> None:
     ui_panel.unregister_props()
     for cls in reversed(_CLASSES + board_tree.CLASSES + ui_panel.CLASSES):
         bpy.utils.unregister_class(cls)
+    ui_icons.unregister()

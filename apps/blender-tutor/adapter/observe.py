@@ -12,13 +12,14 @@ from . import refs
 from .rna_props import modifier_props
 
 MAX_ENTITIES = 500
+MAX_CONTEXT_FOCUS = 20
 
 
 def manifest() -> dict:
     return {
         "adapter_id": "blender-tutor",
         "app": {"name": "Blender", "version": bpy.app.version_string},
-        "contract_version": "1.0.0",
+        "contract_version": "1.1.0",
         "integration_level": "native",
         "ref_scheme": "blender",
         "capabilities": [
@@ -96,6 +97,9 @@ def build_entities(scene) -> tuple[list[dict], list[dict], bool]:
     present = {o.name for o in objects}
     materials: dict[str, object] = {}
     for obj in objects:
+        if len(entities) >= MAX_ENTITIES:
+            truncated = True  # the cap holds for objects too; counts below still report the real total
+            break
         props = {
             "type": obj.type,
             "modifiers_count": len(obj.modifiers),
@@ -187,6 +191,7 @@ def build_observation(state_version: int, scope: dict | None = None) -> dict:
     counts: dict[str, int] = {}
     for e in entities:
         counts[e["kind"]] = counts.get(e["kind"], 0) + 1
+    counts["object"] = max(counts.get("object", 0), len(scene.objects))  # real total even when truncated
     root = scope.get("root")
     if root:
         keep = _descendants(entities, root)
@@ -206,6 +211,23 @@ def build_observation(state_version: int, scope: dict | None = None) -> dict:
     }
 
 
+def scene_facts(scene) -> dict:
+    """Scene-wide facts for the survey: small, no object data."""
+    by_type: dict[str, int] = {}
+    for obj in scene.objects:
+        by_type[obj.type] = by_type.get(obj.type, 0) + 1
+    return {
+        "object_types": by_type,
+        "render_engine": scene.render.engine,
+        "frame_range": [scene.frame_start, scene.frame_end],
+        "fps": scene.render.fps,
+        "unit_system": scene.unit_settings.system,
+        "camera": scene.camera.name if scene.camera else None,
+        "collections": len(bpy.data.collections),
+        "materials": len(bpy.data.materials),
+    }
+
+
 def build_context(state_version: int) -> dict:
     scene = bpy.context.scene
     active = bpy.context.view_layer.objects.active
@@ -219,11 +241,12 @@ def build_context(state_version: int) -> dict:
     return {
         "summary": summary,
         "mode": bpy.context.mode,
-        "focus": focus_refs(),
+        "focus": focus_refs()[:MAX_CONTEXT_FOCUS],  # the context is capped at 8 KB; select-all must not break it
         "facts": {
             "active_object": active.name if active else None,
             "selected": selected[:10],
             "frame": scene.frame_current,
             "blender": bpy.app.version_string,
+            **scene_facts(scene),
         },
     }

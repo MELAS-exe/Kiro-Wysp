@@ -14,6 +14,7 @@ import bpy
 from wysp_adapter_sdk import AdapterRuntime, QueueDispatcher
 from wysp_adapter_sdk.client import AdapterClient
 
+from . import highlight as highlight_mod
 from . import observe, telemetry
 from .actions import register_all
 from .events import SceneWatcher
@@ -28,6 +29,7 @@ class BlenderAdapter(AdapterRuntime):
         self.dispatcher = QueueDispatcher()
         register_all(self.registry)
         self.watcher = SceneWatcher(self)
+        self._was_connected = False
 
     def observe(self, scope: dict) -> dict:
         started = time.monotonic()
@@ -56,6 +58,7 @@ class BlenderAdapter(AdapterRuntime):
         started = time.monotonic()
         ran = self.dispatcher.pump(0.02)
         self.watcher.poll()
+        self._clear_if_disconnected()
         elapsed = (time.monotonic() - started) * 1000
         if elapsed > telemetry.SLOW_TICK_MS:
             telemetry.tm.emit("slow_tick", duration_ms=round(elapsed, 1), jobs=ran)
@@ -65,6 +68,23 @@ class BlenderAdapter(AdapterRuntime):
 
     def highlight(self, ref: str, style: str, duration_ms: int) -> dict:
         return highlight_object(ref, style, duration_ms)
+
+    def clear_highlight(self) -> dict:
+        """Contract 1.1: remove the persistent highlight. {"cleared": False} when nothing was shown."""
+        return highlight_mod.clear_active()
+
+    def on_focus_changed(self, old: list[str], new: list[str]) -> None:
+        """Called by the SceneWatcher (main thread) when the selection or active object changed."""
+        ref = highlight_mod.dismissed_by_selection(old, new, self.origin.current())
+        if ref is not None:
+            self.report_highlight_dismissed(ref)
+
+    def _clear_if_disconnected(self) -> None:
+        """A highlight must not outlive the Core connection (the Core no longer knows about it)."""
+        connected = self.client is not None and self.client.connected
+        if self._was_connected and not connected:
+            clear_highlight()
+        self._was_connected = connected
 
     def make_client(self, url: str, token: str, heartbeat_s: float = 15.0) -> AdapterClient:
         from . import highlight

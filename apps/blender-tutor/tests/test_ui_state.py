@@ -327,3 +327,185 @@ def test_a_new_message_dismisses_an_old_question() -> None:
     s.handle({"type": "clarification", "question": "Which one?", "options": ["A"]})
     s.handle({"type": "chat.user", "text": "typed elsewhere", "source": "typed"})  # from the browser Panel
     assert s.clarification is None
+
+
+# ------------------------------------------------------------------ the restyled panel's rules (Chat.tsx twins)
+def _connected(voice=None, clock=None) -> ui_state.UiState:
+    s = ui_state.UiState(narrate=True, clock=clock or Clock(), voice=voice)
+    s.set_connected(True)
+    return s
+
+
+def test_unknown_and_malformed_messages_are_ignored() -> None:
+    """The Core sends new message types (explore.state, ...) that the Blender panel has no UI for."""
+    s = _connected()
+    before = (s.revision, s.status, len(s.transcript), s.permission, dict(s.session))
+    for msg in (
+        {"type": "explore.state", "phase": "running", "files": 3},
+        {"type": "something.new", "x": 1},
+        {"type": None},
+        {},
+        "not a dict",
+        None,
+        ["list"],
+    ):
+        assert s.handle(msg) == []
+    assert (s.revision, s.status, len(s.transcript), s.permission, dict(s.session)) == before
+
+
+def test_stop_shows_while_busy_and_continue_only_after_a_cancel() -> None:
+    s = _connected()
+    assert not s.show_stop and not s.show_continue
+    s.handle({"type": "status", "state": "thinking"})
+    assert s.busy and s.show_stop and not s.show_continue
+    s.handle({"type": "status", "state": "idle"})
+    assert not s.show_stop and not s.show_continue  # nothing was cancelled
+    s.handle(_segment("one two three four", []))
+    s.tick()
+    s.handle({"type": "status", "state": "speaking"})
+    s.interrupt()  # the playing sentence is cancelled
+    assert s.show_stop, "Stop stays while Wysp is not idle"
+    s.handle({"type": "status", "state": "idle"})
+    assert s.has_cancelled and s.show_continue and not s.show_stop
+
+
+def test_a_skipped_sentence_also_offers_continue() -> None:
+    s = _connected()
+    s.handle(_segment("never spoken", []))
+    s.interrupt()  # queued, never spoken: "skipped"
+    assert s.transcript[-1]["state"] == "skipped"
+    assert s.show_continue
+
+
+def test_offline_is_never_busy_and_shows_offline() -> None:
+    s = _connected()
+    s.handle({"type": "status", "state": "thinking"})
+    s.set_connected(False)
+    assert s.display_status == "offline" and s.status_text == "Offline"
+    assert not s.busy and not s.show_stop
+
+
+def test_status_text_and_wait_line() -> None:
+    s = _connected()
+    assert (s.display_status, s.status_text, s.wait_text) == ("idle", "Ready", "")
+    s.handle({"type": "status", "state": "thinking"})
+    assert (s.status_text, s.wait_text) == ("Thinking", "Thinking")
+    s.handle({"type": "activity", "text": "Looking at the Pumpkin"})
+    assert s.wait_text == "Looking at the Pumpkin"
+    s.handle({"type": "status", "state": "acting"})
+    assert s.status_text == "Acting"
+    s.handle({"type": "status", "state": "idle"})
+    assert s.wait_text == "" and s.activity == ""
+    s.handle({"type": "status", "state": "something_new"})  # an unknown status falls back to ready
+    assert s.display_status == "idle"
+
+
+def test_diagram_switch_needs_nodes_and_follows_the_web_panel() -> None:
+    s = _connected()
+    assert not s.has_diagram and s.effective_view == "chat"
+    s.set_view("board")
+    assert s.view == "board" and s.effective_view == "chat", "no nodes: the chat stays"
+    s.set_view("chat")
+    patch = {
+        "base_version": 0,
+        "version": 1,
+        "ops": [{"op": "add_node", "node": _node("a", "observed", None)}],
+    }
+    s.handle({"type": "board.patch", "patch": patch})
+    assert s.has_diagram and s.effective_view == "board", "new elements appeared: show them"
+    s.set_view("chat")
+    patch2 = {"base_version": 1, "version": 2, "ops": [{"op": "set_stale", "stale": True}]}
+    s.handle({"type": "board.patch", "patch": patch2})
+    assert s.effective_view == "chat", "an update that adds nothing leaves the view alone"
+    s.set_view("board")
+    s.add_user("hello")
+    assert s.view == "chat", "sending a message goes back to the conversation"
+    s.set_view("nonsense")
+    assert s.view == "chat"
+
+
+def test_diagram_rows_use_the_provenance_language() -> None:
+    s = _connected()
+    nodes = [
+        {**_node("a", "observed", None), "ref": "blender://object/Pumpkin", "label": "Pumpkin"},
+        {**_node("b", "inferred", None), "label": "Solidify"},
+        {**_node("c", "illustrative", None), "label": "What if"},
+    ]
+    s.board = {
+        **ui_state.empty_board(),
+        "nodes": nodes,
+        "edges": [{"id": "e1", "source": "a", "target": "b"}],
+        "focus": ["a"],
+    }
+    rows, hidden = s.diagram_rows()
+    assert hidden == 0
+    assert [r["text"] for r in rows] == ["Pumpkin", "likely Solidify", "example: What if"]
+    assert [r["can_show"] for r in rows] == [True, False, False], "only observed nodes with a ref can be shown"
+    assert rows[0]["focused"] and rows[0]["links"] == ["Solidify"]
+    rows, hidden = s.diagram_rows(limit=2)
+    assert len(rows) == 2 and hidden == 1
+
+
+def test_voice_switch_falls_back_to_reading_pace() -> None:
+    clock, voice = Clock(), FakeVoice()
+    s = _connected(voice=voice, clock=clock)
+    s.set_voice(False)
+    assert voice.stopped == 1
+    s.handle(_segment("hello there", []))
+    assert voice.prepared == [], "no audio is fetched while the voice is off"
+    s.tick()
+    assert voice.played == []
+    clock.t = ui_state.MIN_SEGMENT_S + 0.1
+    assert s.tick()[-1] == {"type": "narration.progress", "segment_id": "g1", "played": True}
+    s.set_voice(True)
+    s.handle({**_segment("again", []), "segment": {**_segment("again", [])["segment"], "id": "g2"}})
+    assert voice.prepared == ["g2"]
+
+
+def test_empty_chat_state() -> None:
+    s = _connected()
+    assert s.is_empty
+    s.handle(_segment("hello", []))  # queued sentences are not visible yet
+    assert s.is_empty
+    s.tick()
+    assert not s.is_empty
+    s = _connected()
+    s.handle({"type": "clarification", "question": "Which?", "options": ["A"]})
+    assert not s.is_empty
+
+
+def test_active_app_label() -> None:
+    s = _connected()
+    s.handle(
+        {
+            "type": "adapters.list",
+            "adapters": [
+                {"adapter_id": "blender-1", "app": {"name": "Blender", "version": "5.2.0"}},
+                {"adapter_id": "idea-1", "app": {"name": "IntelliJ IDEA", "version": "2026.2"}},
+            ],
+        }
+    )
+    s.handle({"type": "session.state", "active_adapter": "blender-1"})
+    assert s.app_label(s.active_app) == "Blender 5.2.0"
+    assert s.app_label({"adapter_id": "x"}) == "x"
+
+
+def test_tail_start_keeps_the_newest_messages_that_fit() -> None:
+    assert ui_state.tail_start([], 10) == 0
+    assert ui_state.tail_start([2, 2, 2], 10) == 0
+    assert ui_state.tail_start([4, 4, 4], 8) == 1  # the oldest does not fit
+    assert ui_state.tail_start([1, 9], 5) == 1, "the newest is always shown, even when it alone is too long"
+    assert ui_state.tail_start([3, 0, 3], 7) == 0, "an item counts as at least one line"
+    assert ui_state.tail_start([3, 0, 3], 6) == 1
+
+
+def test_permission_preview_lines() -> None:
+    assert ui_state.preview_lines({"diff": "-old\n+new"}) == ["-old", "+new"]
+    assert ui_state.preview_lines({"vertices_before": 482, "vertices_after": 1928}) == [
+        "vertices_before: 482",
+        "vertices_after: 1928",
+    ]
+    long = ui_state.preview_lines("x" * 100)
+    assert len(long[0]) == 45 and long[0].endswith("…")
+    many = ui_state.preview_lines([str(i) for i in range(10)])
+    assert many[-1] == "… 4 more" and len(many) == 7

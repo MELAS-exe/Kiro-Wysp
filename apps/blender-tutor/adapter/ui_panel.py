@@ -12,24 +12,42 @@ the browser Panel speaks.
 from __future__ import annotations
 
 import logging
+import sys
 import textwrap
 
 import bpy
-from bpy.props import EnumProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, StringProperty
 from bpy.types import Operator, Panel
 
-from . import board_tree
+from . import board_tree, ui_icons
 from .ui_client import PanelClient
 from .ui_listen import VoiceInput
-from .ui_state import UiState
+from .ui_state import STATUS_TEXT, UiState, preview_lines, tail_start
 from .ui_voice import VoicePlayer, tts_url
 
 log = logging.getLogger("wysp.blender.ui")
 
-STATUS_ICONS = {"idle": "CHECKMARK", "thinking": "SORTTIME", "acting": "PLAY", "speaking": "OUTLINER_OB_SPEAKER"}
+STATUS_ICONS = {
+    "idle": "DOT",
+    "thinking": "SORTTIME",
+    "acting": "PLAY",
+    "speaking": "PLAY_SOUND",
+    "offline": "UNLINKED",
+}
 STEP_ICONS = {"pending": "LAYER_USED", "active": "RIGHTARROW", "done": "CHECKMARK", "failed": "CANCEL"}
 RISK_ICONS = {"read_only": "HIDE_OFF", "ui_state": "WINDOW", "reversible": "LOOP_BACK", "irreversible": "ERROR"}
-TRANSCRIPT_LINES = 14
+RISK_LABELS = {
+    "read_only": "reads only",
+    "ui_state": "changes the view only",
+    "reversible": "reversible change",
+    "irreversible": "cannot be undone",
+}
+# Same provenance language as the node tree and the browser Panel: observed (eye), likely (?), example (i).
+PROVENANCE_ICONS = {"observed": "HIDE_OFF", "inferred": "QUESTION", "illustrative": "INFO"}
+USER_INDENT_PX = 60  # extra width taken by the indent and box of a user message
+# Average width of a character per unit of UI scale. Measured on Blender 5.2 at 5.8 px; 6.8 keeps a margin so that
+# Blender never cuts a line with "...".
+CHAR_PX = 6.8
 
 
 def ui_url(adapter_url: str) -> str:
@@ -79,7 +97,12 @@ class PanelSession:
             if t == "_disconnected":
                 self.state.set_connected(False)
                 continue
-            for reply in self.state.handle(msg):
+            try:
+                replies = self.state.handle(msg)
+            except Exception:  # noqa: BLE001 - one odd message must not stop the panel
+                log.exception("cannot apply Core message %r", t)
+                replies = []
+            for reply in replies:
                 self.client.send(reply)
             if t == "session.state":
                 self._sync_logging_prop()
@@ -180,6 +203,10 @@ def start(adapter_url: str, narrate: bool, speak: bool = True, listen: bool = Tr
     voice = VoicePlayer(tts_url(adapter_url)) if speak else None
     mic = VoiceInput(adapter_url, token) if listen and token else None
     _session = PanelSession(ui_url(adapter_url), narrate=narrate or speak, voice=voice, mic=mic)
+    try:  # keep the menu's Voice switch and the state in step after a reconnect
+        _session.state.voice_on = bool(bpy.context.window_manager.wysp_voice_on)
+    except AttributeError:
+        pass
     _session.start()
     _add_banner()
 
@@ -242,7 +269,7 @@ def _draw_banner() -> None:
             draw_callout(region, text, x=16 * scale, top=110 * scale)
             gpu.state.blend_set("NONE")
         except Exception:  # noqa: BLE001
-            pass
+            _banner_failed()
     req = s.state.permission
     if not req:
         return
@@ -261,7 +288,14 @@ def _draw_banner() -> None:
         )
         gpu.state.blend_set("NONE")
     except Exception:  # noqa: BLE001 - drawing must never break Blender
-        pass
+        _banner_failed()
+
+
+def _banner_failed() -> None:
+    """Log a drawing failure once (a draw handler runs on every redraw: do not flood the log)."""
+    if not _banner.get("failed"):
+        _banner["failed"] = True
+        log.exception("the viewport banner cannot be drawn")
 
 
 def _add_banner() -> None:
@@ -316,8 +350,20 @@ def _on_logging(self, context) -> None:
     _session.send({"type": "settings.update", "logging": self.wysp_logging})
 
 
+def _on_voice(self, context) -> None:
+    if _session is not None:
+        _session.state.set_voice(bool(self.wysp_voice_on))
+
+
 def register_props() -> None:
     wm = bpy.types.WindowManager
+    wm.wysp_voice_on = BoolProperty(  # type: ignore[attr-defined]
+        name="Voice",
+        description="Read Wysp's sentences aloud. Off keeps the captions at reading pace",
+        default=True,
+        update=_on_voice,
+        options={"SKIP_SAVE"},
+    )
     wm.wysp_input = StringProperty(  # type: ignore[attr-defined]
         name="Message", description="Ask Wysp something, then press Enter", update=_on_input, options={"SKIP_SAVE"}
     )
@@ -337,7 +383,7 @@ def register_props() -> None:
 
 def unregister_props() -> None:
     wm = bpy.types.WindowManager
-    for name in ("wysp_input", "wysp_logging"):
+    for name in ("wysp_input", "wysp_logging", "wysp_voice_on"):
         if hasattr(wm, name):
             delattr(wm, name)
 
@@ -347,6 +393,34 @@ class _SessionOperator(Operator):
     @classmethod
     def poll(cls, context):
         return _session is not None and _session.client.connected
+
+
+class WYSP_OT_view(Operator):
+    """Switch between the conversation and the diagram (panel state only, no message to the Core)."""
+
+    bl_idname = "wysp.view"
+    bl_label = "View"
+    bl_description = "Show the conversation or the diagram"
+    view: StringProperty()  # type: ignore[valid-type]
+
+    @classmethod
+    def poll(cls, context):
+        return _session is not None
+
+    def execute(self, context):
+        _session.state.set_view(self.view)
+        return {"FINISHED"}
+
+
+class WYSP_OT_activate_adapter(_SessionOperator):
+    bl_idname = "wysp.activate_adapter"
+    bl_label = "Look at this application"
+    bl_description = "Choose which connected application Wysp looks at"
+    adapter_id: StringProperty()  # type: ignore[valid-type]
+
+    def execute(self, context):
+        _session.send({"type": "adapter.activate", "adapter_id": self.adapter_id})
+        return {"FINISHED"}
 
 
 class WYSP_OT_send(_SessionOperator):
@@ -453,38 +527,125 @@ class WYSP_OT_board_show(_SessionOperator):
 
 
 # ---------------------------------------------------------------------------- drawing
-def _wrap(text: str, context) -> list[str]:
+# The layout mirrors the browser Panel (panel/src): one slim top row, then the conversation or the diagram.
+# Blender draws sidebar panels with the user's theme, so brand colour only comes from the mascot icon.
+def _wrap(text: str, context, indent: int = 0) -> list[str]:
     width = context.region.width if context.region else 300
     scale = context.preferences.system.ui_scale  # effective scale: user setting times monitor DPI
-    chars = max(16, int((width - 44 * scale) / (8.2 * scale)))
+    chars = max(14, int((width - (44 + indent) * scale) / (CHAR_PX * scale)))
     return textwrap.wrap(text, chars) or [""]
 
 
-def _draw_text(layout, text: str, context, icon: str = "NONE") -> None:
+def _draw_text(layout, text: str, context, icon: str = "NONE", indent: int = 0) -> int:
+    """Draw wrapped text (Blender labels do not wrap). Returns the number of lines."""
     col = layout.column(align=True)
-    for i, line in enumerate(_wrap(text, context)):
-        col.label(text=line, icon=icon if i == 0 else "BLANK1")
+    lines = _wrap(text, context, indent)
+    for i, line in enumerate(lines):
+        col.label(text=line, icon=(icon if i == 0 else "BLANK1") if icon != "NONE" else "NONE")
+    return len(lines)
+
+
+def _line_budget(context, extra: float = 0.0) -> float:
+    """How many text lines of conversation fit above the composer (the sidebar cannot be scrolled by a script).
+
+    `extra` is what the panel already draws around the conversation (approval card, steps, Stop row...).
+    """
+    region = context.region
+    if region is None:
+        return 12
+    line_px = 21 * context.preferences.system.ui_scale
+    return max(3.0, region.height / line_px - 4.0 - extra)
+
+
+def link_info() -> tuple[str, str]:
+    """State of Blender's link to the Core (the adapter connection), owned by the add-on package."""
+    pkg = sys.modules.get(__package__ or "")
+    client = getattr(getattr(pkg, "_adapter", None), "client", None)
+    if client is None:
+        return "not connected", ""
+    return str(client.status), str(client.last_error or "")
+
+
+def draw_header(layout, context, show_switch: bool = True) -> None:
+    """The only chrome: mascot, status, the Chat/Diagram switch and the "..." menu."""
+    s = _session
+    st = s.state if s is not None else None
+    state = st.display_status if st is not None else "offline"
+    switch = show_switch and st is not None and st.has_diagram
+    row = layout.row(align=True)
+    split = row.split(factor=0.42 if switch else 0.7, align=True)
+    left = split.row(align=True)
+    left.label(text="", **ui_icons.icon_args("mark"))
+    left.label(text=st.status_text if st is not None else STATUS_TEXT["offline"], icon=STATUS_ICONS[state])
+    right = split.row(align=True)
+    right.alignment = "RIGHT"
+    if switch:
+        seg = right.row(align=True)
+        view = st.effective_view
+        seg.operator("wysp.view", text="Chat", depress=view == "chat").view = "chat"
+        seg.operator("wysp.view", text="Diagram", depress=view == "board").view = "board"
+    right.popover(panel="WYSP_PT_menu", text="", icon="THREE_DOTS")
+
+
+def draw_hello(layout, title: str, hint: str) -> None:
+    """Empty state: the large mascot with a short invitation, like the browser Panel's first screen."""
+    col = layout.column(align=True)
+    col.separator(factor=1.5)
+    row = col.row()
+    row.alignment = "CENTER"
+    big = ui_icons.icon_id("mark_big")
+    if big:
+        row.template_icon(icon_value=big, scale=7)
+    else:
+        row.label(text="", icon="LIGHT_SUN")
+    col.separator(factor=0.5)
+    for text, dim in ((title, False), (hint, True)):
+        line = col.row()
+        line.alignment = "CENTER"
+        line.active = not dim
+        line.label(text=text)
+    col.separator(factor=1.5)
+
+
+def risk_badge(req: dict) -> tuple[str, str]:
+    """(icon, short text) for the permission card, same wording as PermissionDialog.tsx."""
+    risk = req.get("risk", "")
+    return RISK_ICONS.get(risk, "QUESTION"), RISK_LABELS.get(risk, str(risk).replace("_", " "))
 
 
 def draw_permission(layout, context, req: dict) -> None:
+    irreversible = req.get("risk") == "irreversible"
     box = layout.box()
-    box.alert = req.get("risk") == "irreversible"
-    box.label(text="Wysp asks permission", icon=RISK_ICONS.get(req.get("risk", ""), "QUESTION"))
+    box.alert = irreversible
+    icon, badge = risk_badge(req)
+    box.label(text=badge.capitalize(), icon=icon)
     _draw_text(box, req.get("title", ""), context)
     if req.get("target"):
-        _draw_text(box, f"Target: {req['target']}", context)
-    risk = req.get("risk", "")
-    box.label(
-        text=f"Risk: {risk.replace('_', ' ')}  ·  {'can be undone' if req.get('reversible') else 'cannot be undone'}"
-    )
-    if req.get("rationale"):
-        _draw_text(box, f"Why: {req['rationale']}", context)
-    if req.get("preview"):
-        _draw_text(box, f"Preview: {str(req['preview'])[:300]}", context, "INFO")
+        _draw_text(box, f"on {req['target']}", context)
+    why = req.get("rationale") or "Wysp would like to make this change in Blender."
+    dim = box.column(align=True)
+    dim.active = False
+    for line in _wrap(why, context):
+        dim.label(text=line)
+    if req.get("preview") is not None:
+        pv = box.box()
+        pv.scale_y = 0.85
+        for line in preview_lines(req["preview"]):
+            pv.label(text=line)
+    note = "You can undo this afterwards." if req.get("reversible") else "Wysp cannot undo this."
+    if not req.get("voice_allowed", True):
+        note += " It needs a click."
+    small = box.row()
+    small.active = False
+    small.label(text=note)
     row = box.row(align=True)
     row.scale_y = 1.3
-    row.operator("wysp.permission", text="Approve", icon="CHECKMARK").decision = "approve"
     row.operator("wysp.permission", text="Deny", icon="X").decision = "deny"
+    ok = row.row(align=True)
+    ok.alert = irreversible
+    ok.operator(
+        "wysp.permission", text="Approve and apply" if irreversible else "Approve", icon="CHECKMARK"
+    ).decision = "approve"
     if req.get("can_grant") and req.get("reversible"):
         box.operator("wysp.permission", text="Allow for this lesson", icon="UNLOCKED").decision = "grant_lesson"
 
@@ -493,99 +654,264 @@ def draw_steps(layout, context, steps: list[dict]) -> None:
     if not steps:
         return
     box = layout.box()
-    box.label(text="Steps (you do them, Wysp checks)", icon="SEQUENCE")
+    box.label(text="Your steps", icon="SEQUENCE")
     for s in steps:
         _draw_text(
             box, f"{s.get('index', 0) + 1}. {s.get('text', '')}", context, STEP_ICONS.get(s.get("status"), "DOT")
         )
 
 
+def _item_lines(item: dict, context) -> float:
+    gap = 0.4  # the separator after each item
+    if item["kind"] == "user":
+        return len(_wrap(item["text"], context, USER_INDENT_PX)) + 0.6 + gap  # the box adds padding
+    return len(_wrap(item.get("text", ""), context)) + gap
+
+
+def _around_lines(st: UiState) -> float:
+    """Rough height, in text lines, of everything drawn above/below the conversation besides the composer."""
+    extra = 0.0
+    if st.steps:
+        extra += 1.5 + 1.3 * len(st.steps)
+    if st.clarification:
+        extra += 2.5 + 1.2 * len(st.clarification["options"][:6])
+    if st.busy:
+        extra += 1.2
+    if st.show_stop or st.show_continue:
+        extra += 1.3
+    return extra
+
+
 def draw_transcript(layout, context, state: UiState) -> None:
-    box = layout.box()
-    # Newest first: Blender panels cannot be scrolled from a script, so the latest message must be on top.
-    items = state.visible_transcript()[-TRANSCRIPT_LINES:][::-1]
-    if items:
-        box.label(text="Newest first", icon="SORT_DESC")
-    if not items:
-        box.label(text="Ask Wysp about your scene.", icon="LIGHT_SUN")
-    for it in items:
+    """The conversation, oldest first with the newest next to the composer, like the browser Panel."""
+    items = state.visible_transcript()
+    budget = _line_budget(context, _around_lines(state))
+    first = tail_start([_item_lines(i, context) for i in items], budget)
+    col = layout.column(align=False)
+    if first > 0:
+        hidden = col.row()
+        hidden.active = False
+        hidden.label(text=f"{first} earlier message{'s' if first != 1 else ''}", icon="TRIA_UP")
+    for it in items[first:]:
         kind = it["kind"]
-        if kind == "user":
-            _draw_text(box, f"You: {it['text']}", context, "USER")
+        if kind == "user":  # a boxed, indented bubble
+            split = col.split(factor=0.14)
+            split.label(text="")
+            inner = split.box().column(align=True)
+            for line in _wrap(it["text"], context, USER_INDENT_PX):
+                inner.label(text=line)
         elif kind == "wysp":
             seg = it["segment"]
             marker = f"({seg['marker']}) " if seg.get("marker") else ""
-            icon = "LIGHT_SUN" if it["state"] != "cancelled" else "PANEL_CLOSE"
-            _draw_text(box, f"{marker}{it['text']}", context, icon)
+            block = col.column(align=True)
+            block.active = it["state"] != "cancelled"
+            for line in _wrap(f"{marker}{it['text']}", context):
+                block.label(text=line)
         elif kind == "evidence":
-            label = "Verified in Blender" if it.get("scope") == "user_action" else "Checked"
-            _draw_text(box, f"{label}: {it['text']}", context, "CHECKMARK" if it.get("ok") else "CANCEL")
+            label = (
+                ("Verified in Blender" if it.get("scope") == "user_action" else "Checked")
+                if it.get("ok")
+                else ("Could not be verified")
+            )
+            row = col.column(align=True)
+            row.active = False
+            for i, line in enumerate(_wrap(f"{label}: {it['text']}", context)):
+                row.label(text=line, icon=("CHECKMARK" if it.get("ok") else "CANCEL") if i == 0 else "BLANK1")
         else:
-            _draw_text(box, it["text"], context, "ERROR" if it.get("tone") == "error" else "INFO")
+            row = col.column(align=True)
+            row.active = False
+            row.alert = it.get("tone") == "error"
+            for line in _wrap(it["text"], context):
+                row.label(text=line)
+        col.separator(factor=0.4)
 
 
-def draw_chat(layout, context) -> None:
-    s = _session
-    if s is None:
-        layout.label(text="Connect to talk to Wysp here.", icon="INFO")
-        return
+def draw_composer(layout, context, s: PanelSession) -> None:
+    mic = s.mic.state if s.mic is not None else None
+    listening = mic in ("starting", "listening")
+    if listening:
+        hint = "Listening…"
+    elif mic == "transcribing":
+        hint = "Understanding…"
+    else:
+        hint = "Ask about your scene"
+    row = layout.row(align=True)
+    row.scale_y = 1.25
+    row.prop(context.window_manager, "wysp_input", text="", placeholder=hint)
+    if mic is not None:
+        btn = row.row(align=True)
+        if mic == "transcribing":
+            btn.enabled = False
+            btn.operator("wysp.talk", text="", icon="SORTTIME")
+        else:
+            btn.alert = listening
+            btn.operator("wysp.talk", text="", icon="REC", depress=listening)
+        if listening:
+            row.operator("wysp.talk_cancel", text="", icon="X")
+    row.operator("wysp.send", text="", icon="TRIA_UP")
+
+
+def draw_chat_body(layout, context, s: PanelSession) -> None:
     st = s.state
-    if not st.connected:
-        layout.label(text=f"Chat: {s.client.status}", icon="UNLINKED")
-        if s.client.last_error:
-            layout.label(text=s.client.last_error[:60])
-        return
     if st.permission:
         draw_permission(layout, context, st.permission)
+    draw_steps(layout, context, st.steps)
+    if st.is_empty and not st.busy and not st.permission:
+        draw_hello(layout, "Ask about your scene", "Hold Alt+Space to talk")
+    elif not st.permission:  # like the browser Panel's dialog, the approval card covers the conversation
+        draw_transcript(layout, context, st)
     if st.clarification:
         box = layout.box()
         _draw_text(box, st.clarification["question"], context, "QUESTION")
         for opt in st.clarification["options"][:6]:
             box.operator("wysp.say", text=opt[:60]).text = opt
-    row = layout.row()
-    row.label(text=st.activity or st.status, icon=STATUS_ICONS.get(st.status, "DOT"))
-    mic = s.mic.state if s.mic is not None else None
-    if mic is not None:
-        talk = layout.row(align=True)
-        talk.scale_y = 1.4
-        if mic in ("starting", "listening"):
-            talk.alert = True
-            talk.operator("wysp.talk", text="Listening… click to send", icon="REC")
-            talk.operator("wysp.talk_cancel", text="", icon="X")
-        elif mic == "transcribing":
-            talk.enabled = False
-            talk.operator("wysp.talk", text="Understanding…", icon="SORTTIME")
+    if st.busy:
+        wait = layout.row()
+        wait.active = False
+        wait.label(text=f"{st.wait_text}…" if st.wait_text else "…", icon="SORTTIME")
+    if st.show_stop or st.show_continue:
+        quick = layout.row()
+        if st.show_stop:
+            quick.operator("wysp.interrupt", text="Stop", icon="PAUSE")
         else:
-            talk.operator("wysp.talk", text="Talk (hold Alt+Space)", icon="OUTLINER_OB_SPEAKER")
-    col = layout.column(align=True)
-    col.prop(context.window_manager, "wysp_input", text="", icon="OUTLINER_OB_FONT")
-    row = col.row(align=True)
-    row.operator("wysp.send", icon="EXPORT")
-    row.operator("wysp.interrupt", icon="PAUSE")
-    row.operator("wysp.resume", text="", icon="PLAY")
-    row.separator()
-    row.operator("wysp.undo_last", text="Undo Wysp", icon="LOOP_BACK")
+            quick.operator("wysp.resume", text="Continue", icon="PLAY")
+    draw_composer(layout, context, s)
+
+
+def draw_diagram(layout, context, s: PanelSession) -> None:
+    """The board as a compact list (the full node view opens in a Node Editor)."""
+    st = s.state
+    if st.permission:
+        draw_permission(layout, context, st.permission)
     draw_steps(layout, context, st.steps)
-    draw_transcript(layout, context, st)
+    rows, hidden = st.diagram_rows()
+    if st.board.get("stale"):
+        layout.label(text="The board may be out of date", icon="ERROR")
+    col = layout.column(align=True)
+    for r in rows:
+        box = col.box() if r["focused"] else col.column(align=True)
+        line = box.split(factor=0.7 if r["can_show"] else 0.84, align=True)
+        label = line.row()
+        label.active = r["provenance"] != "illustrative"
+        label.label(text=r["text"], icon=PROVENANCE_ICONS.get(r["provenance"], "DOT"))
+        btns = line.row(align=True)
+        btns.alignment = "RIGHT"
+        if r["can_show"]:
+            btns.operator("wysp.board_show", text="", icon="RESTRICT_SELECT_OFF").node_id = r["id"]
+        btns.operator("wysp.board_why", text="", icon="QUESTION").node_id = r["id"]
+        if r["links"]:
+            sub = box.row()
+            sub.active = False
+            sub.label(text=("→ " + ", ".join(r["links"]))[:60], icon="BLANK1")
+    if hidden:
+        more = layout.row()
+        more.active = False
+        more.label(text=f"+{hidden} more in the board editor")
+    draw_board_legend(layout)
+    row = layout.row(align=True)
+    row.operator("wysp.board_open", text="Open in editor", icon="NODETREE")
+    row.operator("wysp.board_here", text="", icon="SEQ_STRIP_DUPLICATE")
 
 
 def draw_board_legend(layout) -> None:
-    col = layout.column(align=True)
-    col.label(text="observed in Blender", icon="HIDE_OFF")
-    col.label(text="inferred (likely)", icon="QUESTION")
-    col.label(text="example, not your scene", icon="INFO")
+    col = layout.box().column(align=True)
+    col.active = False
+    col.label(text="observed in Blender", icon=PROVENANCE_ICONS["observed"])
+    col.label(text="likely (inferred)", icon=PROVENANCE_ICONS["inferred"])
+    col.label(text="example, not your scene", icon=PROVENANCE_ICONS["illustrative"])
+
+
+def draw_offline(layout, s: PanelSession | None) -> None:
+    status, error = link_info()
+    hint = f"Blender link: {status}" if status != "connected" else "Waiting for the Wysp Core…"
+    draw_hello(layout, "Wysp is offline", hint)
+    error = error or (s.client.last_error if s is not None and s.client.last_error else "")
+    if error:
+        row = layout.row()
+        row.active = False
+        row.label(text=str(error)[:60], icon="ERROR")
+    if status != "connected":
+        row = layout.row()
+        row.scale_y = 1.3
+        row.operator("wysp.connect", text="Connect", icon="LINKED")
+
+
+def draw_main(layout, context, side: bool = False) -> None:
+    """Everything the sidebar tab shows."""
+    s = _session
+    draw_header(layout, context, show_switch=not side)
+    if s is None or not s.state.connected:
+        draw_offline(layout, s)
+        return
+    if not side and s.state.effective_view == "board":
+        draw_diagram(layout, context, s)
+    else:
+        draw_chat_body(layout, context, s)
 
 
 class WYSP_PT_chat(Panel):
-    bl_label = "Talk to Wysp"
+    """The Wysp tab in the 3D Viewport sidebar. No title bar: the slim top row is the whole header."""
+
+    bl_label = "Wysp"
     bl_idname = "WYSP_PT_chat"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Wysp"
-    bl_order = 1
+    bl_options = {"HIDE_HEADER"}  # noqa: RUF012
 
     def draw(self, context):
-        draw_chat(self.layout, context)
+        draw_main(self.layout, context)
+
+
+class WYSP_PT_menu(Panel):
+    """The "..." popover: the rest of the settings, out of the way."""
+
+    bl_label = "Wysp"
+    bl_idname = "WYSP_PT_menu"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "HEADER"
+
+    def draw(self, context):
+        layout = self.layout
+        s = _session
+        wm = context.window_manager
+        layout.ui_units_x = 14
+        st = s.state if s is not None else None
+        if s is not None and st.connected:
+            layout.label(text="Looking at")
+            col = layout.column(align=True)
+            if st.adapters:
+                for a in st.adapters:
+                    on = a.get("adapter_id") == st.session.get("active_adapter")
+                    op = col.operator("wysp.activate_adapter", text=st.app_label(a), depress=on)
+                    op.adapter_id = str(a.get("adapter_id", ""))
+            else:
+                col.label(text="no application connected")
+            layout.separator()
+            layout.label(text="Logs")
+            layout.prop(wm, "wysp_logging", expand=True)
+            if s.voice is not None:
+                layout.prop(wm, "wysp_voice_on", text="Voice")
+            else:
+                dim = layout.row()
+                dim.active = False
+                dim.label(text="Voice is off (preferences)")
+            layout.operator("wysp.undo_last", text="Undo Wysp's last change", icon="LOOP_BACK")
+            layout.operator("wysp.board_open", text="Open the diagram editor", icon="NODETREE")
+            model = st.session.get("model") or st.session.get("llm")
+            if model:
+                foot = layout.row()
+                foot.active = False
+                foot.label(text=f"Model: {model}"[:40])
+            layout.separator()
+        status, _error = link_info()
+        row = layout.row(align=True)
+        row.operator("wysp.connect", text="Connect", icon="LINKED")
+        row.operator("wysp.disconnect", text="Disconnect", icon="UNLINKED")
+        if status != "connected":
+            dim = layout.row()
+            dim.active = False
+            dim.label(text=f"Blender link: {status}")
 
 
 class WYSP_PT_board_side(Panel):
@@ -596,6 +922,7 @@ class WYSP_PT_board_side(Panel):
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI"
     bl_category = "Wysp"
+    bl_options = {"HIDE_HEADER"}  # noqa: RUF012
 
     @classmethod
     def poll(cls, context):
@@ -603,9 +930,7 @@ class WYSP_PT_board_side(Panel):
 
     def draw(self, context):
         draw_board_legend(self.layout)
-        if _session is not None and _session.state.board.get("stale"):
-            self.layout.label(text="The board may be out of date", icon="ERROR")
-        draw_chat(self.layout, context)
+        draw_main(self.layout, context, side=True)
 
 
 class WYSP_OT_talk(_SessionOperator):
@@ -688,6 +1013,8 @@ def unregister_keymaps() -> None:
 CLASSES = (
     WYSP_OT_talk,
     WYSP_OT_talk_cancel,
+    WYSP_OT_view,
+    WYSP_OT_activate_adapter,
     WYSP_OT_send,
     WYSP_OT_say,
     WYSP_OT_interrupt,
@@ -696,6 +1023,7 @@ CLASSES = (
     WYSP_OT_permission,
     WYSP_OT_board_why,
     WYSP_OT_board_show,
+    WYSP_PT_menu,
     WYSP_PT_chat,
     WYSP_PT_board_side,
 )

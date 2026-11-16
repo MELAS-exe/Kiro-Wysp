@@ -12,6 +12,29 @@ The first application built on Wysp: a tutor that sees your Blender scene, expla
    - headless (tests, contract kit): `scripts/run_blender_headless.ps1`, or the kit does it for you;
    - with the interface: build and install the extension (`uv run python scripts/build_blender_extension.py`), then open the **Wysp** tab in the 3D viewport sidebar and click **Connect**.
 
+## The Wysp tab (what the panel looks like)
+
+The sidebar tab is a native Blender panel that mirrors the browser Panel: chat first, one slim top row, nothing else. It only renders `UiState` (`adapter/ui_state.py`) and sends UI-protocol messages; there is no tutoring logic in it.
+
+| Area | What it shows |
+|---|---|
+| Top row | The Wysp mascot, a status (Ready, Thinking, Acting, Speaking, Offline) with an icon, a Chat / Diagram switch (only when the board has nodes) and a `⋮` menu. No title bar. |
+| `⋮` menu | Which application Wysp looks at (several can be connected), Logs level (off, basic, full, synced with the Core), Voice on/off, Undo Wysp's last change, open the diagram editor, Connect / Disconnect. |
+| Chat | Your messages in boxes, Wysp's sentences as plain text (they appear as they are spoken), checks as small dim lines, a dim "Thinking…" line while busy. **Stop** shows while Wysp works, **Continue** only when something was cancelled. Composer at the bottom: text field, mic (hold Alt+Space), send. Empty chat: the mascot and "Ask about your scene". |
+| Approval | A card with the risk, the action, the reason and a preview, then Deny / Approve (and "Allow for this lesson" for reversible actions). The card replaces the conversation until you answer. A banner also appears in the viewport. |
+| Diagram | The board as a compact list with the same provenance language as the node tree: observed (eye), likely, example (dim). Show highlights the element in Blender, `?` asks why. The full node view opens with **Open in editor**. |
+
+Limits of a native panel: Blender draws sidebar panels with your theme, so brand colour only comes from the mascot icon, the viewport banner (ink, lilac, lavender) and the board nodes. Scripts cannot scroll a sidebar, so the chat shows the newest messages that fit ("N earlier messages" above) and keeps the composer in view. Messages of unknown type from the Core (for example `explore.state`) are ignored.
+
+Screenshots: `docs/img/blender-panel-*.png`. Regenerate them (separate Blender with its own temporary profile, no Core, no network):
+
+```powershell
+apps\blender-tutor\tests\shoot_panel.ps1 -Out $env:TEMP\wysp-shots
+uv run --with pillow --no-project python apps\blender-tutor\tests\crop_shots.py $env:TEMP\wysp-shots docs\img --wide menu
+```
+
+Icons: `adapter/icons/mark-color-64.png` (top row) and `mark-color-256.png` (empty chat), copies of `docs/brand/`. They are loaded with `bpy.utils.previews` in `adapter/ui_icons.py` (registered and released with the add-on, built-in icon as fallback) and packaged automatically by the extension build.
+
 ## Actions
 
 Every action is declared in `adapter/actions/<id>.py`. The LLM can only *propose* them; the Core asks you before running anything that changes the scene, then verifies the result.
@@ -64,6 +87,22 @@ Privacy: only the editor being pointed at is captured, only the local Core recei
 file is deleted at once; `WYSP_DEBUG_SHOTS=<dir>` keeps copies for debugging) and the image is never logged.
 Icons without text, the top bar and the status bar cannot be targeted. Guided steps carry these refs, so
 starting a guide walks through each step's target in turn (object, tab, then the button).
+
+## Highlights (contract 1.1.0)
+
+The manifest declares `contract_version` 1.1.0, so the Core uses persistent highlights.
+
+- `adapter.highlight` with `duration_ms: 0` stays until it is cleared, replaced, the Core connection drops or the
+  add-on is disconnected. A positive duration still expires by itself. A new highlight replaces the previous one.
+- `adapter.clear_highlight` returns `{"cleared": true}` when something was shown and `{"cleared": false}` when not
+  (never an error).
+- **Object highlights** (`blender://object/...`, including modifier refs, which outline their object) report
+  `event.highlight_dismissed {ref, reason: "user"}` and disappear when the user newly selects or activates the
+  highlighted object. Selection changes made by Wysp, and changes in the first 1.5 s after the highlight appears,
+  are ignored.
+- **Interface highlights** (`blender://ui/...`, including labels) are **not** dismissed by a click. Blender's Python
+  API has no cheap click detection for them (it would need a modal operator, which this adapter does not add).
+  They stay until cleared, replaced or disconnected; the Core also expires them after 10 minutes.
 
 ## Inside Blender: chat and board
 

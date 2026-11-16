@@ -27,11 +27,11 @@ TREE_TYPE = "WyspBoardTreeType"
 TREE_NAME = ".Wysp Board"
 
 COLORS = {
-    "observed": (0.05, 0.24, 0.22),
-    "inferred": (0.15, 0.18, 0.25),
-    "illustrative": (0.22, 0.22, 0.22),
+    "observed": (0.20, 0.06, 0.42),
+    "inferred": (0.13, 0.09, 0.26),
+    "illustrative": (0.20, 0.19, 0.24),
 }
-FOCUS_COLOR = (0.08, 0.45, 0.40)
+FOCUS_COLOR = (0.40, 0.14, 0.80)
 MARKERS = {"observed": "", "inferred": "likely ", "illustrative": "example: "}
 
 
@@ -51,7 +51,7 @@ class WyspBoardSocket(NodeSocket):
         layout.label(text="")
 
     def draw_color(self, context, node):
-        return (0.18, 0.83, 0.75, 1.0)
+        return (0.79, 0.52, 0.99, 1.0)
 
 
 class WyspBoardNode(Node):

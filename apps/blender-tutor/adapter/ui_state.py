@@ -101,10 +101,55 @@ def apply_patch(board: dict[str, Any], patch: dict[str, Any]) -> tuple[dict[str,
     return nxt, "ok"
 
 
+STATUS_TEXT = {
+    "idle": "Ready",
+    "thinking": "Thinking",
+    "acting": "Acting",
+    "speaking": "Speaking",
+    "offline": "Offline",
+}
+PROVENANCE_MARKER = {"observed": "", "inferred": "likely ", "illustrative": "example: "}
+MAX_DIAGRAM_ROWS = 24
+
+
+def tail_start(line_counts: list[float], budget: float) -> int:
+    """Index of the first item to show so that the newest items fit in `budget` lines.
+
+    Blender panels cannot be scrolled from a script, so the chat shows only the newest items that fit and
+    keeps the composer on screen. The newest item is always shown, even when it alone is longer than the budget.
+    """
+    used = 0
+    start = len(line_counts)
+    for i in range(len(line_counts) - 1, -1, -1):
+        used += max(1, line_counts[i])
+        if used > budget and start < len(line_counts):
+            break
+        start = i
+    return start
+
+
+def preview_lines(preview: Any, max_lines: int = 6, width: int = 44) -> list[str]:
+    """A permission preview as short text lines: a text diff as is, a dict as ``key: value``, anything else as text."""
+    if isinstance(preview, dict) and isinstance(preview.get("diff"), str):
+        lines = preview["diff"].splitlines()
+    elif isinstance(preview, dict):
+        lines = [f"{k}: {v}" for k, v in preview.items()]
+    elif isinstance(preview, (list, tuple)):
+        lines = [str(v) for v in preview]
+    else:
+        lines = str(preview).splitlines() or [""]
+    out = [line[:width] + ("…" if len(line) > width else "") for line in lines[:max_lines]]
+    if len(lines) > max_lines:
+        out.append(f"… {len(lines) - max_lines} more")
+    return out
+
+
 class UiState:
     def __init__(self, narrate: bool = True, clock=time.monotonic, voice=None) -> None:
         self.narrate = narrate  # time segments and fire their cues (when no browser voice does it)
         self.voice = voice  # optional VoicePlayer-like object: prepare / ready / play / is_playing / stop / forget
+        self.voice_on = True  # the "Voice" switch in the menu; off means captions at reading pace
+        self.view = "chat"  # "chat" or "board": one thing fills the panel at a time, like the browser Panel
         self.clock = clock
         self.connected = False
         self.session: dict[str, Any] = {}
@@ -138,6 +183,7 @@ class UiState:
     def add_user(self, text: str, source: str = "typed") -> None:
         self.transcript.append({"kind": "user", "text": text, "source": source})
         self.clarification = None  # the user moved on: an old question must not linger (and be clicked later)
+        self.view = "chat"  # sending a message goes back to the conversation, like the browser Panel
         self._touch()
 
     def node(self, node_id: str) -> dict[str, Any] | None:
@@ -160,6 +206,101 @@ class UiState:
     def steps(self) -> list[dict[str, Any]]:
         return self.board["steps"]
 
+    # ------------------------------------------------------- what the panel shows (same rules as Chat.tsx)
+    @property
+    def busy(self) -> bool:
+        return self.connected and self.status != "idle"
+
+    @property
+    def has_cancelled(self) -> bool:
+        return any(t["kind"] == "wysp" and t["state"] in ("cancelled", "skipped") for t in self.transcript)
+
+    @property
+    def show_stop(self) -> bool:
+        return self.busy
+
+    @property
+    def show_continue(self) -> bool:
+        """Only when something was cancelled and Wysp is not working."""
+        return not self.busy and self.has_cancelled
+
+    @property
+    def has_diagram(self) -> bool:
+        return bool(self.board["nodes"])
+
+    @property
+    def effective_view(self) -> str:
+        return "board" if self.view == "board" and self.has_diagram else "chat"
+
+    def set_view(self, view: str) -> None:
+        if view in ("chat", "board") and view != self.view:
+            self.view = view
+            self._touch()
+
+    @property
+    def display_status(self) -> str:
+        if not self.connected:
+            return "offline"
+        return self.status if self.status in STATUS_TEXT else "idle"
+
+    @property
+    def status_text(self) -> str:
+        return STATUS_TEXT[self.display_status]
+
+    @property
+    def wait_text(self) -> str:
+        """The dim line under the chat while Wysp works ("" when idle)."""
+        if not self.busy:
+            return ""
+        if self.activity:
+            return self.activity
+        return {"thinking": "Thinking", "acting": "Working in Blender"}.get(self.status, "")
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.visible_transcript() and not self.clarification
+
+    @property
+    def active_app(self) -> dict[str, Any] | None:
+        active = self.session.get("active_adapter")
+        return next((a for a in self.adapters if a.get("adapter_id") == active), None)
+
+    def app_label(self, adapter: dict[str, Any] | None) -> str:
+        app = (adapter or {}).get("app") or {}
+        return f"{app.get('name', '')} {app.get('version', '')}".strip() or str((adapter or {}).get("adapter_id", ""))
+
+    def diagram_rows(self, limit: int = MAX_DIAGRAM_ROWS) -> tuple[list[dict[str, Any]], int]:
+        """The board as a compact list: (rows, hidden_count). Provenance is spelled out like in the node tree."""
+        labels = {n["id"]: n.get("label", "") for n in self.board["nodes"]}
+        out_edges: dict[str, list[str]] = {}
+        for e in self.board["edges"]:
+            out_edges.setdefault(e["source"], []).append(labels.get(e["target"], ""))
+        focus = set(self.board["focus"])
+        rows = []
+        for n in self.board["nodes"][:limit]:
+            prov = n.get("provenance", "inferred")
+            rows.append(
+                {
+                    "id": n["id"],
+                    "text": f"{PROVENANCE_MARKER.get(prov, '')}{n.get('label', '')}",
+                    "kind": n.get("kind", ""),
+                    "provenance": prov,
+                    "can_show": bool(n.get("ref")) and prov == "observed",
+                    "focused": n["id"] in focus,
+                    "links": [t for t in out_edges.get(n["id"], []) if t],
+                }
+            )
+        return rows, max(0, len(self.board["nodes"]) - limit)
+
+    def _voice(self):
+        return self.voice if self.voice_on else None
+
+    def set_voice(self, on: bool) -> None:
+        self.voice_on = on
+        if not on and self.voice is not None:
+            self.voice.stop()
+        self._touch()
+
     def set_connected(self, connected: bool) -> None:
         self.connected = connected
         if not connected:
@@ -170,7 +311,10 @@ class UiState:
 
     # ------------------------------------------------------------------- inbound
     def handle(self, m: dict[str, Any]) -> list[dict[str, Any]]:
+        """Apply one Core message. Unknown or new message types (for example ``explore.state``) are ignored."""
         out: list[dict[str, Any]] = []
+        if not isinstance(m, dict):
+            return out
         t = m.get("type")
         if t == "session.state":
             self.session = {k: v for k, v in m.items() if k != "type"}
@@ -188,11 +332,16 @@ class UiState:
                 self.transcript.append({"kind": "user", "text": m.get("text", ""), "source": m.get("source", "typed")})
             self.clarification = None
         elif t == "board.snapshot":
+            before = len(self.board["nodes"])
             self.board = copy.deepcopy(m["board"])
+            if len(self.board["nodes"]) > before:
+                self.view = "board"  # new elements appeared: show them, like the browser Panel
             self._touch(board=True)
         elif t == "board.patch":
             nxt, why = apply_patch(self.board, m["patch"])
             if nxt is not None:
+                if len(nxt["nodes"]) > len(self.board["nodes"]):
+                    self.view = "board"
                 self.board = nxt
                 self._touch(board=True)
             elif why == "gap":
@@ -202,7 +351,7 @@ class UiState:
             self.transcript.append({"kind": "wysp", "segment": seg, "text": seg.get("text", ""), "state": "queued"})
             if self.narrate:
                 self._queue.append(seg)
-                if self.voice is not None:
+                if self._voice() is not None:
                     self.voice.prepare(seg)
         elif t == "narration.cancel":
             self.cancel_narration(m.get("from_index"))
@@ -260,11 +409,12 @@ class UiState:
     def _start_segment(self, seg: dict[str, Any], now: float) -> bool:
         """Begin a segment. Returns False while its audio is still being fetched."""
         duration = None
-        if self.voice is not None:
-            ready = self.voice.ready(seg["id"])
+        voice = self._voice()
+        if voice is not None:
+            ready = voice.ready(seg["id"])
             if ready is None and now - self._waiting_since < VOICE_WAIT_S:
                 return False  # audio on its way: wait a little rather than speak out of sync
-            if isinstance(ready, (int, float)) and not isinstance(ready, bool) and self.voice.play(seg["id"]):
+            if isinstance(ready, (int, float)) and not isinstance(ready, bool) and voice.play(seg["id"]):
                 duration = float(ready)
         self._duration = duration if duration is not None else self.segment_duration(seg)
         self._started, self._cues_sent = now, 0
@@ -296,7 +446,7 @@ class UiState:
                 break
             out.append({"type": "narration.cue", "segment_id": seg["id"], "index": self._cues_sent})
             self._cues_sent += 1
-        still_playing = self.voice is not None and self.voice.is_playing() and elapsed < self._duration + 2.0
+        still_playing = self._voice() is not None and self.voice.is_playing() and elapsed < self._duration + 2.0
         if elapsed >= self._duration and not still_playing:
             while self._cues_sent < len(cues):  # never drop a cue, even on a short segment
                 out.append({"type": "narration.cue", "segment_id": seg["id"], "index": self._cues_sent})

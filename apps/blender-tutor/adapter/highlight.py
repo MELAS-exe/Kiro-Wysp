@@ -29,11 +29,13 @@ from . import label_match, nav_detect, refs, telemetry, ui_targets
 
 log = logging.getLogger("wysp.blender")
 
-COLOR = (0.17, 0.83, 0.75)  # the Wysp wisp glow
+COLOR = (0.79, 0.52, 0.99)  # the Wysp lilac (#CA84FC), see docs/brand/README.md
 _state: dict = {
     "object": None,
     "ui": [],
     "until": 0.0,
+    "ref": None,  # the ref the Core asked for (reported back when the user dismisses it)
+    "shown_at": 0.0,
     "handlers": [],
     "timer": False,
     "broken": False,
@@ -42,6 +44,7 @@ _state: dict = {
     "label_rect": None,  # (x, y, w, h) in window pixels, origin bottom-left
     "tab_rect": None,  # same, for a Properties tab found on a screenshot
 }
+DISMISS_GRACE_S = 1.5  # selection changes this soon after a highlight is shown are not a reaction to it
 _core: dict = {"http": None}  # http://host:port of the Core, set when the adapter connects
 OCR_TIMEOUT_S = 0.8  # the Core waits 1.5 s for a highlight in total (0.5 s budget + 1 s slack)
 _EDGES = ((0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7))
@@ -139,8 +142,15 @@ def _fill_rect(x: float, y: float, w: float, h: float, color) -> None:
     batch.draw(shader)
 
 
-def _draw_callout(region, text: str, x: float | None = None, top: float | None = None) -> None:
-    """A dark label with a glowing border. `x` is the left edge (default: centred), `top` the top edge."""
+INK_BG = (0.05, 0.0, 0.18, 0.92)  # brand ink #0D012F
+LAVENDER = (0.96, 0.90, 0.99, 1.0)  # brand lavender #F4E5FD
+
+
+def draw_callout(region, text: str, x: float | None = None, top: float | None = None) -> None:
+    """A brand label: ink background, lilac frame, lavender text. `x` is the left edge (default: centred), `top` the top edge.
+
+    Needs ``gpu.state.blend_set("ALPHA")`` set by the caller (draw handlers do).
+    """
     import blf
 
     s = _ui_scale()
@@ -152,11 +162,14 @@ def _draw_callout(region, text: str, x: float | None = None, top: float | None =
     x = min(max(4, x), max(4, region.width - w - 4))
     top = region.height - 8 * s if top is None else top
     y = min(max(4, top - h), max(4, region.height - h - 4))
-    _fill_rect(x, y, w, h, (0.06, 0.09, 0.16, 0.92))
+    _fill_rect(x, y, w, h, INK_BG)
     _draw_lines(_rect_lines(x, y, w, h), 2.0, 0.95)
-    blf.color(0, 0.89, 0.91, 0.94, 1.0)
+    blf.color(0, *LAVENDER)
     blf.position(0, x + pad, y + pad + th * 0.12, 0)
     blf.draw(0, text)
+
+
+_draw_callout = draw_callout  # the module's own drawing code uses this name
 
 
 def probe_visible_tabs(space) -> list[str]:
@@ -462,6 +475,8 @@ def _register_ui_handlers(targets) -> None:
 
 # ------------------------------------------------------------------------------ lifecycle
 def _tick() -> float | None:
+    if not is_active():
+        return None  # cleared or replaced elsewhere: stop this timer (a persistent highlight would never expire)
     for area in _areas():
         area.tag_redraw()
     if time.monotonic() > _state["until"]:
@@ -471,6 +486,7 @@ def _tick() -> float | None:
 
 
 def clear_highlight() -> None:
+    """Remove whatever is drawn. Safe to call at any time."""
     handle = _state.get("object_handle")
     if handle is not None:
         try:
@@ -485,6 +501,7 @@ def clear_highlight() -> None:
     _state.update(
         object=None,
         object_handle=None,
+        ref=None,
         ui=[],
         handlers=[],
         handles={},
@@ -502,9 +519,10 @@ def clear_highlight() -> None:
 
 
 def _start(duration_ms: int) -> None:
-    _state["until"] = time.monotonic() + duration_ms / 1000.0
-    if not _state["timer"]:
-        _state["timer"] = True
+    """duration_ms == 0 is a persistent highlight (contract 1.1): no expiry until cleared or replaced."""
+    _state["until"] = math.inf if duration_ms <= 0 else time.monotonic() + duration_ms / 1000.0
+    _state["timer"] = True
+    if not bpy.app.timers.is_registered(_tick):
         bpy.app.timers.register(_tick, first_interval=0.02)
 
 
@@ -515,9 +533,43 @@ def highlight(ref: str, style: str, duration_ms: int) -> dict:
         )
     if _state["broken"]:
         raise WyspError(ErrorCode.NOT_SUPPORTED, "highlight drawing is disabled after an earlier error")
-    if ui_targets.is_ui_ref(ref):
-        return _highlight_ui(ref, duration_ms)
-    return _highlight_object(ref, duration_ms)
+    result = _highlight_ui(ref, duration_ms) if ui_targets.is_ui_ref(ref) else _highlight_object(ref, duration_ms)
+    _state["ref"] = ref  # set only once the new highlight is accepted; a failed call keeps the old one
+    _state["shown_at"] = time.monotonic()
+    return result
+
+
+def is_active() -> bool:
+    return bool(_state["object"] or _state["ui"] or _state.get("label_pending") or _state.get("object_handle"))
+
+
+def clear_active() -> dict:
+    """Contract 1.1 ``adapter.clear_highlight``: ``{"cleared": False}`` when nothing was shown, never an error."""
+    was_active = is_active()
+    clear_highlight()
+    return {"cleared": was_active}
+
+
+def dismissed_by_selection(
+    old_focus: list[str], new_focus: list[str], origin: str, now: float | None = None
+) -> str | None:
+    """Clear an object highlight when the user selects or activates the highlighted object.
+
+    Returns the highlight ref to report as dismissed, or None. Ignores changes made by Wysp, changes inside the
+    grace period after the highlight appeared, and objects that were already in focus.
+    """
+    name = _state["object"]
+    if not name or origin == "wysp":
+        return None
+    now = time.monotonic() if now is None else now
+    if now - _state["shown_at"] < DISMISS_GRACE_S:
+        return None
+    target = f"blender://object/{refs.q(name)}"
+    if target in new_focus and target not in old_focus:
+        ref = _state["ref"] or target
+        clear_highlight()
+        return ref
+    return None
 
 
 def _highlight_ui(ref: str, duration_ms: int) -> dict:
