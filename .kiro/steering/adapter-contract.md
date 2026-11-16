@@ -45,7 +45,7 @@ The normative definition is the spec `.kiro/specs/adapter-contract/` and the gen
 ## Host rules
 - **Blender:** never touch `bpy` outside the main thread. The network thread only enqueues; a `bpy.app.timers` pump (every 50 ms) executes. Prefer the data API (`obj.modifiers.new`) over `bpy.ops`. Push an undo step (`bpy.ops.ed.undo_push`) after each Wysp change so that Ctrl+Z works too. Tag events caused by Wysp with `origin: wysp`.
 - **IntelliJ:** read the project model and code structure inside read actions (non-blocking for observation), change code only in write commands on the EDT, touch Swing only on the EDT. Never run arbitrary action ids, run configurations or code. Send code text only for the selection and the symbol at the caret, never from sensitive files.
-- **Chrome MV3 (deferred):** the WebSocket lives in the service worker and sends a heartbeat every 20 s (this keeps the worker alive since Chrome 116). DOM work happens in the content script. Resolve locators at execution time. Set values on React-controlled inputs through the native value setter, then dispatch `input` and `change` events.
+- **Chrome MV3 (optional extra):** the WebSocket lives in the service worker and sends a heartbeat every 20 s (this keeps the worker alive since Chrome 116). DOM work happens in the content script. Resolve locators at execution time. Set values on React-controlled inputs through the native value setter, then dispatch `input` and `change` events.
 
 ## Definition of done for an adapter change
 - The contract kit passes for the tutor, and `contract.fixture.yaml` is updated if the catalog changed.

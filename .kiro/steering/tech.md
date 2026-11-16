@@ -30,7 +30,7 @@ inclusion: always
 - The embedded Panel uses JCEF, an optional bundled plugin (`com.intellij.modules.jcef`) in 2026.2.
 - Commands: `apps\intellij-tutor\plugin\gradlew.bat buildPlugin` (ZIP in `build/distributions`), `test`, `runIde` (sandbox IDE).
 
-## Chrome extension (`apps/web-tutor/extension/`, deferred)
+## Chrome extension (`apps/web-tutor/extension/`, optional extra)
 - Manifest V3 (Chrome 116 or later), service worker + content script, `dom-accessibility-api` for roles and accessible names, built with Vite.
 - Tests: Vitest + happy-dom for snapshot and locator logic, Playwright for the extension loaded in Chromium.
 
@@ -55,7 +55,7 @@ inclusion: always
 | Live Blender tests | `uv run pytest -m live -o addopts="" apps\blender-tutor\tests` |
 | Session logs | `uv run wysp logs list\|summary\|timeline` (`WYSP_LOG=off\|basic\|full`, default full) |
 | TypeScript tests / typecheck | `npm test -w panel` / `npm run typecheck -w panel` |
-| Contract kit (offline fixture check) | `uv run wysp-contract --tutor blender-tutor --offline` *(online harness: planned)* |
+| Contract kit (offline fixture check) | `uv run wysp-contract --tutor blender-tutor --offline` *(online harness: planned; Blender is checked by `pytest -m live`)* |
 | Validate a profile | `uv run wysp validate-profile apps/blender-tutor/profile` |
 | Core boundary check | `uv run --no-project python scripts/kiro/hook.py boundaries` |
 | Build and install the Blender extension | `uv run python scripts\build_blender_extension.py --install` |

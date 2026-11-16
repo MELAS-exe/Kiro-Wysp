@@ -120,7 +120,7 @@ The IntelliJ adapter (`Observe.kt`, `Imports.kt`) and `apps/intellij-tutor/profi
 
 - **Blender:** never touch `bpy` off the main thread. The network thread only enqueues; a `bpy.app.timers` pump runs the work. Push an undo step after each Wysp change.
 - **IntelliJ:** read the project model in read actions, change code only in write commands on the EDT, touch Swing only on the EDT.
-- **Browser extension (deferred):** the WebSocket lives in the service worker with a heartbeat every 20 s; DOM work happens in the content script.
+- **Browser extension (`apps/web-tutor`, optional):** the WebSocket lives in the service worker with a heartbeat every 20 s; DOM work happens in the content script.
 
 ## 9. Test it without the application
 

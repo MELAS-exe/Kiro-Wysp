@@ -20,14 +20,14 @@ inclusion: always
 | End-to-end smoke | ScriptedLLM + real adapters | `scripts/demo_smoke.py` *(planned)* |
 
 ## Rules
-- Property ids follow `<SPEC>-P<n>`: `CON` (adapter-contract), `CORE` (core-orchestrator), `PED` (pedagogy-verification), `PAN` (tutor-panel), `BLD` (blender-tutor), `IJ` (intellij-tutor), `WEB` (web-tutor, deferred).
+- Property ids follow `<SPEC>-P<n>`: `CON` (adapter-contract), `CORE` (core-orchestrator), `PED` (pedagogy-verification), `PAN` (tutor-panel), `BLD` (blender-tutor), `IJ` (intellij-tutor), `WEB` (web-tutor, optional extra).
 - A bug fix starts with a failing test.
 - Do not mock the contract. Adapters are tested through the Kit; the Core is tested against the mock adapter over a real WebSocket.
 - Blender logic that does not need the UI is tested with `bpy` from PyPI. Code that depends on the main-thread dispatcher is tested with a manual dispatcher.
 - The Chrome extension's snapshot and locator logic is tested on generated DOMs (happy-dom). The full extension is tested with Playwright against the demo dashboard.
 - Automated tests never call real LLM, STT or TTS providers.
 
-## Commands *(planned)*
+## Commands
 - `uv run pytest`: all Python tests except `live`.
 - `uv run pytest -m live`: tests that need a running Blender or Chrome.
 - `npm test --workspaces --if-present`: all TypeScript tests.

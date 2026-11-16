@@ -11,7 +11,7 @@ Wysp is our entry for **Kiroween 2026, category Skeleton Crew**. One shared core
 | Blender tutor | `apps/blender-tutor/` | native (Blender 5.2 Python API) | explain an object's modifier stack, add a Bevel with permission, verify it |
 | IntelliJ tutor | `apps/intellij-tutor/` | native (IntelliJ Platform API: project model, code structure, editors, Swing UI) | explore the student's project, explain the function under the caret, point at the IDE control, guide a rename refactoring and verify it |
 
-> **Status (11 Nov 2026): both tutors run end to end on the same Core and Panel.** The Blender tutor and the IntelliJ tutor (which replaced the planned web tutor as application 2) are working prototypes. Specs, steering, hooks and agents are in `.kiro/`.
+> **Status (16 Nov 2026): both tutors run end to end on the same Core and Panel,** with lessons and exercises that Wysp verifies in the application, and an optional Chrome connector (`apps/web-tutor`) as a third application. The Blender tutor and the IntelliJ tutor are working prototypes. Specs, steering, hooks and agents are in `.kiro/`.
 
 ![The Panel in guide mode on the Blender demo scene](docs/img/panel-guide.png)
 
@@ -89,7 +89,7 @@ apps\intellij-tutor\plugin\gradlew.bat test                 # IntelliJ plugin: 2
 uv run python scripts\kiro\hook.py boundaries              # the Core must stay application-agnostic
 ```
 
-## Build your own tutor in four steps (planned)
+## Build your own tutor in four steps (see `docs/adapter-guide.md`)
 
 1. **Manifest**: id, integration level, capabilities, entity kinds, ref scheme.
 2. **Observation**: map the application state to entities (the SDK gives you the client, state digest and validation).
