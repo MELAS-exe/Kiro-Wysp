@@ -29,7 +29,24 @@ IntelliJ plugin ───┘   (adapter contract)    └─ LLM with tool callin
 
 To build your own tutor, start with the [adapter guide](docs/adapter-guide.md) (its example adapter is tested). The full design (in French) is in [`docs/architecture/wysp-architecture.pdf`](docs/architecture/wysp-architecture.pdf). The normative specs (in English) are in [`.kiro/specs/`](.kiro/specs/).
 
-## Run it (Windows, Blender 5.2 LTS)
+## Try it in two minutes (no application, no account, no key)
+
+Needs Python 3.13 with [uv](https://docs.astral.sh/uv/) and Node 24. A small mock Kanban application stands in for Blender or IntelliJ, and a scripted model replays a scenario, so nothing leaves your machine.
+
+```powershell
+uv sync
+npm install; npm run build -w panel          # npm.cmd if PowerShell blocks npm
+uv run wysp serve --llm scripted --scenario contract-tests/wysp_mock/scenario.yaml
+# in a second terminal:
+uv run wysp-mock-adapter
+# open http://127.0.0.1:8765 and ask: "explain this board", then "help me move the card" or "do it for me"
+```
+
+You will see the board build from the application's real entities, the highlight, the permission prompt for "do it for me", the verification and the undo. The same Core and Panel then drive Blender, IntelliJ IDEA and Chrome below.
+
+## Run it with the real applications (Windows)
+
+Prerequisites: Python 3.13 with [uv](https://docs.astral.sh/uv/), Node 24, Chrome, Blender 5.2 LTS (Blender tutor), IntelliJ IDEA 2026.2 (IntelliJ tutor).
 
 Prerequisites: Python 3.13 with [uv](https://docs.astral.sh/uv/), Node 24, Chrome, Blender 5.2 LTS.
 
@@ -74,6 +91,10 @@ uv run wysp logs timeline    # Core and Blender records merged in time order
 
 **3. In IntelliJ IDEA 2026.2.** Build and install the plugin (`apps\intellij-tutor\plugin\gradlew.bat buildPlugin`, then Settings > Plugins > Install Plugin from Disk), start the Core and open a project: the plugin connects by itself and the **Wysp** tool window shows the Panel. Details, actions and privacy notes: [`apps/intellij-tutor/README.md`](apps/intellij-tutor/README.md). Offline demo: `uv run wysp serve --llm scripted --scenario apps\intellij-tutor\demo\scenario.yaml` with `apps/intellij-tutor/demo/sample-project`.
 
+**4. In Chrome (optional extra).** Build the extension (`npm run build -w apps/web-tutor/extension`), load `apps/web-tutor/extension/dist` unpacked, start the Core with `WYSP_ALLOWED_ORIGINS=chrome-extension://cnmikeniefgoeibijogfncggjkafakhk`, paste the token from `~/.wysp/token` on the extension's options page, allow `http://localhost:5180` and click the Wysp icon: the Panel opens in the side panel. Demo page: `node apps/web-tutor/demo-dashboard/serve.mjs`. Details and privacy notes: [`apps/web-tutor/README.md`](apps/web-tutor/README.md).
+
+**Voice.** Speech for Panels without their own voice is offline: Windows voices, or a natural female neural voice (Kokoro, Apache-2.0): `uv sync --all-packages --extra voice`, `uv run wysp install-voice`, then `WYSP_TTS_PROVIDER=kokoro` (see `.env.example`).
+
 **LLM providers.** `auto` picks the first of Groq, Cerebras, OpenRouter whose key is in `.env`, otherwise keyless
 Pollinations (works, but stalls on about every second request). `--llm scripted` replays a scenario offline.
 
@@ -82,10 +103,12 @@ Pollinations (works, but stalls on about every second request). `--llm scripted`
 ## Tests
 
 ```powershell
-uv run pytest                                              # 91 tests: contract, Core, telemetry, end-to-end with the mock adapter, Blender Panel state
-uv run pytest -m live -o addopts="" apps\blender-tutor\tests   # 4 tests inside a real headless Blender
-npm test -w panel                                          # Panel unit and property tests
-apps\intellij-tutor\plugin\gradlew.bat test                 # IntelliJ plugin: 23 unit and platform tests (IJ-P1..P4)
+uv run pytest                                              # about 370 tests: contract, Core, pedagogy, property tests, end-to-end with the mock adapter
+uv run pytest -m live -o addopts="" apps\blender-tutor\tests   # live tests inside a real headless Blender
+npm test -w panel                                          # Panel unit, accessibility and property tests
+npm test -w apps/web-tutor/extension                        # Chrome extension
+apps\intellij-tutor\plugin\gradlew.bat test                 # IntelliJ plugin unit and platform tests
+uv run wysp-contract --tutor blender-tutor                  # online Contract Test Kit (also: web-tutor, --mock, --offline)
 uv run python scripts\kiro\hook.py boundaries              # the Core must stay application-agnostic
 ```
 
@@ -106,13 +129,9 @@ Then `uv run wysp-contract --tutor <name>` tells you whether your adapter is com
 | Steering | `.kiro/steering/` | product vocabulary, structure and boundaries, trust and safety, testing, contract guide, pedagogy, UI design system, demo and release checklists |
 | Hooks | `.kiro/hooks/` | core boundary guard, schema sync, offline contract checks, trust review, new-action integration, formatting, profile validation, tests after each task |
 | Agents | `.kiro/agents/` | `blender-adapter`, `browser-adapter`, `contract-guardian` (read-only reviewer) |
-| MCP | `docs/kiro/mcp.example.json` | Context7 (up-to-date docs), Playwright, and later a read-only bridge to a running tutor |
+| MCP | `docs/kiro/mcp.example.json` | Context7 (up-to-date docs), Playwright, and `uv run wysp mcp-bridge` (read-only stdio bridge to a running tutor) |
 
 Hooks call `scripts/kiro/hook.py`, a standard-library Python script that CI runs too.
-
-## Getting started
-
-See "Run it" above.
 
 ## Repository layout
 

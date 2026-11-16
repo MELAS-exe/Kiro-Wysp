@@ -1,0 +1,47 @@
+# Offline demo for people without Blender or IntelliJ: the mock Kanban adapter plus the ScriptedLLM.
+#   uv run wysp serve --llm scripted --scenario contract-tests/wysp_mock/scenario.yaml
+#   uv run wysp-mock-adapter          (in a second terminal; then open http://127.0.0.1:8765)
+# Ask: "explain this board", then "help me move the card" (guide: you act, Wysp verifies) or "do it for me".
+steps:
+  - when: "explain|board|what"
+    calls:
+      - name: show_entities
+        arguments:
+          refs: ["mock://board/b1"]
+          layout: tree
+          include_children: true
+          focus: ["mock://card/c3"]
+  - after_tool: show_entities
+    calls:
+      - name: narrate
+        arguments:
+          segments:
+            - text: "This is a small Kanban board with three columns: To do, Doing and Done."
+              cues:
+                - {at_word: 5, op: highlight, target: "mock://board/b1"}
+            - text: "The card Record the demo is still in To do."
+              cues:
+                - {at_word: 4, op: highlight, target: "mock://card/c3"}
+            - text: "Want to try? Ask me to help you move it to Doing."
+
+  - when: "move|help|guide"
+    calls:
+      - name: propose_action
+        arguments:
+          action_id: move_card
+          params: {card: "mock://card/c3", column: doing}
+          mode: guide
+          rationale: "Learn how a card changes column"
+  - after_tool: propose_action
+    say: "Move the card Record the demo to Doing yourself. I will check it on the board."
+
+  - when: "do it|for me"
+    calls:
+      - name: propose_action
+        arguments:
+          action_id: move_card
+          params: {card: "mock://card/c3", column: doing}
+          mode: do
+          rationale: "You asked me to move it"
+  - after_tool: propose_action
+    say: "Done: Record the demo is now in Doing. I checked it on the board, and you can undo it."
