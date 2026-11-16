@@ -1,0 +1,30 @@
+id: web-tutor.dashboard.tour
+title: {en: "Tour of the dashboard"}
+skills: [dashboard_reading]
+prerequisites: []
+board:
+  layout: tree
+  focus: web://localhost:5180/page
+steps:
+  - explain:
+      en: "This page is a dashboard: filters at the top, then key figures, a chart and the orders."
+    show: [web://localhost:5180/region~filters, web://localhost:5180/region~kpis]
+  - explain:
+      en: "The Filters region decides what every number below it means."
+    guide: {target: "web://localhost:5180/region~filters"}
+  - explain:
+      en: "The chart has a text summary, so you can read it without looking at the bars."
+    show: [web://localhost:5180/region~sales-chart/img~sales-by-category]
+    guide: {target: "web://localhost:5180/region~sales-chart/img~sales-by-category"}
+  - explain:
+      en: "Each row of the Orders table is one order."
+    guide: {target: "web://localhost:5180/region~orders/table~orders-table"}
+exercises:
+  - id: find_region_filter
+    prompt: {en: "Click the Region drop-down in the Filters region."}
+    skills: [dashboard_reading]
+    success:
+      - {path: "focus", op: contains, value: "web://localhost:5180/region~filters/combobox~region"}
+    hints:
+      - {en: "It is the second drop-down in Filters, labelled Region."}
+    max_attempts: 3

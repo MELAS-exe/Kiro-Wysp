@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wysp settings</title>
+    <link rel="icon" href="icons/icon-32.png" />
+    <link rel="stylesheet" href="brand.css" />
+    <style>
+      .page { max-width: 680px; margin: 0 auto; padding: 28px 18px 48px; display: grid; gap: 16px; }
+      header { display: flex; align-items: center; gap: 14px; }
+      header h1 { font-size: 22px; }
+      header p { margin: 2px 0 0; }
+      h2 { font-size: 15px; margin-bottom: 10px; }
+      label { display: block; margin: 12px 0 4px; font-weight: 600; }
+      .hint { margin: 4px 0 0; font-size: 13px; }
+      .add { display: flex; gap: 8px; }
+      #list { padding: 0; margin: 12px 0 0; list-style: none; }
+      #list li { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+      #list li span { flex: 1; font-family: ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+      #list em { font-style: normal; font-size: 13px; }
+      .ok { color: var(--ok); } .warn { color: var(--pink); } .bad { color: var(--pink); }
+      #status-card { border-left: 4px solid var(--line-strong); }
+      #status-card[data-tone="ok"] { border-left-color: var(--ok); }
+      #status-card[data-tone="bad"] { border-left-color: var(--pink); }
+      #status-card[data-tone="wait"] { border-left-color: var(--lilac); }
+      #status-headline { font-weight: 700; }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+      #message { min-height: 1.4em; margin: 10px 0 0; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <img class="mascot" src="icons/icon-48.png" width="48" height="48" alt="Wysp, a small violet flame with round glasses" />
+        <div>
+          <h1>Wysp settings</h1>
+          <p class="muted">The little light that guides you through unfamiliar software.</p>
+        </div>
+      </header>
+
+      <section class="card" id="status-card" data-tone="bad" aria-labelledby="status-title">
+        <h2 id="status-title">Connection</h2>
+        <div id="status" role="status" aria-live="polite">
+          <div id="status-headline">Not connected</div>
+          <p id="status-advice" class="muted hint">Waiting for the extension to report its status.</p>
+        </div>
+        <div class="actions">
+          <button type="button" class="primary" id="open-wysp">Open Wysp</button>
+        </div>
+        <p id="open-hint" class="hint muted">Opens the tutor in the browser side panel. You can also click the Wysp icon in the toolbar.</p>
+      </section>
+
+      <form id="form" class="card" aria-labelledby="core-title">
+        <h2 id="core-title">Your Wysp Core</h2>
+        <p class="muted hint">The tutor reads only the sites listed below, and only while this extension is connected to the Core on this computer.</p>
+        <label for="core">Core address (this computer only)</label>
+        <input id="core" type="text" autocomplete="off" />
+        <label for="token">Pairing token</label>
+        <input id="token" type="password" autocomplete="off" />
+        <p class="hint muted">The contents of <code>~/.wysp/token</code>. Treat it like a password.</p>
+        <div class="actions"><button type="submit" class="primary">Save</button></div>
+        <p id="message" role="status" aria-live="polite"></p>
+      </form>
+
+      <section class="card" aria-labelledby="sites-title">
+        <h2 id="sites-title">Sites Wysp may read</h2>
+        <label for="origin">Add a site (origin)</label>
+        <div class="add">
+          <input id="origin" type="text" placeholder="https://example.com" />
+          <button type="button" id="add">Add and allow</button>
+        </div>
+        <ul id="list" aria-label="Allowed sites"></ul>
+      </section>
+    </div>
+    <script type="module" src="./options.js"></script>
+  </body>
+</html>

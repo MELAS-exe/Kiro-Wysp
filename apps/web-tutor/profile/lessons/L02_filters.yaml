@@ -1,0 +1,32 @@
+id: web-tutor.filters.region
+title: {en: "Filter the orders by region"}
+skills: [filtering]
+prerequisites: [web-tutor.dashboard.tour]
+board:
+  layout: tree
+  focus: web://localhost:5180/region~filters
+steps:
+  - explain:
+      en: "A filter narrows what the page shows. Region keeps only the orders of one region."
+    show: [web://localhost:5180/region~filters/combobox~region]
+    guide: {target: "web://localhost:5180/region~filters/combobox~region"}
+  - explain:
+      en: "Choose a region and watch the KPIs and the Orders table change."
+    do:
+      action_id: select_option
+      params: {target: "web://localhost:5180/region~filters/combobox~region", option: Salem}
+    check:
+      - {ref: "web://localhost:5180/region~filters/combobox~region", path: "props.value", op: eq, value: Salem}
+exercises:
+  - id: show_only_transylvania
+    prompt: {en: "Show only the Transylvania orders."}
+    skills: [filtering]
+    success:
+      all:
+        - {ref: "web://localhost:5180/region~filters/combobox~region", path: "props.value", op: eq, value: Transylvania}
+        - {path: "entities[?kind=='table'] | [0].props.row_count", op: gt, value: 0}
+        - {path: "length(entities[?kind=='table'] | [0].props.rows[?@[1] != 'Transylvania'])", op: eq, value: 0}
+    hints:
+      - {en: "Open the Region drop-down in the Filters region."}
+      - {en: "Choose Transylvania from the list."}
+    max_attempts: 3

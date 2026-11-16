@@ -1,0 +1,25 @@
+{
+  "name": "@wysp/web-tutor-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Wysp browser connector (Chrome MV3). Optional third tutor.",
+  "scripts": {
+    "build": "vite build && vite build --mode content",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@wysp/adapter-sdk": "*",
+    "dom-accessibility-api": "*"
+  },
+  "devDependencies": {
+    "@types/chrome": "*",
+    "fast-check": "4.10.2",
+    "happy-dom": "*",
+    "typescript": "7.0.2",
+    "vite": "8.3.7",
+    "vitest": "5.1.0",
+    "yaml": "^2.9.1"
+  }
+}

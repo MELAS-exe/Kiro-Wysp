@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Wysp, your app tutor",
+  "short_name": "Wysp",
+  "description": "Wysp, the little light that guides you through unfamiliar software. Lets your local Wysp tutor read the pages you allow and guide you through them. Optional, local only.",
+  "version": "0.2.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxruDcJqvFOz6/qjVzIEmRH8h9dWGBeFoh/jYXsJKwTBewt1XOrhAs4P4MFsn/FOiRweqkg6hMP4ruZfPYfYGRbU9Qu/leAaJIiwsnowi4NQwt1QwoQFhs2Ix2Z71o5/N9a7QJrUB6cXI+y9QXEi6S1eDzqHCRc46tIeOD4Nuo3YSNMb+vurvZa+59SEYby3zgf4ajkCIfJ9x47Yy2Q12fTLGt08sqm9/WCtXw2XVmX1/hG1M4nZcvJ2xVuoS8K61e4Rvb8w7AFxn0TzGcu5Ux8PW2/wS5gFjAac2/ozoYJkHnDcJo3U/j6ihGEjYyLRUARMiDcmMkPYVJSlejSxHWwIDAQAB",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Open Wysp, your tutor",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "permissions": ["storage", "scripting", "webNavigation", "alarms", "sidePanel"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "options_ui": { "page": "options.html", "open_in_tab": true }
+}

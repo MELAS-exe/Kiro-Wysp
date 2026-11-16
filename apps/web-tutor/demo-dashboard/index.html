@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Haunted Shop Analytics</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Haunted Shop Analytics</h1>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="#filters-heading">Filters</a></li>
+          <li><a href="#orders-heading">Orders</a></li>
+          <li><a href="#reports-heading">Saved reports</a></li>
+        </ul>
+      </nav>
+      <button type="button" id="reset">Reset demo</button>
+    </header>
+    <main>
+      <section aria-labelledby="filters-heading">
+        <h2 id="filters-heading">Filters</h2>
+        <label for="range">Date range</label>
+        <select id="range">
+          <option>Last 7 days</option>
+          <option selected>Last 30 days</option>
+        </select>
+        <label for="region">Region</label>
+        <select id="region">
+          <option selected>All regions</option>
+          <option>Transylvania</option>
+          <option>Salem</option>
+          <option>Sleepy Hollow</option>
+          <option>Bayou</option>
+        </select>
+        <fieldset>
+          <legend>Categories</legend>
+          <label><input type="checkbox" name="cat" value="Potions" checked /> Potions</label>
+          <label><input type="checkbox" name="cat" value="Pumpkins" checked /> Pumpkins</label>
+          <label><input type="checkbox" name="cat" value="Candles" checked /> Candles</label>
+        </fieldset>
+      </section>
+
+      <section aria-labelledby="kpi-heading">
+        <h2 id="kpi-heading">KPIs</h2>
+        <ul id="kpis" aria-label="Key figures"></ul>
+      </section>
+
+      <section aria-labelledby="chart-heading">
+        <h2 id="chart-heading">Sales chart</h2>
+        <figure data-chart id="chart" role="img" aria-label="Sales by category"></figure>
+      </section>
+
+      <section aria-labelledby="orders-heading">
+        <h2 id="orders-heading">Orders</h2>
+        <table id="orders" aria-label="Orders table">
+          <thead><tr><th scope="col">Order</th><th scope="col">Region</th><th scope="col">Category</th><th scope="col">Total</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button type="button" id="open-report">Create report</button>
+      </section>
+
+      <section aria-labelledby="reports-heading">
+        <h2 id="reports-heading">Saved reports</h2>
+        <ul id="reports" aria-label="Saved reports"></ul>
+        <div id="message" role="status"></div>
+      </section>
+    </main>
+
+    <dialog id="report-dialog" aria-labelledby="report-title">
+      <form method="dialog" id="report-form">
+        <h2 id="report-title">Create report</h2>
+        <label for="report-name">Report name</label>
+        <input id="report-name" type="text" autocomplete="off" required />
+        <fieldset>
+          <legend>Metrics</legend>
+          <label><input type="checkbox" name="metric" value="Revenue" checked /> Revenue</label>
+          <label><input type="checkbox" name="metric" value="Orders" /> Orders</label>
+          <label><input type="checkbox" name="metric" value="Average order" /> Average order</label>
+        </fieldset>
+        <fieldset>
+          <legend>Format</legend>
+          <label><input type="radio" name="format" value="PDF" checked /> PDF</label>
+          <label><input type="radio" name="format" value="CSV" /> CSV</label>
+        </fieldset>
+        <button type="submit" id="save">Save</button>
+        <button type="button" id="cancel">Cancel</button>
+      </form>
+    </dialog>
+    <script src="/app.js"></script>
+  </body>
+</html>

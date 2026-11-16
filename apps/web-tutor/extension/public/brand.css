@@ -1,0 +1,50 @@
+/* Wysp brand for the extension pages (options, side panel fallback). Palette: docs/brand/README.md.
+   Violet #6503FC is used for fills only, never for text. */
+:root {
+  --night: #120532;
+  --surface: #1d0e4a;
+  --surface-2: #2a1766;
+  --line: #3b2a80;
+  --line-strong: #5440a6;
+  --text: #f4e5fd;
+  --muted: #b9a3e3;
+  --lilac: #ca84fc;
+  --violet: #6503fc;
+  --pink: #fe7c9c;
+  --ink: #0d012f;
+  --ok: #22c55e;
+  --danger: #ef4444;
+  --radius: 10px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; background: var(--night); color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+a { color: var(--lilac); }
+code, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+h1, h2 { margin: 0; line-height: 1.25; }
+.muted { color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+button, .btn {
+  font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block;
+  padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--line-strong);
+  background: var(--surface-2); color: var(--text);
+}
+button:hover, .btn:hover { border-color: var(--lilac); }
+button.primary, .btn.primary { background: var(--lilac); color: var(--ink); border-color: var(--lilac); }
+button.primary:hover, .btn.primary:hover { background: #d99bff; }
+:focus-visible { outline: 2px solid var(--lilac); outline-offset: 2px; }
+input[type="text"], input[type="password"] {
+  width: 100%; padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--line-strong);
+  background: var(--night); color: var(--text); font: inherit;
+}
+input::placeholder { color: var(--muted); }
+.mascot { display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  .float { animation: wysp-float 3.2s ease-in-out infinite; }
+  @keyframes wysp-float { 50% { transform: translateY(-4px); } }
+}
+[hidden] { display: none !important; }
+button { white-space: nowrap; }

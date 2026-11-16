@@ -1,0 +1,44 @@
+# Contract Test Kit fixture for the web tutor (optional third tutor; see .kiro/specs/web-tutor/).
+# Page: the demo dashboard (apps/web-tutor/demo-dashboard, port 5180) open in Chrome with the extension loaded,
+# the site allowed and the pairing token set in the extension options.
+tutor: web-tutor
+launch:
+  kind: manual
+  # A Playwright launcher (`launch.kind: playwright`) is not written yet: the kit has no online harness either.
+  instructions: >
+    npm.cmd run build -w apps/web-tutor/extension; npm.cmd run preview -w apps/web-tutor/demo-dashboard;
+    chrome://extensions > Developer mode > Load unpacked > apps/web-tutor/extension/dist; options page:
+    Core URL = {url}, paste ~/.wysp/token, grant http://localhost:5180; open http://localhost:5180 and keep the tab active.
+  connect_timeout_s: 60
+expect:
+  entity_kinds: [page, region, heading, control, table, list, chart, status]
+  min_entities: 25
+  actions:
+    - scroll_into_view
+    - focus_element
+    - fill_field
+    - select_option
+    - set_checked
+    - follow_link
+    - click_element
+safe_calls:
+  - {action_id: scroll_into_view, params: {target: "web://localhost:5180/region~orders/table~orders-table"}}
+  - {action_id: focus_element, params: {target: "web://localhost:5180/region~filters/combobox~region"}}
+  - {action_id: select_option, params: {target: "web://localhost:5180/region~filters/combobox~region", option: Salem}}
+  - {action_id: set_checked, params: {target: "web://localhost:5180/region~filters/checkbox~potions", checked: false}}
+  - {action_id: follow_link, params: {target: "web://localhost:5180/navigation~main/link~orders"}}
+dry_run_calls:
+  - {action_id: select_option, params: {target: "web://localhost:5180/region~filters/combobox~region", option: Bayou}}
+  - {action_id: set_checked, params: {target: "web://localhost:5180/region~filters/checkbox~candles", checked: false}}
+  - {action_id: click_element, params: {target: "web://localhost:5180/region~orders/button~create-report"}}
+invalid_calls:
+  - {action_id: no_such_action, params: {}, expect_error: -32011}
+  - {action_id: select_option, params: {target: "web://localhost:5180/region~filters/combobox~region"}, expect_error: -32602}
+  - {action_id: select_option, params: {target: "web://localhost:5180/region~filters/combobox~region", option: Atlantis}, expect_error: -32013}
+  - {action_id: select_option, params: {target: "web://localhost:5180/region~filters/combobox~nope", option: Salem}, expect_error: -32012}
+  - {action_id: set_checked, params: {target: "web://localhost:5180/region~filters/checkbox~potions", checked: "yes"}, expect_error: -32602}
+  - {action_id: fill_field, params: {target: "web://localhost:5180/region~filters/checkbox~potions", value: x}, expect_error: -32602}
+  - {action_id: follow_link, params: {target: "web://localhost:5180/banner~#1/button~reset-demo"}, expect_error: -32013}
+  - {action_id: click_element, params: {target: "web://evil.example/button~x"}, expect_error: -32012}
+  - {action_id: focus_element, params: {target: "not-a-ref"}, expect_error: -32602}
+skip: []

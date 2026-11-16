@@ -1,0 +1,88 @@
+concepts:
+  - id: dashboard
+    term: Dashboard
+    short: "One page that gathers the key numbers, charts and tables of a business."
+    detail: "A dashboard answers a few questions at a glance. Read it top to bottom: filters first (what am I looking at?), then the headline numbers, then the details."
+    level: basic
+    related: [kpi, filter, chart]
+  - id: kpi
+    term: KPI
+    short: "A key figure such as revenue or number of orders."
+    detail: "KPI means key performance indicator. It is a single number that changes when the filters change, so always check which filters are active before comparing KPIs."
+    aliases: ["key figure", "key performance indicator"]
+    level: basic
+    related: [dashboard, filter]
+  - id: filter
+    term: Filter
+    short: "A control that narrows the data shown on the page."
+    detail: "Filters change what every KPI, chart and table shows. Several filters combine: a row must satisfy all of them to be shown."
+    level: basic
+    related: [region_filter, date_range, category_filter]
+  - id: region_filter
+    term: Region filter
+    short: "A drop-down that limits the data to one region, or to all regions."
+    detail: "In the demo shop the regions are Transylvania, Salem, Sleepy Hollow and Bayou. Choosing one updates the KPIs, the chart and the Orders table."
+    aliases: ["region", "combobox", "drop-down", "select"]
+    level: basic
+    related: [filter]
+  - id: date_range
+    term: Date range
+    short: "A filter that keeps only orders from the last 7 or 30 days."
+    detail: "A shorter range shows recent activity; a longer range smooths out day-to-day noise."
+    level: basic
+    related: [filter]
+  - id: category_filter
+    term: Category filter
+    short: "Checkboxes that include or exclude product categories."
+    detail: "Ticked categories are included. Unticking Potions, for example, removes potion orders from every number on the page."
+    aliases: ["checkbox", "categories"]
+    level: basic
+    related: [filter]
+  - id: chart
+    term: Chart
+    short: "A picture of the data, here sales per category."
+    detail: "A chart is a picture, so it has a text summary for screen readers. The tutor reads that summary rather than guessing from pixels."
+    aliases: ["sales chart"]
+    level: basic
+    related: [accessible_name]
+  - id: orders_table
+    term: Orders table
+    short: "The list of individual orders that match the filters."
+    detail: "Each row is one order with its region, category and total. The tutor reads the column headers and the first rows only."
+    aliases: ["table", "orders"]
+    level: basic
+    related: [filter]
+  - id: report
+    term: Report
+    short: "A saved selection of metrics in a chosen format."
+    detail: "Creating a report asks for a name, the metrics to include (Revenue, Orders, Average order) and a format (PDF or CSV). Saved reports are listed under Saved reports."
+    level: intermediate
+    related: [dialog, status_message]
+  - id: dialog
+    term: Dialog
+    short: "A box that opens on top of the page and asks for input."
+    detail: "While a dialog is open the rest of the page is blocked. Save or Cancel closes it."
+    aliases: ["modal"]
+    level: basic
+    related: [report]
+  - id: status_message
+    term: Status message
+    short: "A short text announced after an action, such as Report saved."
+    detail: "Status messages are live regions: screen readers announce them, and the tutor can read them to confirm that a step worked."
+    aliases: ["live region", "toast"]
+    level: intermediate
+    related: [report]
+  - id: landmark
+    term: Landmark
+    short: "A named area of the page: banner, navigation, main, or a labelled region."
+    detail: "Landmarks give the page a structure that is independent of how it looks. The tutor uses them to say where a control is, for example the Region drop-down inside Filters."
+    aliases: ["region", "section"]
+    level: basic
+    related: [accessible_name]
+  - id: accessible_name
+    term: Accessible name
+    short: "The text that identifies a control to assistive technology."
+    detail: "It comes from the label, the visible text or an aria-label. The tutor finds controls by role and accessible name, so unlabelled controls are hard to point at."
+    aliases: ["label"]
+    level: intermediate
+    related: [landmark]
