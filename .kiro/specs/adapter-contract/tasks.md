@@ -85,10 +85,12 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: C_
   - _Requirements: 1.5, 1.6_
 
-- [ ] 9. Build the Contract Test Kit
+- [x] 9. Build the Contract Test Kit
   - `contract-tests/wysp_contract/`: harness server (independent from `wysp_core.gateway`), fixture loader, launcher (`command`, `playwright`, `in_process`), checks listed in design.md, recordings with redaction, JUnit report, CLI `wysp-contract`
   - `--offline` mode: validate the fixture and re-validate the latest recording against current schemas
   - `apps/<tutor>/contract.fixture.yaml` schema published in `schemas/`
+  - Done: `harness.py` (own WebSocket server, token and Origin checks, recording with redaction), `launch.py` (`command`, `playwright`, `manual`, `in_process`), `online.py` (checks, JUnit, recording, offline re-validation), `fixture.py` (model); `wysp-contract --tutor <t>` runs it. Deviation: the fixture's JSON Schema is `contract-tests/wysp_contract/fixture.schema.json` (kept in sync by a test), not `schemas/`, which the Core's contract export generates.
+  - Verified online: Blender 5.2 headless (the run reports a real CON-P9 finding, see the Blender adapter), web tutor through Playwright, mock adapter. IntelliJ (`manual`) is not run by the kit's tests.
   - _Owner: A_ · _Gate: J1 (online checks needed by C on Mon 16 Nov)_
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
@@ -99,8 +101,9 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - **Property CON-P10: Size limits**
   - **Validates: Requirements 2.5, 3.3, 3.4, 3.5, 3.6, 5.3, 6.1**
 
-- [ ] 10. Run the Kit against the mock adapter in CI
+- [x] 10. Run the Kit against the mock adapter in CI
   - Normal job and fault-injection job (latency 300 ms, fail rate 0.1, one disconnect)
+  - Done: CI job `contract-kit` (online run on the mock, 300 ms latency stays green, each of 8 deliberate faults must exit 1) and `contract-tests/tests/test_kit_faults.py`. Not injected: the 0.1 fail rate and the disconnect (the harness does not reconnect).
   - _Owner: A_ · _Gate: J1_
   - _Requirements: 12.2, 11.3_
 
@@ -114,6 +117,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: C_ · _Gate: after J3, only if time allows_
   - _Requirements: 3.7_
 
-- [ ] 13. Checkpoint: contract frozen for J1
+- [x] 13. Checkpoint: contract frozen for J1
   - All tasks above (except optional ones) done, Kit green on the mock adapter, schemas and types committed, contract version tagged `contract-v1.0.0`
   - Ask the user if questions arise
+  - Done (16 Nov 2026): the kit is green on the mock adapter, on the web tutor (Playwright) and on headless Blender 5.2 (only `highlight` is skipped there: no 3D viewport in background mode); the Blender CON-P9 finding was fixed in the adapter; the contract is 1.1.0 and tagged `contract-v1.1.0`; the kit's fixture schema lives in `contract-tests/wysp_contract/fixture.schema.json`; IntelliJ is `manual` (needs a sandbox IDE).

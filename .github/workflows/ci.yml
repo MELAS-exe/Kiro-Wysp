@@ -37,10 +37,42 @@ jobs:
         run: |
           uv run --no-sync wysp-contract --tutor blender-tutor --offline
           uv run --no-sync wysp-contract --tutor intellij-tutor --offline
+          uv run --no-sync wysp-contract --tutor web-tutor --offline
       - name: Contract kit (observation property checks on the mock adapter)
         run: uv run --no-sync wysp-contract --mock
       - name: Tests
         run: uv run --no-sync pytest -q -p no:cacheprovider
+
+  # The Contract Test Kit against the mock adapter (adapter-contract task 10). Blender, Chrome and IntelliJ are not
+  # available here: run them on a developer machine (docs/adapter-guide.md, "The Contract Test Kit").
+  contract-kit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - run: uv sync --all-groups --frozen
+      - name: Kit, online harness on the mock adapter (a real WebSocket) must be green
+        run: uv run --no-sync wysp-contract --fixture contract-tests/fixtures/mock/contract.fixture.yaml --junit contract-tests/reports/mock.junit.xml
+      - name: Kit with 300 ms of latency must stay green
+        run: uv run --no-sync wysp-contract --fixture contract-tests/fixtures/mock/contract.fixture.yaml --fault latency_ms=300
+      - name: Fault injection, each deliberate fault must make the kit FAIL (exit code 1)
+        run: |
+          for fault in wrong_origin undo_noop undeclared_kind postcondition_lie state_version_regression dirty_invalid dry_run_mutates unstable_digest; do
+            if uv run --no-sync wysp-contract --fixture contract-tests/fixtures/mock/contract.fixture.yaml --fault "$fault" --junit "contract-tests/reports/fault-$fault.junit.xml"; then
+              echo "::error::the kit stayed green with the fault $fault"
+              exit 1
+            fi
+          done
+      - name: Fault injection, the kit's own tests say which check catches which fault
+        run: uv run --no-sync pytest -q -p no:cacheprovider contract-tests/tests/test_kit_faults.py contract-tests/tests/test_kit_checks.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contract-kit-junit
+          path: contract-tests/reports/*.junit.xml
 
   panel:
     runs-on: ubuntu-latest

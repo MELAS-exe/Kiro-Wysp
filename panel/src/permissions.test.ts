@@ -24,6 +24,18 @@ const YES_WORDS = [
   "do it",
   "sure",
   "confirm",
+  "oui",
+  "Oui",
+  "OUI",
+  "ouais",
+  "d'accord",
+  "D\u2019accord",
+  "approuve",
+  "approuv\u00e9",
+  "approuver",
+  "vas-y",
+  "bien s\u00fbr",
+  "confirme",
 ];
 const yesArb = fc
   .tuple(
@@ -88,6 +100,65 @@ describe("voice approval", () => {
         voice_allowed: true,
       }),
     ).toBeNull();
+  });
+});
+
+describe("French voice approval", () => {
+  const rev = { risk: "reversible", voice_allowed: true };
+  it("understands French yes and no, with or without accents", () => {
+    for (const w of [
+      "oui",
+      "Oui, vas-y",
+      "d'accord",
+      "D\u2019accord",
+      "approuv\u00e9",
+      "approuve",
+      "Bien s\u00fbr",
+    ])
+      expect(voiceDecision(w, rev)).toBe("approve");
+    for (const w of [
+      "non",
+      "Non merci",
+      "refuse",
+      "refus\u00e9",
+      "refuser",
+      "annule",
+      "Annul\u00e9",
+      "arr\u00eate",
+    ])
+      expect(voiceDecision(w, rev)).toBe("deny");
+  });
+  it("keeps ordinary French sentences as messages", () => {
+    expect(voiceDecision("tourne le cube", rev)).toBeNull();
+    expect(voiceDecision("nonobstant", rev)).toBeNull();
+  });
+  it("prop: a spoken French oui never approves an irreversible action (PAN-P5)", () => {
+    const fr = fc.constantFrom(
+      "oui",
+      "Oui",
+      "d'accord",
+      "D\u2019accord",
+      "approuve",
+      "approuv\u00e9",
+      "vas-y",
+      "bien s\u00fbr",
+    );
+    fc.assert(
+      fc.property(fr, fc.boolean(), (said, voiceAllowed) => {
+        expect(
+          voiceDecision(said, {
+            risk: "irreversible",
+            voice_allowed: voiceAllowed,
+          }),
+        ).toBe("needs_click");
+      }),
+      { numRuns: 100 },
+    );
+  });
+  it("a spoken non is always accepted", () => {
+    expect(
+      voiceDecision("non", { risk: "irreversible", voice_allowed: false }),
+    ).toBe("deny");
   });
 });
 

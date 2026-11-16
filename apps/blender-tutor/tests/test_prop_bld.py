@@ -340,6 +340,45 @@ def test_prop_bld_p4_a_user_change_before_an_action_is_not_credited_to_wysp(adap
     assert origins == [(["blender://object/O1"], "user"), (["blender://object/O0"], "wysp")]
 
 
+def test_prop_bld_p4_derived_props_that_follow_an_execute_and_an_undo_are_wysps(adapter_pkg):
+    """BLD-P4 / CON-P9: dimensions only follow a change once the depsgraph is evaluated (a deferred step).
+
+    The adapter evaluates before its post-diff, so the late update is part of the action's own diff and no
+    `user` event shows up afterwards, for the execute or for its undo.
+    """
+    world = World(adapter_pkg)
+    obj = world.objects[0]
+    pending = {"dims": None}
+
+    def update() -> None:  # what Blender does on evaluation: derived props catch up
+        if pending["dims"] is not None:
+            obj.dimensions, pending["dims"] = pending["dims"], None
+
+    world.pkg.bpy.context.view_layer.update = update
+    # Without an explicit evaluation, Blender only catches up later, e.g. when the undo step is pushed.
+    world.pkg.bpy.ops = SimpleNamespace(ed=SimpleNamespace(undo_push=lambda message="": update()))
+
+    def scale(params: dict, dry: bool) -> ActionOutcome:
+        before, old_dims = obj.scale, obj.dimensions
+        obj.scale = (1.5, 1.5, 1.5)
+        pending["dims"] = (3.0, 3.0, 3.0)  # not visible until the depsgraph runs
+
+        def undo() -> None:
+            obj.scale = before
+            pending["dims"] = old_dims
+
+        return ActionOutcome(changed=[world._obj_ref(0)], undo=undo)
+
+    spec = poke_spec("scale")
+    world.adapter.registry.register(spec, scale)
+    result = world.adapter.handle("adapter.execute", {"call": {"action_id": "scale", "params": {}}})
+    world.adapter.handle("adapter.undo", {"token": result["undo_token"]})
+    world.adapter.watcher.check_now()  # what a later poll would see
+    origins = [p["origin"] for p in world.client.of("event.state_changed")]
+    assert origins and set(origins) == {"wysp"}, origins
+    assert obj.dimensions == (2.0, 2.0, 2.0)
+
+
 # ======================================================================== BLD-P5
 @FAST
 @given(

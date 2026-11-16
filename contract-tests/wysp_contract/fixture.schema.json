@@ -1,0 +1,212 @@
+{
+  "$defs": {
+    "Call": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "expect_error": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expect Error"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action_id"
+      ],
+      "title": "Call",
+      "type": "object"
+    },
+    "Expect": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Actions",
+          "type": "array"
+        },
+        "entity_kinds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Entity Kinds",
+          "type": "array"
+        },
+        "min_entities": {
+          "default": 1,
+          "minimum": 0,
+          "title": "Min Entities",
+          "type": "integer"
+        }
+      },
+      "title": "Expect",
+      "type": "object"
+    },
+    "Launch": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "kind in_process: 'module:function' starting the adapter",
+          "title": "Adapter"
+        },
+        "allowed_origins": {
+          "description": "extra Origin values the harness accepts",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Origins",
+          "type": "array"
+        },
+        "command": {
+          "description": "argv; {placeholders} are filled in by the kit",
+          "items": {
+            "type": "string"
+          },
+          "title": "Command",
+          "type": "array"
+        },
+        "connect_timeout_s": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "title": "Connect Timeout S",
+          "type": "number"
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Env",
+          "type": "object"
+        },
+        "faults": {
+          "description": "kind in_process: deliberate faults (kit self-test)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Faults",
+          "type": "array"
+        },
+        "instructions": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "kind manual: what the person must do",
+          "title": "Instructions"
+        },
+        "kind": {
+          "enum": [
+            "command",
+            "playwright",
+            "manual",
+            "in_process"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Launch",
+      "type": "object"
+    },
+    "Skip": {
+      "additionalProperties": false,
+      "properties": {
+        "check": {
+          "title": "Check",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check",
+        "reason"
+      ],
+      "title": "Skip",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "dry_run_calls": {
+      "items": {
+        "$ref": "#/$defs/Call"
+      },
+      "title": "Dry Run Calls",
+      "type": "array"
+    },
+    "expect": {
+      "$ref": "#/$defs/Expect"
+    },
+    "invalid_calls": {
+      "items": {
+        "$ref": "#/$defs/Call"
+      },
+      "title": "Invalid Calls",
+      "type": "array"
+    },
+    "launch": {
+      "$ref": "#/$defs/Launch"
+    },
+    "safe_calls": {
+      "items": {
+        "$ref": "#/$defs/Call"
+      },
+      "title": "Safe Calls",
+      "type": "array"
+    },
+    "skip": {
+      "items": {
+        "$ref": "#/$defs/Skip"
+      },
+      "title": "Skip",
+      "type": "array"
+    },
+    "tutor": {
+      "title": "Tutor",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tutor",
+    "launch",
+    "expect"
+  ],
+  "title": "Fixture",
+  "type": "object"
+}

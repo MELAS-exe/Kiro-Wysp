@@ -87,7 +87,7 @@ Both start their own Core and dashboard on free ports (the Core accepts the exte
 
 ## Known limits
 
-- The `wysp-contract` CLI has no online harness yet, so `launch.kind: playwright` is run by `contract-tests/launchers/playwright_launcher.py` (see Tests). The fixture is also replayed against the extension logic in `tests/fixture.test.ts`.
+- The online harness exists: `uv run --no-sync wysp-contract --tutor web-tutor`. `launch.kind: playwright` is run by `contract-tests/launchers/playwright_launcher.py` (see Tests). The fixture is also replayed against the extension logic in `tests/fixture.test.ts`.
 - Only the top frame is read. Closed shadow roots and cross-origin iframes are not.
 - `select_option` supports native selects only.
 - The optional host permission prompt was not exercised by an automated browser test. `tests/live/panel_access_check.mjs` (Playwright Chromium, second Core) covers the launcher, options, side panel page, fallback and highlight; headless Chromium has no side panel UI, so the real side panel opening beside a page is only checked by hand. Screenshots: `docs/img/web-tutor-*.png`.

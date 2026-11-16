@@ -109,8 +109,8 @@ Depends on adapter-contract tasks 2, 3 and 6. Property-test tasks are required.
   - _Owner: A_ · _Gate: J1 (first three), J2 (all)_
   - _Requirements: 3.1, 6.2, 6.3, 7.2–7.7_
 
-- [ ]* 13. Expose a read-only MCP bridge for development
-  - `wysp mcp-bridge --read-only`: MCP server with tools `list_adapters`, `observe`, `get_board`, `get_audit_tail`, so that Kiro can inspect a running tutor while we build it (`wysp-dev` in `docs/kiro/mcp.example.json`)
+- [x]* 13. Expose a read-only MCP bridge for development
+  - `wysp mcp-bridge [--url] [--read-only]` (`mcp_server/bridge.py`): stdio MCP server proxying the running Core's `/mcp` with the pairing token; read-only by default, exposing only `READ_ONLY` tools (inspection: `observe`, `get_tutor_context`, ...); `wysp-dev` in `docs/kiro/mcp.example.json`. Tests: `core/tests/test_mcp_bridge.py`
   - _Owner: A_ · _Gate: J2, only if on schedule_
   - _Requirements: 11.1_
 

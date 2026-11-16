@@ -86,6 +86,7 @@ ops = st.lists(
     st.tuples(st.sampled_from(["add", "set", "move", "toggle", "remove"]), st.integers(0, 50), st.integers(0, 50)),
     max_size=14,
 )
+WHICH = ["viewport", "render"]
 P2_STATE = {"examples": 0, "bad": 0}
 
 
@@ -115,10 +116,11 @@ def p2_property(plan) -> None:
                 elif kind == "move":
                     siblings = [x for x in mods if x["parent"] == m["parent"]]
                     r = run("move_modifier", {"target": ref, "index": b % len(siblings)})
-                elif kind == "toggle" and not adapter.registry.has("toggle_modifier_visibility"):
-                    continue  # missing from the catalog for now (requirement 4.1)
                 elif kind == "toggle":
-                    r = run("toggle_modifier_visibility", {"target": ref, "viewport": not props["show_viewport"]})
+                    r = run(
+                        "toggle_modifier_visibility",
+                        {"target": ref, "which": WHICH[b % 2], "value": not props[f"show_{WHICH[b % 2]}"]},
+                    )
                 else:
                     r = run("remove_modifier", {"target": ref})
         except WyspError:

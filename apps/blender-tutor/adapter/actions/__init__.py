@@ -5,12 +5,14 @@ from __future__ import annotations
 from . import (
     add_modifier,
     apply_modifier,
+    assign_material,
     move_modifier,
     remove_modifier,
     select_object,
     set_modifier_property,
     set_object_transform,
     show_properties_tab,
+    toggle_modifier_visibility,
 )
 
 ALL = [
@@ -20,6 +22,8 @@ ALL = [
     add_modifier,
     set_modifier_property,
     move_modifier,
+    toggle_modifier_visibility,
+    assign_material,
     remove_modifier,
     apply_modifier,
 ]

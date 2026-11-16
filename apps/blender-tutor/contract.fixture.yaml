@@ -29,6 +29,8 @@ expect:
     - add_modifier
     - set_modifier_property
     - move_modifier
+    - toggle_modifier_visibility
+    - assign_material
     - remove_modifier
     - apply_modifier
 safe_calls:
@@ -38,6 +40,9 @@ safe_calls:
   - {action_id: add_modifier, params: {target: "blender://object/Candle", type: BEVEL}}
   - {action_id: set_modifier_property, params: {target: "blender://object/Pumpkin/modifier/Subdivision", property: levels, value: 1}}
   - {action_id: move_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify", index: 0}}
+  - {action_id: toggle_modifier_visibility, params: {target: "blender://object/Pumpkin/modifier/Subdivision", which: viewport, value: false}}
+  - {action_id: toggle_modifier_visibility, params: {target: "blender://object/Pumpkin/modifier/Subdivision", which: render, value: false}}
+  - {action_id: assign_material, params: {target: "blender://object/Candle", material: StemGreen}}
   - {action_id: remove_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify"}}
 dry_run_calls:
   - {action_id: apply_modifier, params: {target: "blender://object/Pumpkin/modifier/Subdivision"}}
@@ -48,6 +53,12 @@ invalid_calls:
   - {action_id: set_modifier_property, params: {target: "blender://object/Pumpkin/modifier/Subdivision", property: levels, value: "many"}, expect_error: -32602}
   - {action_id: move_modifier, params: {target: "blender://object/Pumpkin/modifier/Solidify", index: 40}, expect_error: -32013}
   - {action_id: remove_modifier, params: {target: "blender://object/Pumpkin/modifier/Nope"}, expect_error: -32012}
+  - {action_id: toggle_modifier_visibility, params: {target: "blender://object/Pumpkin/modifier/Nope", which: viewport, value: false}, expect_error: -32012}
+  - {action_id: toggle_modifier_visibility, params: {target: "blender://object/Pumpkin/modifier/Subdivision", which: sideways, value: false}, expect_error: -32602}
+  - {action_id: toggle_modifier_visibility, params: {target: "blender://object/Pumpkin/modifier/Subdivision", which: viewport, value: "off"}, expect_error: -32602}
+  - {action_id: assign_material, params: {target: "blender://object/DoesNotExist", material: StemGreen}, expect_error: -32012}
+  - {action_id: assign_material, params: {target: "blender://object/Candle", material: NoSuchMaterial}, expect_error: -32012}
+  - {action_id: assign_material, params: {target: "blender://object/Candle"}, expect_error: -32602}
   - {action_id: set_object_transform, params: {target: "blender://object/DoesNotExist", property: scale, value: [2, 2, 2]}, expect_error: -32012}
   - {action_id: set_object_transform, params: {target: "blender://object/Candle", property: scale, value: [2, 2]}, expect_error: -32602}
   - {action_id: set_object_transform, params: {target: "blender://object/Candle", property: scale, value: [0, 1, 1]}, expect_error: -32602}

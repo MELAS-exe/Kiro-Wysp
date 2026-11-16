@@ -46,11 +46,15 @@ class BlenderAdapter(AdapterRuntime):
         is_dry = bool((params.get("call") or {}).get("dry_run"))
         changes_scene = method in ("adapter.execute", "adapter.undo") and not is_dry
         if changes_scene:
+            self._evaluate()
             self.watcher.check_now("user")  # whatever the user did before this action is theirs (BLD-P4)
         try:
             result = super().handle(method, params)
         finally:
             if changes_scene:
+                # Derived props (dimensions) only follow a change once the depsgraph is evaluated. Without
+                # this the post-diff misses them and they surface later in a poll, tagged "user" (CON-P9).
+                self._evaluate()
                 self.watcher.check_now("wysp")  # the diff now holds only what the action changed
         if changes_scene:
             # Blender's own history gets a step, so Ctrl+Z also reverts what Wysp did.
@@ -58,7 +62,15 @@ class BlenderAdapter(AdapterRuntime):
                 bpy.ops.ed.undo_push(message="Wysp: " + method.split(".")[-1])
             except (RuntimeError, AttributeError):
                 pass
+            self.watcher.check_now("wysp")  # the undo step itself can re-evaluate: still ours
         return result
+
+    @staticmethod
+    def _evaluate() -> None:
+        try:
+            bpy.context.view_layer.update()
+        except (RuntimeError, AttributeError):
+            pass
 
     def tick(self) -> None:
         """Main-thread heartbeat: run queued requests, then look for scene changes."""

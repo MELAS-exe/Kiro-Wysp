@@ -7,8 +7,8 @@ launch:
   # Playwright launcher: loads dist/ in Chromium, points it at the Core, serves the dashboard on a free port.
   # {node}, {repo}, {url}, {token_file}, {page}, {stop_file} are filled in by the launcher. The token is read
   # from the file, never passed on the command line.
-  # Online run: uv run --no-sync python contract-tests/launchers/playwright_launcher.py --tutor web-tutor
-  # (needs `npm.cmd run build -w apps/web-tutor/extension`). The `wysp-contract` CLI has no online harness yet.
+  # Online run: uv run --no-sync wysp-contract --tutor web-tutor [--junit out.xml]
+  # (needs `npm.cmd run build -w apps/web-tutor/extension`; contract-tests/launchers/playwright_launcher.py is a shortcut).
   command:
     - "{node}"
     - "{repo}/apps/web-tutor/extension/tests/live/playwright_driver.mjs"

@@ -125,13 +125,32 @@ The IntelliJ adapter (`Observe.kt`, `Imports.kt`) and `apps/intellij-tutor/profi
 ## 9. Test it without the application
 
 1. **Unit-test the adapter against the Core's models**, as `test_example_adapter.py` does: validate your manifest, observation, context and action specs with `wysp_core.contract` (`Manifest`, `Observation`, `check_observation`, `ActionSpec`, `ActionResult`).
-2. **Describe your catalog in `contract.fixture.yaml`** and run the kit offline: `uv run wysp-contract --tutor <your-tutor> --offline` (silent on success).
+2. **Describe your catalog in `contract.fixture.yaml`** and run the kit offline: `uv run wysp-contract --tutor <your-tutor> --offline` (silent on success), then online (below).
 3. **Validate the profile:** `uv run wysp validate-profile apps/<your-tutor>/profile`.
 4. **Read the Core's session log** after a real run: `uv run wysp logs summary`. Every adapter call has its duration there.
 5. For a live check, run the Core with `--llm scripted --scenario <file>` so no model is involved.
-6. **Run the observation checks of the kit on your adapter.** `wysp_contract.checks` (`check_observe_integrity`, `check_ref_stability`, `check_postconditions`) take one callable `request(method, params)`, so you can hand them your adapter's `handle` method directly. They verify what the contract promises about observations: refs unique and resolvable, kinds declared, 500 entities and 256 KB at most, no digest change without a change, and every postcondition true after each safe call. `uv run wysp-contract --mock` runs them on the mock adapter.
+6. **Run the Contract Test Kit** (next section). Its checks take one callable `request(method, params)` (`wysp_contract.checks`), so you can also hand them your adapter's `handle` method in a unit test.
 7. **Read the mock adapter as a second worked example.** `contract-tests/wysp_mock/kanban.py` (a Kanban board with six actions of every risk level, undo tokens, user-origin events) is what the Core's own tests run against; `contract-tests/tests/test_prop_contract.py` shows property tests of an adapter (undo round trip, invalid calls change nothing, monotonic `state_version`). In TypeScript, `defineAction()` and `ActionRegistry` from `@wysp/adapter-sdk/actions` declare an action once and validate its params with ajv (not for Manifest V3 pages: ajv needs `unsafe-eval`).
 
+### The Contract Test Kit
+
+`wysp-contract` plays the Core's part towards your adapter (a throw-away WebSocket server on a free port with its own pairing token; your Core, `~/.wysp` and port 8765 are never touched), starts the tutor the way its `contract.fixture.yaml` says, and checks the contract.
+
+| Command | What it does |
+|---|---|
+| `uv run --no-sync wysp-contract --tutor <t> --offline` | Validates the fixture (`wysp_contract/fixture.schema.json`) and re-validates `apps/<t>/contract-recordings/latest.json`, if present, against the current models. Seconds, no launch. This is what CI runs for the tutors. |
+| `uv run --no-sync wysp-contract --tutor blender-tutor [--junit out.xml]` | Online. `launch.kind: command`: starts headless Blender 5.2 (`WYSP_BLENDER`, default `C:\Program Files\Blender Foundation\Blender 5.2\blender.exe`) on the demo scene. |
+| `uv run --no-sync wysp-contract --tutor web-tutor [--junit out.xml]` | Online. `launch.kind: playwright`: Chromium with the built extension and the demo dashboard on a free port. Run `npm.cmd run build -w apps/web-tutor/extension` first. `contract-tests/launchers/playwright_launcher.py` is a shortcut for it. |
+| `uv run --no-sync wysp-contract --tutor intellij-tutor --timeout 300` | Online. `launch.kind: manual`: prints what to start and waits on `ws://127.0.0.1:8766/ws/adapter` (`--port` to change) until the plugin connects, with your usual pairing token from `~/.wysp/token` (never printed). Not part of CI. |
+| `uv run --no-sync wysp-contract --fixture contract-tests/fixtures/mock/contract.fixture.yaml` | Online on the mock adapter (`launch.kind: in_process`), real WebSocket, no application. CI runs it. |
+| `... --fault <name>` | Mock only: injects a deliberate fault (`wrong_origin`, `undo_noop`, `undeclared_kind`, `postcondition_lie`, `state_version_regression`, `dirty_invalid`, `dry_run_mutates`, `unstable_digest`; `latency_ms=300` is not a fault). The kit must exit 1. |
+| `uv run --no-sync wysp-contract --mock` | The quick in-process observation checks, without a WebSocket. |
+
+Options: `--junit path` (one test case per check, `skipped` for the fixture's `skip` entries), `--recording path` (JSON of every message, tokens replaced by `***`; real tutors write `apps/<t>/contract-recordings/latest.json` by default), `--timeout S` (wait for the adapter), `--only <check>` (print only these). Exit code 0 is green, 1 a check failed or the adapter never connected, 2 a fixture error.
+
+The checks of an online run, in this order: `connect`, `manifest`, `context` (8 KB), `observe_integrity` (CON-P2, CON-P10), `ref_stability` (CON-P3), `min_entities`, `action_catalog` (exactly `expect.actions`, no action that runs code, risk and `reversible` agree), `postconditions` (CON-P7) and `undo_round_trip` (CON-P6) over `safe_calls`, `dry_run` (digest unchanged, no undo token), `invalid_calls` (expected error code, digest unchanged, CON-P5), `state_version` (CON-P8), `events` (payloads valid, nothing caused by a Wysp action tagged `user`, CON-P9), `highlight`, `latency` (every request within its budget plus the Core's 1 s slack). The kit never runs a `safe_calls` entry whose action is `irreversible`.
+
+Not in CI (they need Blender, Chrome or IntelliJ): the three online tutor runs above. `uv run pytest -m live -o addopts="" apps\blender-tutor\tests` stays the Blender-specific live suite.
 ## 10. The profile
 
 Application knowledge goes into data, never into the Core's prompts:

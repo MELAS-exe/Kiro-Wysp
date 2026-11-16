@@ -31,6 +31,19 @@ The same closed set the Core's own LLM gets (`observe`, `show_entities`, `add_co
 | `get_tutor_context` | The tutoring rules and the connected application's description, action catalog and current situation. Call it first. |
 | `wait_for_user` | Messages (typed or spoken) and interruptions from the Panel. Returns after at most 55 s with an empty list; call again. |
 
+## Stdio-only clients: `wysp mcp-bridge`
+
+Clients that cannot speak HTTP (Claude Desktop, Kiro, Claude Code with a stdio entry) use the bridge. It is a stdio MCP server that forwards `tools/list` and `tools/call` to the running Core's `/mcp`, authenticating with the token from `~/.wysp/token` (never printed or logged).
+
+```
+uv run --directory core wysp mcp-bridge [--url http://127.0.0.1:8765] [--read-only | --no-read-only]
+```
+
+- `--read-only` is the default. Only `observe`, `lookup_concept`, `get_tutor_context`, `wait_for_user`, `code_map`, `get_study_plan`, `study_read` and `learner_status` are listed; any other call (`propose_action`, `narrate`, ...) returns an error result and never reaches the Core. Note that `wait_for_user` consumes the Panel's queued messages.
+- `--no-read-only` forwards the full tool set (same trust model as the HTTP endpoint: approvals still happen in the Panel).
+- `--url` must be a loopback `http://` address; anything else is refused so the token cannot leave the machine.
+- Start the Core first (`uv run wysp serve --llm external`, or `--mcp` next to a Core-owned LLM). A ready entry is `wysp-dev` in `docs/kiro/mcp.example.json`.
+
 ## Trust model (unchanged)
 
 - Every tool runs through the same `ToolBox` as in normal mode: provenance validation (an agent can never create an `observed` node), permission gate, post-condition verification, undo, audit log.

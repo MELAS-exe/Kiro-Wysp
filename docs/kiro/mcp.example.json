@@ -14,7 +14,7 @@
     },
     "wysp-dev": {
       "command": "uv",
-      "args": ["run", "--directory", "core", "wysp", "mcp-bridge", "--read-only"],
+      "args": ["run", "--directory", "core", "wysp", "mcp-bridge", "--read-only", "--url", "http://127.0.0.1:8765"],
       "disabled": true,
       "autoApprove": []
     }

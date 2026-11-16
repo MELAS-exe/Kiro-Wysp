@@ -45,6 +45,27 @@ Open the Panel (http://127.0.0.1:{port}) next to your agent, ask it to use the W
     return 0
 
 
+def _mcp_bridge(url: str, read_only: bool) -> int:
+    """Serve MCP on stdio. stdout is the protocol channel: messages go to stderr, the token is never shown."""
+    import anyio
+
+    from .mcp_server.bridge import normalize_url, serve_stdio
+
+    try:
+        normalize_url(url)
+    except ValueError as exc:
+        print(f"mcp-bridge: {exc}", file=sys.stderr)
+        return 2
+    ensure_home()
+    token = load_or_create_token()
+    logging.basicConfig(level="WARNING", stream=sys.stderr)
+    try:
+        anyio.run(serve_stdio, url, token, read_only)
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def _logs(args: argparse.Namespace) -> int:
     import json
 
@@ -108,6 +129,17 @@ def main(argv: list[str] | None = None) -> int:
     mcp_cfg = sub.add_parser("mcp-config", help="show how to connect an AI agent (MCP client) to a running Core")
     mcp_cfg.add_argument("--port", type=int, default=8765)
 
+    bridge = sub.add_parser(
+        "mcp-bridge", help="stdio MCP server that proxies a running Core's /mcp (for stdio-only clients)"
+    )
+    bridge.add_argument("--url", default="http://127.0.0.1:8765", help="the running Core (loopback only)")
+    bridge.add_argument(
+        "--read-only",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="only expose the inspection tools (default); --no-read-only forwards every Wysp tool",
+    )
+
     sub.add_parser("install-voice", help="download the offline female voice model (about 115 MB, once)")
 
     validate = sub.add_parser("validate-profile", help="check a tutor profile directory")
@@ -142,6 +174,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "mcp-config":
         return _mcp_config(args.port)
+
+    if args.command == "mcp-bridge":
+        return _mcp_bridge(args.url, args.read_only)
 
     if args.command == "token":
         ensure_home()

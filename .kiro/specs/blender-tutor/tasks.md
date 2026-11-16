@@ -140,3 +140,9 @@ Depends on adapter-contract tasks 2, 7 and 9. Use the `blender-adapter` agent fo
   - Open (core, owner A): `ExerciseEngine.evaluate` only checks `own_change_total` on a claim; a later user-origin event passes an exercise that Wysp satisfied (xfail test `test_prop_ped_p4_a_later_user_change_does_not_credit_wysps_selection`)
   - Done (task 22): the in-Blender panel shows the lesson and exercise card (`ui_state.py`, `ui_panel.py`), screenshots in `docs/img/blender-panel-exercise.png` and `-lesson.png`
   - _Owner: C_ · _Gate: J2_
+
+- [x] 23. Online Contract Test Kit on headless Blender 5.2
+  - `uv run --no-sync wysp-contract --tutor blender-tutor --junit out.xml --recording rec.json`: all checks pass (highlight is skipped in background mode); the recording is kept in `contract-recordings/latest.json`. The fixture's `safe_calls` now cover `toggle_modifier_visibility` and `assign_material` (round trip with undo)
+  - Fix (CON-P9, `events` check): after Wysp's own execute or undo, a late `event.state_changed` was tagged `user`. Derived props (`dimensions`) only follow a change once the depsgraph is evaluated, so the post-diff missed them and a later diff reported them. `BlenderAdapter.handle` now evaluates the view layer before the pre- and post-diff and runs one more `wysp` diff after `undo_push`. A user change made just before or after still gets `user` (BLD-P4 tests)
+  - Regression test: `test_prop_bld_p4_derived_props_that_follow_an_execute_and_an_undo_are_wysps`
+  - _Owner: C_

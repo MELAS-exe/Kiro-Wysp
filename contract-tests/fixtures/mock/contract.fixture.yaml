@@ -1,0 +1,30 @@
+# Contract Test Kit fixture for the mock Kanban adapter (reference for the online harness and the CI job).
+#   uv run --no-sync wysp-contract --fixture contract-tests/fixtures/mock/contract.fixture.yaml
+# `faults` (here none) is the kit's self-test: tests/test_kit_faults.py sets one fault at a time and expects a red run.
+tutor: mock-kanban
+launch:
+  kind: in_process
+  adapter: "wysp_mock.faults:start"
+  faults: []
+  connect_timeout_s: 20
+expect:
+  entity_kinds: [board, column, card]
+  min_entities: 7
+  actions: [create_card, move_card, rename_card, select_card, archive_card, describe_card]
+safe_calls:
+  - {action_id: create_card, params: {title: "Kit card", column: todo}}
+  - {action_id: move_card, params: {card: "mock://card/c2", column: done}}
+  - {action_id: rename_card, params: {card: "mock://card/c1", title: "Renamed by the kit"}}
+  - {action_id: select_card, params: {card: "mock://card/c1"}}
+  - {action_id: describe_card, params: {card: "mock://card/c3"}}
+dry_run_calls:
+  - {action_id: create_card, params: {title: "Never created", column: doing}}
+  - {action_id: move_card, params: {card: "mock://card/c3", column: done}}
+  - {action_id: archive_card, params: {card: "mock://card/c3"}}
+invalid_calls:
+  - {action_id: no_such_action, params: {}, expect_error: -32011}
+  - {action_id: create_card, params: {title: "Bad", column: nowhere}, expect_error: -32602}
+  - {action_id: move_card, params: {card: "mock://card/c99", column: done}, expect_error: -32012}
+  - {action_id: rename_card, params: {card: "mock://card/c1", title: ""}, expect_error: -32602}
+  - {action_id: describe_card, params: {card: "not-a-ref"}, expect_error: -32602}
+skip: []

@@ -47,6 +47,8 @@ Every action is declared in `adapter/actions/<id>.py`. The LLM can only *propose
 | `add_modifier` | reversible | yes | Add a modifier (any type of the running Blender) to an object |
 | `set_modifier_property` | reversible | yes | Set one scalar property of a modifier (generic RNA, no per-type code) |
 | `move_modifier` | reversible | yes | Reorder a modifier in the stack (evaluation order) |
+| `toggle_modifier_visibility` | reversible | yes | Turn a modifier on or off in the viewport (`which: viewport`) or in renders (`which: render`) |
+| `assign_material` | reversible | yes | Put an existing material on the object's first slot (a slot is added if none; never creates materials) |
 | `remove_modifier` | reversible | yes | Delete a modifier; undo recreates it with its settings and position |
 | `apply_modifier` | irreversible | no | Bake a modifier into the mesh; needs an explicit click and shows a preview |
 
