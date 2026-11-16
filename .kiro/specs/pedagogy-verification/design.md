@@ -77,9 +77,16 @@ Bindings: `$focus.<kind>` (first focused entity of that kind, else its nearest a
 
 ```python
 class Evidence(BaseModel):
-    id: str; type: Literal["verified","answered","declared"]; source: Literal["core","adapter","learner"]
-    exercise_id: str | None; skills: list[str]; outcomes: list[PredicateOutcome]
-    observation_id: str | None; state_version: int | None; created_at: datetime; hints_used: int = 0
+    id: str
+    type: Literal["verified", "answered", "declared"]
+    source: Literal["core", "adapter", "learner"]
+    exercise_id: str | None
+    skills: list[str]
+    outcomes: list[PredicateOutcome]
+    observation_id: str | None
+    state_version: int | None
+    created_at: datetime
+    hints_used: int = 0
 ```
 
 ### Mastery update (simplified BKT)

@@ -40,7 +40,7 @@ apps/
     profile/           IntelliJ tutor profile                                         (owner: B)
     demo/sample-project/  Small project used in the demo and end-to-end checks
     contract.fixture.yaml
-  web-tutor/           Deferred (planned Chrome extension; replaced by intellij-tutor as application 2)
+  web-tutor/           Optional extra (third tutor): Chrome MV3 connector, profile, demo dashboard; not application 2
 docs/                  Architecture document (LaTeX), adapter guide, Kiro usage journal
 scripts/               Dev scripts and the Kiro hook dispatcher (scripts/kiro/hook.py)
 ```

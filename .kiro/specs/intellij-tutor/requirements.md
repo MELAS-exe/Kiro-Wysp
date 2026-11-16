@@ -60,10 +60,11 @@ debug, refactoring, inspections, version control), with **exactly the same Core 
 
 #### Acceptance Criteria
 
-1. THE plugin SHALL send code text only for the selection and the symbol at the caret of the current file (Requirement 3.4), never whole files or other files' contents.
-2. THE plugin SHALL never read files outside the project content roots.
+1. THE plugin SHALL send code text only for the selection and the symbol at the caret of the current file (Requirement 3.4), and, since the decision of 2026-11-12, for the line ranges the tutor asks for through the read-only code tools of Requirement 5.5, never whole files in one piece and never in bulk.
+2. THE plugin SHALL never read or write files outside the project content roots.
 3. THE settings page SHALL state that this code goes to the configured LLM provider through the Core.
-4. THE plugin SHALL never send the content of sensitive files: names matching `.env*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`, `*credentials*`, `*secret*`, `*.keystore`, `*.jks`; they appear as entities without content.
+4. THE plugin SHALL never send the content of sensitive files: names matching `.env*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`, `*credentials*`, `*secret*`, `*.keystore`, `*.jks`; they appear as entities without content. The code tools refuse them, for reading and for writing.
+5. (Decision of 2026-11-12, weakens 4.1 on purpose, at the user's request.) Reading other code is allowed only through `read_code`, `search_code`, `find_usages` and `list_files`: project files only, never sensitive files, never `.idea`, VCS data or build output, at most 150 lines or 8,000 characters per call, results bounded (50 matches). Every call is a `read_only` action, so it runs without a dialog but is written to the audit log with its parameters. `--llm scripted` or a local provider keeps all of it on the machine.
 
 ### Requirement 5: Actions
 
@@ -71,10 +72,12 @@ debug, refactoring, inspections, version control), with **exactly the same Core 
 
 #### Acceptance Criteria
 
-1. THE catalog SHALL be closed and declarative, one file per action: `open_file` (ui_state), `go_to_symbol` (ui_state), `show_tool_window` (ui_state) and `rename_symbol` (reversible).
+1. THE catalog SHALL be closed and declarative, one file per action. UI: `open_file`, `go_to_symbol`, `show_tool_window` (ui_state). Reading: `read_code`, `search_code`, `find_usages`, `list_files` (read_only). Changing code: `rename_symbol`, `replace_lines`, `insert_lines`, `create_file`, `reformat_code`, `optimize_imports` (reversible).
 2. `rename_symbol` SHALL use the IDE's refactoring (all usages updated), run as one undoable command, return an undo token, and its undo SHALL restore the previous names.
-3. No action SHALL run code, a run configuration, a shell command or an arbitrary IDE action id.
+3. No action SHALL run code, a run configuration, a shell command or an arbitrary IDE action id. Each IDE tool is a specific platform API call (for example the code style manager for `reformat_code`).
 4. Each action SHALL declare postconditions that the Core verifies on a fresh observation, and a `guide.ui_path` with targets the tutor can highlight.
+5. (Decision of 2026-11-12.) Read-only actions return their text in `ActionResult.message`, which the Core hands to the caller (bounded). The contract does not change.
+6. (Decision of 2026-11-12.) Every action that changes code SHALL be `reversible`: it runs as one IDE command (so Ctrl+Z works too), refuses sensitive, read-only, noise (`.idea`, `build`...) and out-of-project files, checks the text it is about to replace (`old_text`) so that a stale edit changes nothing, reads the result back and fails (and restores the text) when it differs from what was asked, and returns an undo token. The approval dialog SHALL show the change as a diff (the Core asks the adapter for a dry-run preview of every reversible action). Writing code is never `irreversible`.
 
 ### Requirement 6: Highlight
 
@@ -118,3 +121,25 @@ debug, refactoring, inspections, version control), with **exactly the same Core 
 1. Pure logic (JSON-RPC codec, refs, sensitive-file filter, label matching) SHALL have unit tests without the IDE.
 2. Observation, actions and undo SHALL have tests on the IntelliJ test framework against a fixture project.
 3. A sample project SHALL exist for demos and end-to-end checks with the plugin running in a sandbox IDE.
+
+### Requirement 12: Subtree observation for project exploration
+
+**User Story:** As the Core, I want to read the structure of one folder or file at a time, so that I can map a whole project in many small, fast calls.
+
+#### Acceptance Criteria
+
+1. WHEN the Core calls `adapter.observe {level: "full", root: <intellij://dir/...|intellij://file/...|intellij://project/...>}`, THE adapter SHALL return that subtree only: the project entity, the directories from the project root down to the root, the root's direct children, and (for files) their symbols, instead of the usual whole-project observation.
+2. EACH file entity SHALL carry `language`, `size_bytes`, `symbols` (`done`, `pending` or `skipped`) and, when its symbols were read, `depends_on`: the refs of the project files it imports (Java, Kotlin and Python imports, resolved through the IDE's file index; nothing while the IDE is indexing).
+3. THE adapter SHALL stop reading symbols after about 600 ms or when the observation nears 500 entities, and mark the remaining files `pending`; the Core then asks for them one by one.
+4. SENSITIVE files, IDE settings, VCS data and build output SHALL NOT appear. No code body is sent: only names, signatures, sizes and dependency refs.
+
+### Requirement 13: Pointing is always visible
+
+**User Story:** As a student following the tutor through my project, I want to see what it is talking about, not only to hear it.
+
+#### Acceptance Criteria
+
+1. WHEN the tutor points at a folder or a module, THE adapter SHALL open the Project tool window, select the item and frame its row (the frame follows the row when the tree scrolls). IF the tree does not answer within 2.5 s, THE adapter SHALL frame the whole tool window instead.
+2. WHEN the tutor points at a file as a whole, THE adapter SHALL open it and frame the editor.
+3. WHEN the `show_tool_window` action opens a tool window, THE adapter SHALL frame that window for a few seconds.
+4. A highlight from a narration cue SHALL last about as long as the sentence takes to say (2.5 s at least, 10 s at most), and a failed highlight SHALL be recorded in the session log (`highlight.failed`).

@@ -52,3 +52,5 @@ Thumbs.db
 
 # Local test homes (Core, harness)
 .tmp-home/
+
+.playwright-mcp/

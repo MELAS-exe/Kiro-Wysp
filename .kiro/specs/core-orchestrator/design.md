@@ -92,21 +92,62 @@ Tool results returned to the LLM are compact JSON (`{ok, ...}` or `{ok: false, e
 5. Learner summary (mastery of the skills of the current lesson), current lesson and step, active exercise.
 6. Conversation: rolling summary plus the last 6 messages.
 
+### Survey (`session/survey.py`)
+
+When an adapter becomes active (`Session._on_new_active`), the Core starts a background task: `get_actions(refresh=True)`, `get_context()`, then `Session.observe(Scope(level="full"))`, falling back to `summary` when the full observation fails. The result is a `Survey` stored on the session (adapter id, observation id, `state_version`, capture time, counts, truncated flag, status `ok | partial | failed`). `build_system_prompt` waits for a running survey for at most 3 s and adds its rendering (at most 4,000 characters: counts per kind, structure under the roots, a few examples per kind; sensitive entities by count only) to `<app_data>`. `state_changed` events mark it stale and re-run it after a 2 s debounce; a failed or partial survey is retried 3 times, after 5, 10 and 20 s. No contract change: the survey only uses `observe`, `get_context` and `get_actions`. Opt-out: `--no-survey` / `WYSP_SURVEY=off`.
+
 ### Visual Model (board)
 
 ```python
 Provenance = Literal["observed", "inferred", "illustrative"]
+
+
 class BoardNode(BaseModel):
-    id: str                      # "n:" + ref for observed nodes, "c:<uuid>" otherwise
-    ref: Ref | None; kind: str; label: str; provenance: Provenance; confidence: float = 1.0
-    props_view: list[tuple[str, str]] = []   # up to 6 key/value pairs to display
-    group: str | None = None; collapsed_children: int = 0; badges: list[str] = []
-class BoardEdge(BaseModel):  id: str; source: str; target: str; kind: str; label: str | None; provenance: Provenance
-class Step(BaseModel):  id: str; index: int; text: LocalizedText; status: Literal["pending","active","done","failed"]; target: str | None
-class Annotation(BaseModel):  id: str; target: str; text: str; provenance: Provenance
+    id: str  # "n:" + ref for observed nodes, "c:<uuid>" otherwise
+    ref: Ref | None
+    kind: str
+    label: str
+    provenance: Provenance
+    confidence: float = 1.0
+    props_view: list[tuple[str, str]] = []  # up to 6 key/value pairs to display
+    group: str | None = None
+    collapsed_children: int = 0
+    badges: list[str] = []
+
+
+class BoardEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    kind: str
+    label: str | None
+    provenance: Provenance
+
+
+class Step(BaseModel):
+    id: str
+    index: int
+    text: LocalizedText
+    status: Literal["pending", "active", "done", "failed"]
+    target: str | None
+
+
+class Annotation(BaseModel):
+    id: str
+    target: str
+    text: str
+    provenance: Provenance
+
+
 class Board(BaseModel):
-    version: int; layout: Literal["stack","tree","graph","sequence"]; focus: list[str]
-    nodes: list[BoardNode]; edges: list[BoardEdge]; steps: list[Step]; annotations: list[Annotation]; stale: bool = False
+    version: int
+    layout: Literal["stack", "tree", "graph", "sequence"]
+    focus: list[str]
+    nodes: list[BoardNode]
+    edges: list[BoardEdge]
+    steps: list[Step]
+    annotations: list[Annotation]
+    stale: bool = False
 ```
 
 Operations (`board/ops.py`): `add_node`, `update_node`, `remove_node`, `add_edge`, `remove_edge`, `set_layout`, `set_focus`, `add_step`, `update_step`, `add_annotation`, `remove_annotation`, `set_stale`, `clear`. A patch is `{base_version, version, ops[]}`. The Panel applies patches in order and asks for a snapshot if `base_version` does not match its version. The same apply function exists in Python and TypeScript and is tested against shared golden fixtures (`contract-tests/fixtures/board/`).
@@ -162,7 +203,11 @@ The Panel only renders state and sends these messages. Voice approval is sent as
 
 ```python
 class LLMProvider(Protocol):
-    async def complete(self, messages: list[Message], tools: list[ToolSpec], *, cancel: CancelToken) -> AsyncIterator[LLMEvent]: ...
+    async def complete(
+        self, messages: list[Message], tools: list[ToolSpec], *, cancel: CancelToken
+    ) -> AsyncIterator[LLMEvent]: ...
+
+
 # LLMEvent = TextDelta | ToolCall | Done | ProviderError
 ```
 
@@ -193,6 +238,18 @@ class LLMProvider(Protocol):
 **CORE-P11: Redaction.** *For any* log or audit record, no substring equals the pairing token or a configured secret. **Validates: Requirements 9.3, 11.2**
 
 **CORE-P12: Projection determinism.** *For any* observation and set of refs, projecting twice yields identical nodes and edges. **Validates: Requirement 5.1**
+
+**CORE-P13: Survey provenance.** *For any* observation returned to the survey, every ref of the observation is in `observed_refs` afterwards, and a board node `observed` on such a ref survives the validator. **Validates: Requirements 12.3**
+
+**CORE-P14: Survey is bounded and non-blocking.** *For any* observation (any size, any labels), the rendered survey is at most 4,000 characters, and entities flagged sensitive never appear by label or prop. A survey that never finishes delays a turn by at most 3 s. **Validates: Requirements 12.2, 12.4, 12.9**
+
+**CORE-P15: The code map is bounded and honest.** *For any* observations fed to the code map (any size, any labels, any dependency lists), every rendering (overview, `code_map` output, study plan) stays within its character bound, never names an entity flagged `sensitive`, and every dependency it shows points at an entry that is in the map. **Validates: Requirements 15.2, 15.3**
+
+**CORE-P16: A study entry never claims an unread file as read.** *For any* `record_understanding` call, a file is listed as `read` only if a read-only action targeting it was executed in this session. **Validates: Requirement 15.5**
+
+### Exploration (`session/explore.py`)
+
+A profile's `explore` section (data: container, file and detail kinds, the property that lists dependencies, the property that marks a file whose symbols are still pending, priority and skip globs, entry symbol names) makes a project explorable. `Explorer` runs a state machine `offer -> mapping -> studying -> ready` (also `declined`, `stopped`, `failed`) and publishes `explore.state` to the Panel. Mapping uses `Session.observe` (so every ref is an observed ref) and never a model. The study phase is a task for the agent (`study` inbox event) built on four tools: `code_map`, `get_study_plan`, `record_understanding`, `finish_study`. Coverage comes from the Core's own record of read-only action targets.
 
 ## Error Handling
 

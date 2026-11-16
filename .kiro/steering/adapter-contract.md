@@ -21,10 +21,11 @@ The normative definition is the spec `.kiro/specs/adapter-contract/` and the gen
 | `adapter.execute {call}` returns an ActionResult | `execute` | no | 5 s |
 | `adapter.undo {token}` returns an ActionResult | `undo` | if any action is reversible | 5 s |
 | `adapter.highlight {ref, style, duration_ms}` | `highlight` | no | 500 ms |
+| `adapter.clear_highlight {}` returns `{cleared}` (1.1) | `highlight` | no | 500 ms |
 | `adapter.verify {goal}` returns Evidence[] | `verify.native` | no | 2 s |
 
 ## Notifications (adapter to Core)
-`event.state_changed {state_version, changed[], origin}`, `event.selection_changed {focus[]}`, `event.user_action {kind, target, details, origin}`, `event.navigation {url, title}`. `origin` is `user`, `wysp` or `unknown`. Debounce state events (200 ms minimum).
+`event.state_changed {state_version, changed[], origin}`, `event.selection_changed {focus[]}`, `event.user_action {kind, target, details, origin}`, `event.navigation {url, title}`, `event.highlight_dismissed {ref, reason}` (1.1: the user interacted with a persistent highlight; `duration_ms: 0` means "until cleared"). `origin` is `user`, `wysp` or `unknown`. Debounce state events (200 ms minimum).
 
 ## Observation model
 - An Observation holds an Entity Graph: `entities[]` (`ref`, `kind`, `label`, `parent`, `props`, `confidence`), `links[]` (`from`, `to`, `kind`), `focus[]`, `truncated`, `counts`.

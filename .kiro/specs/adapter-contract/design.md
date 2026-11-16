@@ -50,6 +50,7 @@ The SDKs and the Kit import `wysp_core.contract` only (models, predicates, diges
 | C → A | `adapter.execute` | `{call: ActionCall}` | `ActionResult` | `execute` | 5 s |
 | C → A | `adapter.undo` | `{token}` | `ActionResult` | `undo` | 5 s |
 | C → A | `adapter.highlight` | `{ref, style, duration_ms}` | `{ok: true}` | `highlight` | 500 ms |
+| C to A | `adapter.clear_highlight` (1.1) | `{}` | `{cleared: bool}` | `highlight` | 500 ms |
 | C → A | `adapter.verify` | `{goal: Predicate}` | `Evidence[]` | `verify.native` | 2 s |
 | A → C | `event.state_changed` | `{state_version, changed[], origin}` | — | `events.state` | — |
 | A → C | `event.selection_changed` | `{focus[]}` | — | `events.selection` | — |
@@ -87,32 +88,97 @@ Ref = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9+.-]*://.+$", max_
 Risk = Literal["read_only", "ui_state", "reversible", "irreversible"]
 Origin = Literal["user", "wysp", "unknown"]
 
-class EntityKind(BaseModel):  kind: str; label: str; description: str | None = None
+
+class EntityKind(BaseModel):
+    kind: str
+    label: str
+    description: str | None = None
+
+
 class Manifest(BaseModel):
-    adapter_id: str; app: AppInfo; contract_version: str; integration_level: Literal["native","interface","visual"]
-    ref_scheme: str; capabilities: set[Capability]; entity_kinds: list[EntityKind]
-    volatile_props: list[str] = []; locales: list[str] = ["en"]; profile_id: str | None = None
+    adapter_id: str
+    app: AppInfo
+    contract_version: str
+    integration_level: Literal["native", "interface", "visual"]
+    ref_scheme: str
+    capabilities: set[Capability]
+    entity_kinds: list[EntityKind]
+    volatile_props: list[str] = []
+    locales: list[str] = ["en"]
+    profile_id: str | None = None
 
-class Scope(BaseModel):  level: Literal["summary","focus","full"] = "focus"; root: Ref | None = None; depth: int | None = Field(None, ge=0, le=8)
+
+class Scope(BaseModel):
+    level: Literal["summary", "focus", "full"] = "focus"
+    root: Ref | None = None
+    depth: int | None = Field(None, ge=0, le=8)
+
+
 class Entity(BaseModel):
-    ref: Ref; kind: str; label: str; parent: Ref | None = None
-    props: dict[str, JsonValue] = {}; confidence: float = Field(1.0, ge=0, le=1)
-class Link(BaseModel):  from_: Ref = Field(alias="from"); to: Ref; kind: str
-class Observation(BaseModel):
-    observation_id: str; state_version: int; captured_at: datetime; scope: Scope
-    entities: list[Entity]; links: list[Link] = []; focus: list[Ref] = []
-    truncated: bool = False; counts: dict[str, int] = {}
+    ref: Ref
+    kind: str
+    label: str
+    parent: Ref | None = None
+    props: dict[str, JsonValue] = {}
+    confidence: float = Field(1.0, ge=0, le=1)
 
-class Context(BaseModel):  summary: str; mode: str | None; focus: list[Ref] = []; facts: dict[str, JsonValue] = {}
-class GuideStep(BaseModel):  text: LocalizedText; target: Ref | None = None
+
+class Link(BaseModel):
+    from_: Ref = Field(alias="from")
+    to: Ref
+    kind: str
+
+
+class Observation(BaseModel):
+    observation_id: str
+    state_version: int
+    captured_at: datetime
+    scope: Scope
+    entities: list[Entity]
+    links: list[Link] = []
+    focus: list[Ref] = []
+    truncated: bool = False
+    counts: dict[str, int] = {}
+
+
+class Context(BaseModel):
+    summary: str
+    mode: str | None
+    focus: list[Ref] = []
+    facts: dict[str, JsonValue] = {}
+
+
+class GuideStep(BaseModel):
+    text: LocalizedText
+    target: Ref | None = None
+
+
 class ActionSpec(BaseModel):
-    id: str; title: LocalizedText; description: str; params_schema: dict[str, JsonValue]
-    risk: Risk; reversible: bool; preconditions: list[Predicate] = []; postconditions: list[Predicate] = []
-    guide: Guide | None = None          # guide.ui_path: list[GuideStep]
-class ActionCall(BaseModel):  action_id: str; params: dict[str, JsonValue]; request_id: str; dry_run: bool = False
+    id: str
+    title: LocalizedText
+    description: str
+    params_schema: dict[str, JsonValue]
+    risk: Risk
+    reversible: bool
+    preconditions: list[Predicate] = []
+    postconditions: list[Predicate] = []
+    guide: Guide | None = None  # guide.ui_path: list[GuideStep]
+
+
+class ActionCall(BaseModel):
+    action_id: str
+    params: dict[str, JsonValue]
+    request_id: str
+    dry_run: bool = False
+
+
 class ActionResult(BaseModel):
-    status: Literal["ok","failed"]; state_version: int; changed: list[Ref] = []
-    undo_token: str | None = None; message: str | None = None; preview: JsonValue | None = None
+    status: Literal["ok", "failed"]
+    state_version: int
+    changed: list[Ref] = []
+    undo_token: str | None = None
+    message: str | None = None
+    preview: JsonValue | None = None
 ```
 
 `LocalizedText` is `str | dict[locale, str]`. `JsonValue` is any JSON value.
@@ -166,6 +232,13 @@ Example (postcondition of `add_modifier`):
 - `contract_version` starts at `1.0.0` at gate J0. Additive, optional changes bump the minor version. Breaking changes bump the major version and need the agreement of A, B and C.
 - `schemas/index.json` lists every schema with its `$id` (`https://wysp.dev/schemas/1/<name>.schema.json`) and the contract version.
 - CI runs the export and fails on `git diff --exit-code schemas sdk/ts/src/generated`.
+
+### Contract 1.1.0: persistent highlights (additive)
+
+- `adapter.highlight.duration_ms` accepts `0`: the highlight stays until cleared, replaced, dismissed by the user or the adapter disconnects.
+- New request `adapter.clear_highlight {}` returns `{cleared: bool}` (capability `highlight`, 500 ms).
+- New notification `event.highlight_dismissed {ref, reason}` (`reason` is `user`): the user interacted with the highlighted entity and the adapter removed the highlight. The adapter ignores the caret moves and scrolls its own highlight causes.
+- The Core uses these only with adapters declaring `contract_version` 1.1 or later (the handshake already accepts any 1.x). With a 1.0 adapter it falls back to a 10 s timed highlight.
 
 ### Pairing and Origin checks
 

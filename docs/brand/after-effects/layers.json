@@ -1,0 +1,185 @@
+{
+  "canvas": 1024,
+  "layers": [
+    {
+      "name": "01-flame-outer",
+      "fill": "#6503FC",
+      "opacity": 1.0,
+      "box": [
+        65,
+        7,
+        960,
+        1015
+      ],
+      "pivot": [
+        512.5,
+        1015
+      ]
+    },
+    {
+      "name": "02-flame-shine",
+      "fill": "#F4E5FD",
+      "opacity": 0.7,
+      "box": [
+        217,
+        621,
+        267,
+        780
+      ],
+      "pivot": [
+        242.0,
+        700.5
+      ]
+    },
+    {
+      "name": "03-flame-inner",
+      "fill": "#CA84FC",
+      "opacity": 1.0,
+      "box": [
+        153,
+        240,
+        873,
+        1002
+      ],
+      "pivot": [
+        513.0,
+        1002
+      ]
+    },
+    {
+      "name": "04-face",
+      "fill": "#F4E5FD",
+      "opacity": 1.0,
+      "box": [
+        177,
+        409,
+        845,
+        938
+      ],
+      "pivot": [
+        511.0,
+        673.5
+      ]
+    },
+    {
+      "name": "05-cheek-left",
+      "fill": "#FE7C9C",
+      "opacity": 1.0,
+      "box": [
+        266,
+        761,
+        361,
+        798
+      ],
+      "pivot": [
+        313.5,
+        779.5
+      ]
+    },
+    {
+      "name": "06-cheek-right",
+      "fill": "#FE7C9C",
+      "opacity": 1.0,
+      "box": [
+        662,
+        761,
+        754,
+        798
+      ],
+      "pivot": [
+        708.0,
+        779.5
+      ]
+    },
+    {
+      "name": "07-glasses",
+      "fill": "#0D012F",
+      "opacity": 1.0,
+      "box": [
+        177,
+        575,
+        845,
+        818
+      ],
+      "pivot": [
+        511.0,
+        696.5
+      ]
+    },
+    {
+      "name": "08-eye-left",
+      "fill": "#0D012F",
+      "opacity": 1.0,
+      "box": [
+        318,
+        647,
+        423,
+        762
+      ],
+      "pivot": [
+        370.5,
+        704.5
+      ]
+    },
+    {
+      "name": "09-eye-right",
+      "fill": "#0D012F",
+      "opacity": 1.0,
+      "box": [
+        598,
+        647,
+        704,
+        762
+      ],
+      "pivot": [
+        651.0,
+        704.5
+      ]
+    },
+    {
+      "name": "10-sparkle-left",
+      "fill": "#FFFFFF",
+      "opacity": 1.0,
+      "box": [
+        341,
+        666,
+        367,
+        693
+      ],
+      "pivot": [
+        354.0,
+        679.5
+      ]
+    },
+    {
+      "name": "11-sparkle-right",
+      "fill": "#FFFFFF",
+      "opacity": 1.0,
+      "box": [
+        621,
+        666,
+        647,
+        693
+      ],
+      "pivot": [
+        634.0,
+        679.5
+      ]
+    },
+    {
+      "name": "12-mouth",
+      "fill": "#0D012F",
+      "opacity": 1.0,
+      "box": [
+        466,
+        764,
+        555,
+        818
+      ],
+      "pivot": [
+        510.5,
+        791.0
+      ]
+    }
+  ]
+}

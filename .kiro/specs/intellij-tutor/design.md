@@ -90,6 +90,20 @@ Replies are sent from whichever thread finishes the work (`WebSocket.sendText` i
 | `go_to_symbol` | ui_state | open the symbol's file and put the caret on it | the symbol is in `focus` |
 | `show_tool_window` | ui_state | open and focus a tool window | none (UI) |
 | `rename_symbol` | reversible | IDE rename refactoring (updates usages) in one command | a symbol with the new name exists in the file |
+| `read_code` | read_only | numbered lines `from..to` of a project file (≤150 lines, ≤8,000 chars) | none (read) |
+| `search_code` | read_only | text search in project files, ≤50 matches with line numbers | none (read) |
+| `find_usages` | read_only | usages of a symbol (file, line, line text), ≤50 | none (read) |
+| `list_files` | read_only | children of a directory (names, kinds, line counts) | none (read) |
+| `replace_lines` | reversible | replace lines `from..to` (checked against `old_text`) with `new_text`; empty `new_text` deletes | the file is observed; the adapter reads the text back |
+| `insert_lines` | reversible | insert `new_text` after line `after_line` (0 = top) | the file is observed; the adapter reads the text back |
+| `create_file` | reversible | new project file with `text`; undo deletes it | the file is observed |
+| `reformat_code` | reversible | the IDE's code style on a file or a line range | the file is observed |
+| `optimize_imports` | reversible | the IDE's import optimization on a file | the file is observed |
+
+Text edits share one helper: one `WriteCommandAction` (named "Wysp: …", so Ctrl+Z works), commit of the document,
+read-back of the edited range, and an undo closure that puts the previous text back only if the range still holds
+what Wysp wrote (otherwise `UNDO_UNAVAILABLE`, nothing is overwritten). The Core asks every reversible action for a
+dry-run preview (`{file, lines, diff}`), and the Panel shows `diff` as text. Read-only results travel in `message`.
 
 Undo of `rename_symbol`: the token maps to the document(s) touched; undo runs `UndoManager.undo` for the
 editor of that file while the last command is still ours, otherwise renames back with the same refactoring.

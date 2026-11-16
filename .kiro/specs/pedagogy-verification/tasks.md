@@ -3,7 +3,7 @@
 Owners: A = Core & Contract, B = Experience, C = Adapters. Gates: J0 Wed 11 Nov, J1 Thu 19 Nov, J2 Fri 27 Nov, J3 Tue 1 Dec.
 Depends on adapter-contract task 3 (predicates) and core-orchestrator tasks 3 and 7.
 
-- [ ] 1. Implement profile loading, the profile schema and `wysp validate-profile`
+- [x] 1. Implement profile loading, the profile schema and `wysp validate-profile`
   - Pydantic models for profile, concepts, lessons and exercises; JSON Schema exported to `schemas/profile.schema.json`
   - Loader with line numbers, validator (references, DAG, placeholder positions, translations), CLI command with readable errors and exit status
   - A minimal valid profile for the mock adapter in `contract-tests/wysp_mock/profile/`
@@ -14,7 +14,7 @@ Depends on adapter-contract task 3 (predicates) and core-orchestrator tasks 3 an
   - **Property PED-P7: Profile validity**
   - **Validates: Requirement 1.2**
 
-- [ ] 2. Implement the verification service and evidence
+- [x] 2. Implement the verification service and evidence
   - `verification/service.py` (fresh observe, scope hint, predicate evaluation), `Evidence` model, optional `adapter.verify` use, evidence publication to the Panel
   - _Owner: A_ · _Gate: J1_
   - _Requirements: 4.1, 4.2, 4.4_

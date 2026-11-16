@@ -1,6 +1,6 @@
 # Requirements Document: Web Tutor
 
-> **Deferred** (decision of 2026-11-11): the IntelliJ tutor (`.kiro/specs/intellij-tutor/`) replaces the web tutor as application 2.
+> **Optional extra** (decision of 2026-11-11, updated 2026-11-16): the IntelliJ tutor (`.kiro/specs/intellij-tutor/`) replaced the web tutor as application 2. The web tutor was built afterwards as an optional third tutor; it is not on the demo path and must not destabilise the other two.
 
 Lead: Person C (extension). Person B owns the demo dashboard and the web profile. Reviewer: Person A (contract).
 

@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/brand/lockup-color-dark.png" alt="Wysp" width="460"></p>
+
 # Wysp
 
 **A skeleton for building AI tutors for software applications.** A Wysp tutor observes the real state of an application, explains its concepts on an interactive visual board, guides the user through actions with permission, and verifies in the application what the user has learned. It works by voice, with a board, and through one adapter per application.
@@ -25,7 +27,7 @@ IntelliJ plugin ───┘   (adapter contract)    └─ LLM with tool callin
 - **Trust rules**: every fact is labelled `observed`, `inferred` or `illustrative`; the LLM can only *propose* actions; a permission gate decides; every action is verified afterwards and undone if verification fails.
 - **Contract Test Kit**: the same contract fixtures run against the mock adapter, the Blender tutor and the IntelliJ tutor.
 
-The full design (in French) is in [`docs/architecture/wysp-architecture.pdf`](docs/architecture/wysp-architecture.pdf). The normative specs (in English) are in [`.kiro/specs/`](.kiro/specs/).
+To build your own tutor, start with the [adapter guide](docs/adapter-guide.md) (its example adapter is tested). The full design (in French) is in [`docs/architecture/wysp-architecture.pdf`](docs/architecture/wysp-architecture.pdf). The normative specs (in English) are in [`.kiro/specs/`](.kiro/specs/).
 
 ## Run it (Windows, Blender 5.2 LTS)
 
@@ -75,6 +77,8 @@ uv run wysp logs timeline    # Core and Blender records merged in time order
 **LLM providers.** `auto` picks the first of Groq, Cerebras, OpenRouter whose key is in `.env`, otherwise keyless
 Pollinations (works, but stalls on about every second request). `--llm scripted` replays a scenario offline.
 
+**Bring your own AI CLI.** `--llm external` runs the Core without a model and serves an authenticated MCP endpoint (`/mcp`): Claude Code, kiro-cli or any MCP client does the thinking and calls the Wysp tools, while the board, voice, permission gate and verification stay in Wysp. See [`docs/agent-mode.md`](docs/agent-mode.md) and `uv run wysp mcp-config`.
+
 ## Tests
 
 ```powershell
@@ -98,7 +102,7 @@ Then `uv run wysp-contract --tutor <name>` tells you whether your adapter is com
 
 | Kiro feature | Where | What it does for us |
 |---|---|---|
-| Specs | `.kiro/specs/` | 7 specs (contract, core, pedagogy, panel, Blender tutor, IntelliJ tutor, web tutor deferred), EARS requirements, correctness properties, tasks with owner and milestone |
+| Specs | `.kiro/specs/` | 7 specs (contract, core, pedagogy, panel, Blender tutor, IntelliJ tutor, web tutor as an optional extra), EARS requirements, correctness properties, tasks with owner and milestone |
 | Steering | `.kiro/steering/` | product vocabulary, structure and boundaries, trust and safety, testing, contract guide, pedagogy, UI design system, demo and release checklists |
 | Hooks | `.kiro/hooks/` | core boundary guard, schema sync, offline contract checks, trust review, new-action integration, formatting, profile validation, tests after each task |
 | Agents | `.kiro/agents/` | `blender-adapter`, `browser-adapter`, `contract-guardian` (read-only reviewer) |
@@ -118,7 +122,7 @@ core/           Wysp Core (Python)
 contract-tests/ Contract Test Kit and mock adapter
 sdk/            adapter SDKs (Python, TypeScript)
 panel/          shared React Panel
-apps/           blender-tutor/, intellij-tutor/ (web-tutor/ deferred)
+apps/           blender-tutor/, intellij-tutor/ (web-tutor/ optional extra)
 docs/           architecture document, adapter guide, Kiro journal
 scripts/        dev scripts and the Kiro hook dispatcher
 ```

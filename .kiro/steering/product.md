@@ -9,7 +9,7 @@ Wysp is an open-source framework for building **AI tutors for software applicati
 Wysp is our entry for **Kiroween 2026, category Skeleton Crew**: a lean, reusable skeleton (Wysp Core) proven by two very different applications built on it:
 
 - `apps/blender-tutor`: tutoring on a Blender 3D scene (native integration through the Python API).
-- `apps/intellij-tutor`: tutoring in the IntelliJ IDEA IDE on the student's own code and project (native integration through the IntelliJ Platform API: project model, code structure, editors, inspections and the IDE's Swing interface). Decision of 2026-11-11: it replaces the planned web tutor (`apps/web-tutor`, deferred).
+- `apps/intellij-tutor`: tutoring in the IntelliJ IDEA IDE on the student's own code and project (native integration through the IntelliJ Platform API: project model, code structure, editors, inspections and the IDE's Swing interface). Decision of 2026-11-11: it replaces the planned web tutor as application 2. The web tutor (`apps/web-tutor`, a Chrome connector) was then built as an optional extra: a third tutor on the same Core, outside the demo path.
 
 The name evokes the will-o'-the-wisp: a small light that guides you through unfamiliar software.
 

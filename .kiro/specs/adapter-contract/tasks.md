@@ -3,7 +3,7 @@
 Owners: A = Core & Contract, B = Experience, C = Adapters. Gates: J0 Wed 11 Nov, J1 Thu 19 Nov, J2 Fri 27 Nov, J3 Tue 1 Dec.
 Property-test tasks are required (no `*`). Tasks marked `*` are optional.
 
-- [ ] 1. Scaffold the monorepo
+- [x] 1. Scaffold the monorepo
   - Root `pyproject.toml` declaring a uv workspace with members `core`, `contract-tests`, `sdk/python`; Python 3.13; dev group with pytest, pytest-asyncio, hypothesis, ruff
   - Root `package.json` declaring npm workspaces `panel`, `sdk/ts`, `apps/web-tutor/extension`, `apps/web-tutor/demo-dashboard`; shared `tsconfig.base.json` (strict), eslint and prettier configs
   - `.gitignore` (keeps `.kiro/`), `.env.example`, `LICENSE` (MIT) and `apps/blender-tutor/adapter/LICENSE` (GPL-3.0-or-later)
@@ -11,7 +11,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: A (npm part: B)_ · _Gate: J0_
   - _Requirements: 10.1_
 
-- [ ] 2. Define the contract models and the schema export
+- [x] 2. Define the contract models and the schema export
   - Create `core/src/wysp_core/contract/` with `rpc.py`, `manifest.py`, `observation.py`, `actions.py`, `events.py`, `errors.py` following the Data Models section of design.md
   - Implement `export.py` (`python -m wysp_core.contract.export`) writing `schemas/*.schema.json` and `schemas/index.json` with stable `$id`s and `contract_version = "1.0.0"`
   - Add a CI step that fails when `git diff --exit-code schemas` is not empty after export
@@ -22,7 +22,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - **Property CON-P1: Schema round trip**
   - **Validates: Requirements 10.1, 10.2**
 
-- [ ] 3. Implement the predicate language and the state digest
+- [x] 3. Implement the predicate language and the state digest
   - `contract/predicates.py`: parser, placeholder substitution with escaping, evaluator returning `PredicateOutcome(ok, actual, expected, path)`; regex timeout for `matches`
   - `contract/digest.py`: canonical JSON, volatile-props filtering, float rounding, SHA-256
   - _Owner: A_ · _Gate: J0_
@@ -48,7 +48,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - _Owner: A_ · _Gate: J0_
   - _Requirements: 10.2_
 
-- [ ] 6. Build the mock Kanban adapter
+- [x] 6. Build the mock Kanban adapter
   - `contract-tests/wysp_mock/`: in-memory Kanban state, entity projection, the seven actions of design.md with undo, events with origin tagging, debounce
   - In-process API (`MockKanban.simulate_user`) and CLI `wysp-mock-adapter` with fault injection options
   - Uses its own minimal WebSocket client (`websockets`) so that it does not depend on the SDK
@@ -63,7 +63,7 @@ Property-test tasks are required (no `*`). Tasks marked `*` are optional.
   - **Property CON-P9: Origin tagging**
   - **Validates: Requirements 6.2, 6.3, 6.4, 6.5, 6.7, 7.1**
 
-- [ ] 7. Build the Python adapter SDK
+- [x] 7. Build the Python adapter SDK
   - `sdk/python/wysp_adapter_sdk/`: `AdapterClient` on `websocket-client` in a background thread (hello, heartbeat, reconnect with backoff, request routing, budgets)
   - `ActionRegistry` (one module per action, id = file name, params validation with `jsonschema`), `Dispatcher` protocol with `ImmediateDispatcher` and `QueueDispatcher` (pumped by the host main thread)
   - Helpers: digest, ref building, error mapping, origin tagging context manager

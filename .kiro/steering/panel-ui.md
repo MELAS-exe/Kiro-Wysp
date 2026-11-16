@@ -1,4 +1,4 @@
----
+﻿---
 inclusion: fileMatch
 fileMatchPattern: ["panel/**", "apps/web-tutor/demo-dashboard/**"]
 ---
@@ -10,10 +10,13 @@ fileMatchPattern: ["panel/**", "apps/web-tutor/demo-dashboard/**"]
 - `side` (420 to 560 px wide, full height): board, captions and exercise card. Default mode, docked next to Blender or the browser.
 - `full`: large board workspace with a details pane and lesson progress.
 
-## Visual identity ("wisp")
-- Night background `#0F172A`, surface `#1E293B`, text `#E2E8F0`, muted text `#94A3B8`.
-- Wisp glow (focus, active narration) `#2DD4BF`. Pumpkin accent (actions, warnings) `#F97316`. Success `#22C55E`. Danger `#EF4444`.
+## Visual identity (the mascot's colours)
+The brand palette is measured from the mascot (a violet flame with glasses); the full table, files and rules are in `docs/brand/README.md`.
+- Night background `#120532`, surface `#1D0E4A`, surface 2 `#2A1766`, lines `#3B2A80` and `#5440A6`.
+- Text lavender `#F4E5FD`, muted text `#B9A3E3`.
+- Lilac glow (focus, active narration, links, primary buttons) `#CA84FC`. Brand violet `#6503FC` for fills and borders only (2.7:1 on night, never text). Cheek-pink accent (speaking, markers, notes) `#FE7C9C`. Ink `#0D012F` for text on lilac. Success `#22C55E`. Danger `#EF4444`.
 - System UI sans-serif font; monospace for refs and values. Corner radius 10 px. One glow effect at a time.
+- The mascot (`panel/public/wysp-mark.png`) greets the user on the empty chat; the favicon is the mascot.
 
 ## Provenance language (identical everywhere)
 
@@ -42,5 +45,6 @@ Always show a legend in `side` and `full` modes.
 - Strings live in `panel/src/i18n/{en,fr}.json`. Demo language: English (French supported).
 
 ## Demo dashboard (`apps/web-tutor/demo-dashboard`)
-- Halloween-themed "Haunted Shop Analytics": KPIs, sales chart, filters (date range, region, category), orders table, "Create report" dialog, saved reports list.
+- "Haunted Shop Analytics" in the Wysp palette: KPIs, sales chart, filters (date range, region, category), orders table, "Create report" dialog, saved reports list.
 - Accessible by design (labels, roles, landmarks), because it showcases the interface integration level. Deterministic seeded data and a reset button.
+

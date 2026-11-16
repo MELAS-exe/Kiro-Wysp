@@ -107,6 +107,7 @@ The adapter contract is the stable boundary between Wysp Core and application ad
 2. WHEN the selection or focus changes, THE adapter SHALL send `event.selection_changed {focus}`.
 3. WHERE the adapter declares `events.user_action`, THE adapter SHALL send `event.user_action {kind, target, details, origin}` for user operations it can recognise.
 4. THE adapter SHALL debounce state events so that it sends at most one `event.state_changed` per 200 ms.
+5. (contract 1.1) WHERE the adapter declares `highlight`, THE adapter SHALL send `event.highlight_dismissed {ref, reason}` when the user's interaction removes a persistent highlight (Requirement 8.4).
 
 ### Requirement 8: Highlight
 
@@ -116,6 +117,10 @@ The adapter contract is the stable boundary between Wysp Core and application ad
 
 1. WHEN the Core calls `adapter.highlight {ref, style, duration_ms}`, THE adapter SHALL visually emphasise the entity in the application for the requested duration without changing the application state.
 2. IF the entity cannot be highlighted, THEN THE adapter SHALL return error `-32012 TARGET_NOT_FOUND` or `-32010 NOT_SUPPORTED`.
+3. (contract 1.1) WHEN `duration_ms` is `0`, THE highlight SHALL be persistent: it stays until the Core calls `adapter.clear_highlight {}`, until another highlight replaces it, until the user interacts with the highlighted entity, or until the adapter disconnects. At most one highlight is active at a time.
+4. (contract 1.1) WHEN the user interacts with a persistent highlight (clicks or edits the highlighted element, or moves into it), THE adapter SHALL remove it and SHALL send `event.highlight_dismissed {ref, reason: "user"}`. Events caused by the highlight itself (scrolling, opening the file) SHALL NOT dismiss it.
+5. (contract 1.1) WHEN the Core calls `adapter.clear_highlight {}`, THE adapter SHALL remove the active highlight and return `{cleared: bool}`; with none active it returns `{cleared: false}` and is not an error.
+6. THE Core SHALL use `duration_ms: 0`, `adapter.clear_highlight` and `event.highlight_dismissed` only with adapters whose manifest declares `contract_version` 1.1 or later. With an older adapter it SHALL use the longest timed highlight (10 s) and SHALL NOT call `adapter.clear_highlight`.
 
 ### Requirement 9: Errors and timeouts
 

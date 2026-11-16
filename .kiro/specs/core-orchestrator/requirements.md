@@ -143,3 +143,57 @@ Wysp Core turns a user's request into tutoring: it gathers context from the acti
 
 1. THE Core SHALL persist the learner model per profile, the session summaries and the audit log under `~/.wysp/` as JSON or JSONL files.
 2. THE Core SHALL redact tokens, keys and sensitive field values in logs and in the audit log.
+
+### Requirement 12: Survey of the application on activation
+
+**User Story:** As a user opening a tutor on my scene, my project or my page, I want Wysp to look at everything it can see before it answers, so that its first answer already starts from my real situation.
+
+#### Acceptance Criteria
+
+1. WHEN an adapter becomes the active adapter (first connection, selection in the Panel, or reconnection), THE Core SHALL start a survey in the background: it reads the action catalog, the context and a full observation, using only the existing adapter contract (no new method, `contract_version` unchanged).
+2. THE survey SHALL NOT delay the adapter handshake. WHEN a turn starts while the survey runs, THE Core SHALL wait for it at most 3 s and then continue with what it has.
+3. THE survey SHALL go through `Session.observe`, so that every surveyed ref is a ref of a recorded observation and an `observed` board node may point at it (Requirement 5).
+4. THE Core SHALL give the tutor a bounded summary of the survey (at most 4,000 characters inside `<app_data>`: counts per kind, the structure under the roots, a few examples per kind, the survey's age). The summary SHALL say when the observation was truncated or the survey is partial, and the tutor SHALL NOT present a truncated list as complete.
+5. IF the survey fails or times out, THEN THE Core SHALL continue exactly as before (observation on demand) and SHALL retry at most 3 times, after 5, 10 and 20 s.
+6. WHEN the adapter reports `state_changed`, THE Core SHALL mark the survey stale and refresh it after a debounce of 2 s.
+7. THE survey SHALL show its progress to the Panel as `activity` messages and SHALL log its counts and duration, never the entities' properties.
+8. THE user SHALL be able to turn the survey off (`wysp serve --no-survey` or `WYSP_SURVEY=off`). It is on by default.
+9. Entities flagged `sensitive: true` by an adapter SHALL appear in the summary by kind and count only, never by label or props.
+
+### Requirement 13: Highlights that stay until they are done
+
+**User Story:** As a user looking for something in the application, I want what Wysp points at to stay highlighted until I have found it or Wysp moves on, so that I do not lose it after a few seconds.
+
+#### Acceptance Criteria
+
+1. WHEN the tutor points at an element with the `highlight` tool (or a guided step ends on one), THE Core SHALL ask the adapter for a persistent highlight (`duration_ms: 0`) and SHALL remember it as the session's active highlight.
+2. THE Core SHALL end the active highlight when: the tutor calls `clear_highlight`; another element is highlighted (it replaces it); the adapter reports `event.highlight_dismissed` (the user interacted with it); a guided step is verified; the adapter disconnects or another application is activated; or 10 minutes have passed.
+3. THE tutor SHALL be told in its prompt which element is highlighted, and SHALL be instructed to clear it when the user is done or the conversation moves on.
+4. Highlights from narration cues and step tours SHALL stay short (timed), so they never outlive the sentence or the tour.
+5. WITH an adapter older than contract 1.1, THE Core SHALL use the longest timed highlight and SHALL NOT send `adapter.clear_highlight` (adapter-contract Requirement 8.6).
+6. WHEN an adapter reports `event.highlight_dismissed` with reason `user`, THE Core SHALL log it (`highlight.dismissed`) and SHALL NOT count it as evidence of mastery.
+
+### Requirement 14: One Panel speaks
+
+**User Story:** As a user with two Panels open (the IDE's tool window and a browser tab), I want each sentence read once.
+
+#### Acceptance Criteria
+
+1. THE Core SHALL tell each Panel, in every `narration.segment`, whether it is the speaking Panel (`speaker`). Exactly one connected Panel is the speaker: the one the user acted in last, else the first connected; when it disconnects another takes over.
+2. A Panel that is not the speaker SHALL show captions only. `narration.progress` and `narration.cue` from a Panel that is not the speaker SHALL be ignored.
+
+### Requirement 15: Project exploration: a code map and a study phase
+
+**User Story:** As a student opening an unfamiliar project, I want the tutor to study it properly before it teaches me, so that what it says about the code is something it has read, not a guess.
+
+#### Acceptance Criteria
+
+1. WHERE the active application's profile has an `explore` section, WHEN the application becomes active, THE Core SHALL offer the user to explore the project and SHALL NOT read or crawl anything until the user accepts (`explore.start`). The user can decline or stop at any time.
+2. WHEN the user accepts, THE Core SHALL build a **code map** without any language model: it walks the adapter's containers breadth first with `observe {level: full, root: <container or file>}` and keeps the files, their symbols and their dependencies. The walk SHALL stop at a budget (calls, time, entries) and SHALL report when it stopped early.
+3. THE map SHALL contain only what the adapter reported. Entities flagged `sensitive` SHALL NOT enter it. The tutor SHALL receive a bounded overview (at most 3,000 characters) and SHALL be able to read any part of the map with the `code_map` tool (at most 6,000 characters per call).
+4. WHEN the map is ready and an external agent drives the tutor, THE Core SHALL hand it a **study** task (a `study` event for `wait_for_user`). The agent reads the files named by `get_study_plan` with the application's read-only actions, records what it learned with `record_understanding {topic, summary, files}`, and ends with `finish_study`.
+5. THE Core SHALL track which files the agent actually read (targets of read-only actions it executed). A `record_understanding` entry SHALL list its files as `read` or `not read`, and the tutor's context SHALL say which parts of the project it has read and which it has not.
+6. THE Core SHALL keep the study brief per project on disk (`~/.wysp/projects/`), and WHEN the same project is opened again SHALL offer to reuse it (marked as possibly out of date) or to study again.
+7. THE Panel SHALL show the offer, the progress (files mapped, files read) and a way to stop. THE Core SHALL publish the state as `explore.state` messages.
+8. THE tutor SHALL speak with certainty only about what is in the map, the brief or what it read, and SHALL say plainly what it has not read yet.
+9. THE study phase SHALL use only read-only tools. Code text read this way goes to the model like any other read tool result, and the map carries names and signatures, never code bodies.
