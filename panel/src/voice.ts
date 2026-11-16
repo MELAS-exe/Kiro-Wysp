@@ -1,4 +1,5 @@
 // Voice input: push-to-talk with the browser's speech recognition. Speaking interrupts the narration (barge-in).
+import { coreListenStart, coreListenStop, hasCoreListen } from "./coreVoice";
 import { interruptNarration } from "./narration";
 import { useStore } from "./store";
 
@@ -25,7 +26,8 @@ const Ctor: RecognitionCtor | undefined =
   (window as unknown as { SpeechRecognition?: RecognitionCtor }).SpeechRecognition ??
   (window as unknown as { webkitSpeechRecognition?: RecognitionCtor }).webkitSpeechRecognition;
 
-export const voiceSupported = Ctor !== undefined;
+// Listening works with the browser's recognition, or through the Core when the host gave this Panel the pairing token.
+export const voiceSupported = hasCoreListen() || Ctor !== undefined;
 
 let rec: RecognitionLike | null = null;
 let finalText = "";
@@ -54,7 +56,45 @@ export function handleTranscript(text: string): void {
   st.send({ type: "user.message", text: t, source: "voice" });
 }
 
+
+function note(text: string): void {
+  useStore.setState((s) => ({
+    transcript: [...s.transcript, { kind: "note", id: `v${Date.now()}`, text, tone: "error" as const }],
+  }));
+}
+
+// Core recording: idle -> recording (hold) -> transcribing (release) -> idle.
+let coreState: "idle" | "recording" | "transcribing" = "idle";
+let coreStart: Promise<string | null> | null = null;
+
+function startCore(): void {
+  const st = useStore.getState();
+  if (coreState !== "idle") return;
+  interruptNarration(); // barge-in
+  coreState = "recording";
+  st.setListening(true);
+  coreStart = coreListenStart();
+  void coreStart.then((err) => {
+    if (!err) return;
+    coreState = "idle";
+    useStore.getState().setListening(false);
+    note(err);
+  });
+}
+
+async function stopCore(): Promise<void> {
+  if (coreState !== "recording") return;
+  coreState = "transcribing";
+  useStore.getState().setListening(true, "Transcribing...");
+  if (await coreStart) return; // the start failed and was reported
+  const r = await coreListenStop();
+  coreState = "idle";
+  useStore.getState().setListening(false);
+  if ("error" in r) note(r.error);
+  else handleTranscript(r.text);
+}
 export function startListening(): void {
+  if (hasCoreListen()) return startCore();
   const st = useStore.getState();
   if (!Ctor || st.listening) return;
   interruptNarration(); // barge-in: talking over the tutor stops it
@@ -93,5 +133,9 @@ export function startListening(): void {
 }
 
 export function stopListening(): void {
+  if (hasCoreListen()) {
+    void stopCore();
+    return;
+  }
   rec?.stop();
 }

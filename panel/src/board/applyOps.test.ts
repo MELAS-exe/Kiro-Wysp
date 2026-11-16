@@ -63,3 +63,18 @@ describe("applyPatch", () => {
     expect(r2.board.annotations).toHaveLength(0);
   });
 });
+
+describe("short nodes (regression: a concept without props_view blanked the Panel)", () => {
+  it("fills the fields the Core models default", () => {
+    const short = { id: "c:s1", ref: null, kind: "step", label: "Describe", provenance: "illustrative", confidence: 1, order: 0 };
+    const ops = [{ op: "add_node", node: short }] as unknown as BoardOp[];
+    const r = applyPatch(emptyBoard(), { base_version: 0, version: 1, ops });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const n = r.board.nodes[0];
+      expect(n?.props_view).toEqual([]);
+      expect(n?.badges).toEqual([]);
+      expect(n?.group).toBeNull();
+    }
+  });
+});

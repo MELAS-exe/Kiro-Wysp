@@ -1,8 +1,9 @@
 // Panel state. Components only render this store and send protocol messages: no tutoring logic here.
 import { create } from "zustand";
 import { applyPatch, emptyBoard } from "./board/applyOps";
+import { preferredAdapter } from "./coreVoice";
 import { CoreSocket, coreUrl } from "./protocol";
-import type { AdapterInfo, Board, CoreMessage, LogLevel, PanelMessage, PermissionRequest, Segment } from "./protocol";
+import type { AdapterInfo, Board, CoreMessage, ExploreState, LogLevel, PanelMessage, PermissionRequest, Segment } from "./protocol";
 
 // queued: not spoken yet (hidden); skipped: cancelled before it was spoken (hidden, Continue replays it).
 export type SegState = "queued" | "playing" | "played" | "cancelled" | "skipped";
@@ -40,7 +41,9 @@ interface PanelState {
   listening: boolean;
   interim: string;
   selectedNode: string | null;
-  mode: "side" | "full";
+  // One thing fills the panel at a time: the conversation or the diagram.
+  view: "chat" | "board";
+  explore: ExploreState | null;
 
   handle: (m: CoreMessage) => void;
   send: (m: PanelMessage) => boolean;
@@ -52,7 +55,7 @@ interface PanelState {
   cancelNarration: (fromIndex?: number) => void;
   addUser: (text: string, source: string) => void;
   setSelected: (id: string | null) => void;
-  setMode: (m: "side" | "full") => void;
+  setView: (v: "chat" | "board") => void;
   dismissPermission: () => void;
   dismissClarification: () => void;
 }
@@ -61,6 +64,7 @@ let socket: CoreSocket | null = null;
 let counter = 0;
 const nextId = (p: string) => `${p}${++counter}`;
 
+let asked = false; // the host's preferred adapter is requested once per page load
 export const useStore = create<PanelState>((set, get) => ({
   connected: false,
   session: null,
@@ -77,7 +81,8 @@ export const useStore = create<PanelState>((set, get) => ({
   listening: false,
   interim: "",
   selectedNode: null,
-  mode: window.innerWidth >= 900 ? "full" : "side",
+  view: "chat",
+  explore: null,
 
   send: (m) => socket?.send(m) ?? false,
   setVoiceOn: (on) => set({ voiceOn: on }),
@@ -104,7 +109,7 @@ export const useStore = create<PanelState>((set, get) => ({
   addUser: (text, source) =>
     set((s) => ({ clarification: null, transcript: [...s.transcript, { kind: "user", id: nextId("u"), text, source }] })),
   setSelected: (id) => set({ selectedNode: id }),
-  setMode: (mode) => set({ mode }),
+  setView: (view) => set({ view }),
   dismissPermission: () => set({ permission: null }),
   dismissClarification: () => set({ clarification: null }),
 
@@ -126,6 +131,10 @@ export const useStore = create<PanelState>((set, get) => ({
         break;
       case "adapters.list":
         set({ adapters: m.adapters });
+        if (preferredAdapter && !asked && m.adapters.some((a) => a.adapter_id === preferredAdapter && a.connected)) {
+          asked = true;
+          if (get().session?.active_adapter !== preferredAdapter) get().send({ type: "adapter.activate", adapter_id: preferredAdapter });
+        }
         break;
       case "status":
         set({ status: m.state, activity: m.state === "idle" ? "" : get().activity });
@@ -140,21 +149,32 @@ export const useStore = create<PanelState>((set, get) => ({
         else set({ clarification: null });
         break;
       }
+      case "explore.state": {
+        const { type: _t, ...state } = m;
+        set({ explore: state });
+        break;
+      }
       case "board.snapshot":
         set({ board: m.board });
         break;
       case "board.patch": {
         const r = applyPatch(get().board, m.patch);
-        if (r.ok) set({ board: r.board });
+        if (r.ok) {
+          // New elements appeared: show them. Updates to what is already there leave the view alone.
+          const grew = r.board.nodes.length > get().board.nodes.length;
+          set({ board: r.board, ...(grew ? { view: "board" as const } : {}) });
+        }
         else if (r.reason === "gap") get().send({ type: "board.snapshot_request" });
         break;
       }
-      case "narration.segment":
+      case "narration.segment": {
+        const segment = { ...m.segment, speaker: m.speaker !== false };
         set((s) => ({
-          queue: [...s.queue, m.segment],
-          transcript: [...s.transcript, { kind: "wysp", id: nextId("w"), segment: m.segment, state: "queued" }],
+          queue: [...s.queue, segment],
+          transcript: [...s.transcript, { kind: "wysp", id: nextId("w"), segment, state: "queued" }],
         }));
         break;
+      }
       case "narration.cancel":
         get().cancelNarration(m.from_index);
         break;

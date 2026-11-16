@@ -1,6 +1,6 @@
 // Pure board operations: the TypeScript twin of core/src/wysp_core/board/ops.py.
 // Patches are applied in version order; a version gap asks the Core for a fresh snapshot.
-import type { Board, BoardOp, BoardPatch } from "../protocol";
+import type { Board, BoardNode, BoardOp, BoardPatch } from "../protocol";
 
 export const MAX_NODES = 60;
 
@@ -8,12 +8,26 @@ export function emptyBoard(): Board {
   return { version: 0, layout: "graph", focus: [], nodes: [], edges: [], steps: [], annotations: [], stale: false };
 }
 
+/** The Core sends complete nodes, but a short one must never blank the Panel: fill what the models default. */
+function completeNode(n: BoardNode): BoardNode {
+  return {
+    ...n,
+    ref: n.ref ?? null,
+    confidence: n.confidence ?? 1,
+    props_view: n.props_view ?? [],
+    group: n.group ?? null,
+    badges: n.badges ?? [],
+    order: n.order ?? null,
+  };
+}
+
 function applyOp(b: Board, op: BoardOp): void {
   switch (op.op) {
     case "add_node": {
-      const i = b.nodes.findIndex((n) => n.id === op.node.id);
-      if (i >= 0) b.nodes[i] = op.node;
-      else b.nodes.push(op.node);
+      const node = completeNode(op.node);
+      const i = b.nodes.findIndex((n) => n.id === node.id);
+      if (i >= 0) b.nodes[i] = node;
+      else b.nodes.push(node);
       break;
     }
     case "remove_node":

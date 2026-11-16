@@ -87,6 +87,8 @@ export interface Segment {
   text: string;
   marker: string | null;
   cues: Cue[];
+  // Set by the Panel from the message: false when another Panel is the one that speaks (captions only here).
+  speaker?: boolean;
 }
 export interface PermissionRequest {
   type: "permission.request";
@@ -126,13 +128,26 @@ export type CoreMessage =
   | { type: "chat.user"; text: string; source: string }
   | { type: "board.snapshot"; board: Board }
   | { type: "board.patch"; patch: BoardPatch }
-  | { type: "narration.segment"; segment: Segment }
+  | { type: "narration.segment"; segment: Segment; speaker?: boolean }
   | { type: "narration.cancel"; turn_id: string; from_index: number }
   | { type: "clarification"; question: string; options: string[] }
   | PermissionRequest
   | { type: "permission.resolved"; request_id: string; approved: boolean; by: string }
   | { type: "evidence.added"; evidence: Evidence; title: string; scope: string }
+  | ({ type: "explore.state" } & ExploreState)
   | { type: "error"; code: string; message: string };
+
+/** Project exploration (the code map, then the study): the Core asks first and reports progress. */
+export interface ExploreState {
+  phase: "none" | "offer" | "mapping" | "studying" | "ready" | "declined" | "stopped" | "failed";
+  note: string;
+  files: number;
+  folders: number;
+  symbols: number;
+  read: number;
+  briefs: number;
+  studied_at: string | null;
+}
 
 export type PanelMessage =
   | { type: "user.message"; text: string; source: "typed" | "voice" }
@@ -146,7 +161,9 @@ export type PanelMessage =
   | { type: "adapter.activate"; adapter_id: string }
   | { type: "board.snapshot_request" }
   | { type: "undo.last" }
-  | { type: "settings.update"; lang?: string; logging?: LogLevel };
+  | { type: "settings.update"; lang?: string; logging?: LogLevel }
+  | { type: "explore.start" }
+  | { type: "explore.stop" };
 
 /** WebSocket to the Core with automatic reconnection (exponential backoff, 5 s maximum). */
 export class CoreSocket {

@@ -6,7 +6,9 @@ export const NODE_W = 210;
 const ROW_H = 15;
 
 export function nodeHeight(n: BoardNode): number {
-  return 84 + Math.min(n.props_view.length, 6) * ROW_H;
+  // Header and padding, the label (wrapped at about 24 characters per line), then the property rows.
+  const labelLines = Math.max(1, Math.ceil(n.label.length / 24));
+  return 60 + labelLines * 20 + Math.min(n.props_view.length, 6) * ROW_H;
 }
 
 export type Positions = Record<string, { x: number; y: number }>;
@@ -30,12 +32,17 @@ function stackLayout(board: Board): Positions {
   return pos;
 }
 
-function sequenceLayout(board: Board): Positions {
+function sequenceLayout(board: Board, portrait: boolean): Positions {
   const pos: Positions = {};
+  let y = 0;
   [...board.nodes]
     .sort((a, b) => (a.order ?? 1e6) - (b.order ?? 1e6) || a.id.localeCompare(b.id))
     .forEach((n, i) => {
-      pos[n.id] = { x: i * (NODE_W + 60), y: 0 };
+      // A narrow, tall panel reads top to bottom; a wide one left to right.
+      if (portrait) {
+        pos[n.id] = { x: 0, y };
+        y += nodeHeight(n) + 44;
+      } else pos[n.id] = { x: i * (NODE_W + 60), y: 0 };
     });
   return pos;
 }
@@ -64,16 +71,16 @@ async function elkLayout(board: Board, direction: "DOWN" | "RIGHT"): Promise<Pos
   return pos;
 }
 
-export async function computeLayout(board: Board): Promise<Positions> {
+export async function computeLayout(board: Board, portrait = false): Promise<Positions> {
   if (board.nodes.length === 0) return {};
   switch (board.layout) {
     case "stack":
       return stackLayout(board);
     case "sequence":
-      return sequenceLayout(board);
+      return sequenceLayout(board, portrait);
     case "tree":
       return elkLayout(board, "DOWN");
     default:
-      return elkLayout(board, "RIGHT");
+      return elkLayout(board, portrait ? "DOWN" : "RIGHT");
   }
 }

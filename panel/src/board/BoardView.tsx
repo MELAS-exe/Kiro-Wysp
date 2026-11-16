@@ -14,6 +14,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { memo, useEffect, useMemo, useState } from "react";
 import type { Annotation, Board, BoardNode } from "../protocol";
+import { LiveCaption } from "../components/Caption";
 import { useStore } from "../store";
 import { NODE_W, computeLayout, type Positions } from "./layout";
 
@@ -82,13 +83,20 @@ function Flow({ board }: { board: Board }) {
   const setSelected = useStore((s) => s.setSelected);
   const [positions, setPositions] = useState<Positions>({});
   const { fitView } = useReactFlow();
-  const vertical = board.layout === "tree" || board.layout === "stack";
+  // Portrait (a narrow tool window): flows run top to bottom.
+  const [portrait, setPortrait] = useState(() => window.innerHeight > window.innerWidth);
+  useEffect(() => {
+    const on = () => setPortrait(window.innerHeight > window.innerWidth);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  const vertical = board.layout === "tree" || board.layout === "stack" || portrait;
 
   // The layout key ignores props_view text so that value updates do not re-run ELK.
-  const layoutKey = JSON.stringify([board.layout, board.nodes.map((n) => [n.id, n.order, n.props_view.length]), board.edges.map((e) => e.id)]);
+  const layoutKey = JSON.stringify([board.layout, portrait, board.nodes.map((n) => [n.id, n.order, n.props_view.length]), board.edges.map((e) => e.id)]);
   useEffect(() => {
     let alive = true;
-    computeLayout(board).then((p) => {
+    computeLayout(board, portrait).then((p) => {
       if (!alive) return;
       setPositions(p);
       setTimeout(() => fitView({ duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 300, padding: 0.2 }), 80);
@@ -146,7 +154,7 @@ function Flow({ board }: { board: Board }) {
       edges={edges}
       nodeTypes={nodeTypes}
       fitView
-      minZoom={0.3}
+      minZoom={0.08}
       maxZoom={1.6}
       nodesConnectable={false}
       onNodeClick={(_, n) => {
@@ -155,8 +163,8 @@ function Flow({ board }: { board: Board }) {
       }}
       colorMode="dark"
     >
-      <Background gap={24} color="#1e293b" />
-      <Controls showInteractive={false} />
+      <Background gap={24} color="#2a1766" />
+      <Controls showInteractive={false} position="bottom-right" />
     </ReactFlow>
   );
 }
@@ -195,7 +203,7 @@ export function BoardView() {
       {board.stale && <div className="stale">The application disconnected: this board may be out of date.</div>}
       {board.nodes.length === 0 ? (
         <div className="empty">
-          <div className="orb" />
+          <img className="mascot" src="/wysp-mark.png" alt="" width={96} height={96} />
           <p>Ask me about what you are working on.</p>
           <p className="muted">Real elements of your project will appear here, marked as observed.</p>
         </div>
@@ -205,7 +213,10 @@ export function BoardView() {
         </ReactFlowProvider>
       )}
       <Steps board={board} />
-      <Legend />
+      <div className="board-bottom">
+        <LiveCaption />
+        <Legend />
+      </div>
     </div>
   );
 }

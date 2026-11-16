@@ -1,41 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { interruptNarration } from "../narration";
 import { useStore } from "../store";
+import { ExploreCard } from "./ExploreCard";
 import { startListening, stopListening, voiceSupported } from "../voice";
 
-function LiveCaption() {
-  const current = useStore((s) => s.current);
-  const status = useStore((s) => s.status);
-  const activity = useStore((s) => s.activity);
-  const listening = useStore((s) => s.listening);
-  const interim = useStore((s) => s.interim);
-  if (listening) return <div className="caption listening">🎙 {interim || "Listening…"}</div>;
-  if (current)
-    return (
-      <div className="caption" aria-live="polite">
-        {current.marker && <span className="marker">{current.marker}</span>}
-        {current.text}
-      </div>
-    );
-  if (status !== "idle")
-    return (
-      <div className="caption dim" aria-live="polite">
-        <span className="dots" aria-hidden /> {activity || (status === "thinking" ? "Thinking…" : status === "acting" ? "Working in the application…" : "")}
-      </div>
-    );
-  return <div className="caption dim">Hold <kbd>Space</kbd> to talk, or type below. <kbd>Esc</kbd> interrupts me.</div>;
-}
-
+/** The conversation, ChatGPT style: your messages in bubbles on the right, Wysp's words as plain text. */
 export function Chat() {
   const transcript = useStore((s) => s.transcript);
   const status = useStore((s) => s.status);
+  const activity = useStore((s) => s.activity);
   const send = useStore((s) => s.send);
   const addUser = useStore((s) => s.addUser);
+  const setView = useStore((s) => s.setView);
   const clarification = useStore((s) => s.clarification);
   const dismissClarification = useStore((s) => s.dismissClarification);
-  const voiceOn = useStore((s) => s.voiceOn);
-  const setVoiceOn = useStore((s) => s.setVoiceOn);
   const listening = useStore((s) => s.listening);
+  const interim = useStore((s) => s.interim);
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   // Show Wysp's sentences as they are spoken, not all at once when they arrive.
@@ -45,7 +25,7 @@ export function Chat() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [visible.length, clarification]);
+  }, [visible.length, clarification, busy]);
 
   const submit = (value: string) => {
     const v = value.trim();
@@ -54,17 +34,25 @@ export function Chat() {
     send({ type: "user.message", text: v, source: "typed" });
     dismissClarification();
     setText("");
+    setView("chat");
   };
 
   return (
     <section className="chat" aria-label="Conversation">
-      <LiveCaption />
       <div className="transcript" role="log" aria-live="off">
+        {visible.length === 0 && !clarification && (
+          <div className="hello">
+            <img className="mascot" src="/wysp-mark.png" alt="" width={96} height={96} />
+            <p>Ask about your project</p>
+            <p className="muted small">
+              Hold <kbd>Space</kbd> to talk. <kbd>Esc</kbd> interrupts.
+            </p>
+          </div>
+        )}
         {visible.map((t) => {
           if (t.kind === "user")
             return (
               <div key={t.id} className="msg user">
-                {t.source === "voice" && <span aria-label="spoken">🎙 </span>}
                 {t.text}
               </div>
             );
@@ -78,7 +66,7 @@ export function Chat() {
           if (t.kind === "evidence")
             return (
               <div key={t.id} className={`msg evidence ${t.ok ? "ok" : "bad"}`}>
-                {t.ok ? "✓ Verified in the application" : "✕ Could not be verified"}: {t.title}
+                {t.ok ? "Verified in the application" : "Could not be verified"}: {t.title}
               </div>
             );
           return (
@@ -99,26 +87,28 @@ export function Chat() {
             </div>
           </div>
         )}
+        {busy && (
+          <div className="msg wait" aria-live="polite">
+            <span className="dots" aria-hidden />
+            {activity || (status === "thinking" ? "Thinking" : status === "acting" ? "Working in the application" : "")}
+          </div>
+        )}
         <div ref={endRef} />
       </div>
-      <div className="controls">
-        {busy && (
-          <button className="secondary" onClick={interruptNarration} aria-label="Interrupt (Esc)">
-            ⏹ Interrupt
-          </button>
-        )}
-        {!busy && hasCancelled && (
-          <button className="secondary" onClick={() => send({ type: "user.continue" })}>
-            ▶ Continue
-          </button>
-        )}
-        <button className="ghost" onClick={() => send({ type: "undo.last" })} title="Undo the last change Wysp made">
-          ↩ Undo Wysp's last change
-        </button>
-        <label className="toggle">
-          <input type="checkbox" checked={voiceOn} onChange={(e) => setVoiceOn(e.target.checked)} /> Voice
-        </label>
-      </div>
+      <ExploreCard />
+      {(busy || hasCancelled) && (
+        <div className="quick">
+          {busy ? (
+            <button className="secondary" onClick={interruptNarration} aria-label="Interrupt (Esc)">
+              Stop
+            </button>
+          ) : (
+            <button className="secondary" onClick={() => send({ type: "user.continue" })}>
+              Continue
+            </button>
+          )}
+        </div>
+      )}
       <form
         className="composer"
         onSubmit={(e) => {
@@ -129,24 +119,30 @@ export function Chat() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Ask about your project…"
+          placeholder={listening ? interim || "Listening..." : "Ask about your project"}
           aria-label="Message"
           autoComplete="off"
         />
         {voiceSupported && (
           <button
             type="button"
-            className={`mic${listening ? " on" : ""}`}
+            className={`icon${listening ? " on" : ""}`}
             aria-label="Hold to talk"
+            title="Hold to talk"
             onPointerDown={startListening}
             onPointerUp={stopListening}
             onPointerLeave={() => listening && stopListening()}
           >
-            🎙
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="currentColor" />
+              <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+            </svg>
           </button>
         )}
-        <button type="submit" className="primary" disabled={!text.trim()}>
-          Send
+        <button type="submit" className="icon primary" disabled={!text.trim()} aria-label="Send" title="Send">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </form>
     </section>
