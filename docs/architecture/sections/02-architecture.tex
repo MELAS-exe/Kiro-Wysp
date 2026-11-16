@@ -1,186 +1,98 @@
-\section{Architecture technique}
+﻿\section{Architecture}\label{sec:architecture}
 
-\subsection{Vue d'ensemble}
+\subsection{Components}
 
-Wysp tourne entièrement en local. Un processus Python, \textbf{Wysp Core}, sert le \textbf{panneau} (application React ouverte dans une fenêtre Chrome à côté du logiciel) et accepte les connexions des \textbf{adaptateurs}. Chaque adaptateur vit dans son application hôte : une extension Blender, une extension Chrome. Le cœur appelle un fournisseur LLM et un service de synthèse vocale configurés par variables d'environnement.
+Wysp runs entirely on the user's machine. One Python process, the Core, serves the Panel and accepts adapter connections. Each adapter lives inside its host application and dials out to the Core. Figure~\ref{fig:system} shows the parts; this table says what each one is.
 
-\begin{figure}[h]
+\begin{xltabular}{\textwidth}{@{}L{3.0cm}L{2.5cm}Y@{}}
+\toprule
+\textbf{Component} & \textbf{Language} & \textbf{Role} \\
+\midrule
+Contract & Python (Pydantic) & Models of every message, JSON Schema export, predicate language, state digest. Single source of truth for the SDKs and the test kit. \\
+Wysp Core & Python 3.13 & Gateway, session, orchestrator, board, narration, trust, verification, pedagogy, LLM providers, voice, MCP endpoint. FastAPI and uvicorn. \\
+Panel & TypeScript, React 19 & A minimal shell: chat or diagram, captions, voice, permission dialog, lesson and exercise cards. Board drawn with React Flow and ELK layouts, state in Zustand. \\
+Adapter SDKs & Python, TypeScript & WebSocket client, action registry with parameter validation, origin tagging, main-thread dispatcher (Python). \\
+Contract Test Kit & Python & Plays the Core's part against any adapter and checks the contract. Includes a mock Kanban adapter. \\
+Tutors & Python, Kotlin, TypeScript & Blender extension, IntelliJ plugin, Chrome extension, each with its profile. \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Trust boundaries}
+
+Wysp has one rule for crossing a boundary: data from the other side is data, never an instruction. Figure~\ref{fig:boundaries} shows the zones and what protects each channel.
+
+\begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  font=\sffamily\scriptsize,
-  box/.style={draw=#1, fill=#1!8, rounded corners=2pt, align=center, minimum height=0.62cm, inner sep=3pt},
-  mod/.style={draw=pa!70, fill=white, rounded corners=1.5pt, align=center, minimum width=2.05cm, minimum height=0.55cm, inner sep=2pt},
-  lab/.style={font=\sffamily\scriptsize\itshape, text=muted},
-  arr/.style={-{Stealth[length=2.2mm]}, thick, color=surface},
-  biarr/.style={{Stealth[length=2.2mm]}-{Stealth[length=2.2mm]}, thick, color=surface}]
-
-  % Core
-  \node[draw=pa, fill=pa!5, rounded corners=4pt, minimum width=9.0cm, minimum height=4.5cm] (core) at (0,0.5) {};
-  \node[font=\sffamily\bfseries\small, text=pa] at (0,2.47) {Wysp Core (Python, FastAPI, asyncio)};
-  \node[draw=pa!70, fill=pa!12, rounded corners=1.5pt, minimum width=8.7cm, minimum height=0.42cm, inner sep=1pt] (ctr) at (0,1.98) {contract : modèles Pydantic, prédicats, empreinte d'état (partagés avec les SDK et le kit)};
-  \node[mod, minimum width=1.5cm, minimum height=2.85cm] (gw) at (-3.65,0.12) {gateway\\[2pt]\tiny JSON-RPC\\\tiny registre\\\tiny jetons};
-  \node[mod, minimum width=1.5cm, minimum height=2.85cm] (ui) at (3.65,0.12) {ui\_api\\[2pt]\tiny /ws/ui\\\tiny /api/tts\\\tiny panneau};
-  \node[mod, minimum width=1.7cm] (sess)  at (-1.9, 1.12) {session\\\tiny bus d'événements};
-  \node[mod, minimum width=1.7cm] (orch)  at ( 0.0, 1.12) {orchestrator\\\tiny tours, outils};
-  \node[mod, minimum width=1.7cm] (board) at ( 1.9, 1.12) {board\\\tiny projection};
-  \node[mod, minimum width=1.7cm] (trust) at (-1.9, 0.12) {trust\\\tiny porte, undo, audit};
-  \node[mod, minimum width=1.7cm] (verif) at ( 0.0, 0.12) {verification\\\tiny prédicats, preuves};
-  \node[mod, minimum width=1.7cm] (narr)  at ( 1.9, 0.12) {narration\\\tiny segments};
-  \node[mod, minimum width=1.7cm] (ped)   at (-1.9,-0.88) {pedagogy\\\tiny leçons, apprenant};
-  \node[mod, minimum width=1.7cm] (llm)   at ( 0.0,-0.88) {llm\\\tiny fournisseurs};
-  \node[mod, minimum width=1.7cm] (store) at ( 1.9,-0.88) {store\\\tiny \textasciitilde/.wysp};
-
-  % Adapters
-  \node[box=pc, minimum width=2.6cm, minimum height=1.35cm] (bl) at (-6.9, 0.95) {};
-  \node[font=\sffamily\bfseries\scriptsize, text=pc] at (-6.9, 1.42) {Blender 5.2 LTS};
-  \node[box=pc, fill=white, minimum width=2.3cm] (bla) at (-6.9, 0.8) {Extension Wysp\\\tiny bpy, timers, gpu};
-  \node[box=pc, minimum width=2.6cm, minimum height=1.35cm] (ch) at (-6.9,-0.75) {};
-  \node[font=\sffamily\bfseries\scriptsize, text=pc] at (-6.9,-0.28) {Chrome};
-  \node[box=pc, fill=white, minimum width=2.3cm] (cha) at (-6.9,-0.9) {Extension MV3\\\tiny service worker, script};
-
-  % Panel
-  \node[box=pb, minimum width=2.6cm, minimum height=2.85cm] (panel) at (6.8, 0.12) {};
-  \node[font=\sffamily\bfseries\scriptsize, text=pb] at (6.8, 1.3) {Panneau (React)};
-  \node[box=pb, fill=white, minimum width=2.3cm] at (6.8, 0.75) {Tableau\\\tiny React Flow, ELK};
-  \node[box=pb, fill=white, minimum width=2.3cm] at (6.8, 0.0) {Sous-titres, voix};
-  \node[box=pb, fill=white, minimum width=2.3cm] at (6.8,-0.75) {Permissions\\\tiny exercices, leçons};
-
-  % External
-  \node[box=okgreen, minimum width=2.4cm] (prof) at (-1.9,-2.75) {Profils YAML\\\tiny apps/*/profile};
-  \node[box=muted, minimum width=2.4cm] (prov) at (0.75,-2.75) {Fournisseur LLM\\\tiny appels d'outils};
-  \node[box=muted, minimum width=2.4cm] (tts) at (3.65,-2.75) {Synthèse vocale\\\tiny clé côté serveur};
-
-  % Arrows
-  \draw[biarr] (bla.east) -- (gw.west |- bla.east);
-  \draw[biarr] (cha.east) -- (gw.west |- cha.east);
-  \node[font=\sffamily\tiny, text=muted, align=center] at (-5.05,-0.05) {JSON-RPC\\WebSocket};
-  \draw[biarr] (ui.east |- 0,0.75) -- node[lab, above] {/ws/ui} (panel.west |- 0,0.75);
-  \draw[arr] (prof.north) -- (ped.south);
-  \draw[arr] (llm.south) -- (llm.south |- prov.north);
-  \draw[arr] (ui.south) -- (tts.north);
-  \node[lab] at (0.42,-1.78) {HTTPS};
-  \node[lab] at (4.12,-1.78) {HTTPS};
+\begin{tikzpicture}[fig]
+  \node[zone=inkpurple, minimum width=15.6cm, minimum height=5.6cm] (local) at (0,0.2) {};
+  \node[font=\sffamily\bfseries\scriptsize, text=inkpurple, anchor=north west] at (-7.7,2.85) {The user's machine (Core bound to 127.0.0.1)};
+  \node[zone=lilacdeep, minimum width=3.3cm, minimum height=2.6cm] (host) at (-5.6,0.3) {};
+  \node[mod, minimum width=2.7cm, minimum height=0.9cm] (app) at (-5.6,0.95) {Host application\\\tiny Blender, IDE, browser};
+  \node[mod, minimum width=2.7cm, minimum height=0.9cm] (adp) at (-5.6,-0.3) {Adapter\\\tiny closed action catalog};
+  \node[mod, draw=inkpurple, fill=inkpurple!8, minimum width=3.2cm, minimum height=3.3cm, align=center] (core) at (-0.6,0.2) {\textbf{Wysp Core}\\[3pt]\tiny permission gate\\\tiny provenance validator\\\tiny verification\\\tiny audit log\\\tiny redaction};
+  \node[zone=pinkdeep, minimum width=3.0cm, minimum height=1.4cm] (pn) at (4.1,1.3) {};
+  \node[font=\sffamily\scriptsize] at (4.1,1.3) {Panel\\\tiny browser, JCEF, Blender UI};
+  \node[zone=muted, minimum width=3.0cm, minimum height=1.4cm] (ag) at (4.1,-0.8) {};
+  \node[font=\sffamily\scriptsize, align=center] at (4.1,-0.8) {Your AI agent (optional)\\\tiny MCP client, local process};
+  \node[zone=muted, minimum width=9.4cm, minimum height=1.5cm, dashed] (cloud) at (-2.4,-4.0) {};
+  \node[font=\sffamily\scriptsize, align=center] at (-2.4,-4.0) {\textbf{Remote, only if configured}\\\tiny LLM provider (conversation, observation excerpts, code snippets)\\\tiny Groq Whisper (microphone clips, push-to-talk only)};
+  \draw[biarr] (adp.east) -- node[lab, above, align=center] {\code{/ws/adapter}\\token + Origin} (core.west |- adp.east);
+  \draw[biarr] (core.east |- pn.west) -- node[lab, above] {\code{/ws/ui} Origin} (pn.west);
+  \draw[biarr] (core.east |- ag.west) -- node[lab, above, align=center] {\code{/mcp}\\token + Origin} (ag.west);
+  \draw[arr, color=pinkdeep] (core.south) -- ++(0,-1.1) -- node[lab, right, pos=0.55] {HTTPS} (cloud.north -| core.south);
 \end{tikzpicture}
-\caption{Vue d'ensemble. Seuls les adaptateurs (orange) et les profils (vert) dépendent de l'application.}
+\caption{Zones and channels. The adapter, the Panel and the agent are separate clients of the Core. Only the dashed zone leaves the machine, and only when the user configured it.}\label{fig:boundaries}
 \end{figure}
 
-\begin{xltabular}{\textwidth}{@{}L{3.1cm}L{2.2cm}Y L{1.2cm}@{}}
+\begin{xltabular}{\textwidth}{@{}L{3.2cm}L{3.9cm}Y@{}}
 \toprule
-\textbf{Composant} & \textbf{Langage} & \textbf{Rôle} & \textbf{Resp.} \\
+\textbf{Channel} & \textbf{Protection} & \textbf{Notes} \\
 \midrule
-Contrat & Python (Pydantic) & Modèles, export JSON Schema, prédicats, empreinte d'état & \PA \\
-Wysp Core & Python 3.13 & Passerelle, session, orchestrateur, LLM, tableau, narration, confiance, pédagogie, vérification & \PA \\
-Kit de contrat, adaptateur factice & Python & Tests contre chaque adaptateur, application Kanban fictive & \PA \\
-Panneau & TypeScript, React 19 & Tableau, sous-titres, voix, dialogues & \PB \\
-Tableau de bord de démo & TypeScript, React & Application web cible « Haunted Shop Analytics » & \PB \\
-SDK adaptateur & Python et TypeScript & Client WebSocket, registre d'actions, validation & \PC \\
-Tuteur Blender & Python (bpy) & Extension Blender 5.2 et scène de démo (\PC), contenu du profil (\PB) & \PC{} \PB \\
-Tuteur web & TypeScript & Extension Chrome MV3 (\PC), profil web (\PB) & \PC{} \PB \\
+\code{WS /ws/adapter} & Pairing token in \code{wysp.hello}; Origin allowlist & Token is \code{~/.wysp/token}, 32 random bytes, created once. A missing Origin (native clients) is allowed. \\
+\code{WS /ws/ui} & Origin allowlist & No token. The first Panel is elected as the one that speaks. \\
+\code{POST /api/listen/*} & Origin and token header \code{x-wysp-token} & Turns the microphone on, so it needs the token. \\
+\code{POST /api/tts}, \code{/api/ocr} & Origin allowlist & Local voice and local text recognition only. No proxying of URLs. \\
+\code{/mcp} & Token (Bearer or \code{X-Wysp-Token}), Origin, loopback host check & Served in external mode, or with \code{--mcp}. \\
 \bottomrule
 \end{xltabular}
 
-\subsection{Principes directeurs}
+The Origin allowlist contains the Core's own origin, the Panel dev server, and anything listed in \code{WYSP\_ALLOWED\_ORIGINS} (the Chrome extension's origin, for instance). The CLI refuses to bind to a non-loopback address unless \code{--unsafe-bind} is given.
 
-\begin{enumerate}[leftmargin=1.2em]
-  \item \textbf{Le cœur ignore les applications.} Aucun import d'hôte (\code{bpy}, API du navigateur) ni vocabulaire d'application dans \file{core/}. Un script vérifie cette règle à chaque modification, en CI et via un hook Kiro.
-  \item \textbf{Le LLM décide quoi dire et quoi montrer ; le cœur décide ce qui est vrai et ce qui est permis.} Le LLM n'a aucun outil d'exécution directe. Il propose ; la porte de permission décide ; l'adaptateur exécute ; le vérificateur contrôle.
-  \item \textbf{Une seule source de vérité pour le contrat.} Modèles Pydantic, puis JSON Schema, puis types TypeScript générés. La CI échoue si les fichiers générés ne correspondent plus.
-  \item \textbf{Les connaissances d'application sont des données.} Le profil (YAML) décrit compétences, concepts, leçons et exercices. Les prompts du cœur restent génériques.
-  \item \textbf{Tout est testable sans l'application réelle} : adaptateur factice, LLM scénarisé, enregistrements d'échanges.
-  \item \textbf{Local d'abord.} Écoute sur \code{127.0.0.1}, jeton d'appairage, liste blanche d'origines, clés côté serveur.
+\subsection{The data flow of a turn}\label{sec:turn}
+
+A \emph{turn} starts when the user sends a message and ends when Wysp has finished answering. Figure~\ref{fig:turn} shows the six stages, and the list below explains what the code does in each.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[fig, node distance=4mm]
+  \tikzset{st/.style={draw=lilacdeep, fill=lilac!18, rounded corners=3pt, minimum width=2.45cm, minimum height=1.25cm, align=center, inner sep=3pt}}
+  \node[st] (o) {\textbf{1 Observe}\\\tiny adapter.observe\\\tiny survey, focus};
+  \node[st, right=of o] (r) {\textbf{2 Reason}\\\tiny LLM + tools\\\tiny at most 8 rounds};
+  \node[st, right=of r] (n) {\textbf{3 Narrate}\\\tiny segments + cues\\\tiny captions, speech};
+  \node[st, right=of n] (b) {\textbf{4 Board}\\\tiny projection\\\tiny provenance check};
+  \node[st, below=9mm of n, fill=pink!22, draw=pinkdeep] (g) {\textbf{5 Guide or do}\\\tiny propose\_action\\\tiny permission gate};
+  \node[st, left=of g, fill=pink!22, draw=pinkdeep] (e) {\textbf{execute}\\\tiny adapter.execute\\\tiny undo token};
+  \node[st, left=of e] (v) {\textbf{6 Verify}\\\tiny fresh observation\\\tiny predicates, evidence};
+  \draw[arr] (o) -- (r); \draw[arr] (r) -- (n); \draw[arr] (n) -- (b);
+  \draw[arr] (r.south) |- ($(r.south)+(0,-0.45)$) -| (g.north west);
+  \draw[arr] (g) -- (e); \draw[arr] (e) -- (v);
+  \draw[arr, dashed] (v.north) -- ++(0,0.5) -| node[lab, above, pos=0.2] {fail: auto-undo, report} (o.south);
+\end{tikzpicture}
+\caption{One turn. Lilac stages run in the Core's own logic; pink stages go through the permission gate and the adapter. The verify stage feeds its result back to the conversation.}\label{fig:turn}
+\end{figure}
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Observe.} When an adapter becomes the active one, the survey runs: the Core fetches the action catalog, the context and one full observation, and keeps a bounded summary (at most 4000 characters in the prompt). For each turn the system prompt also carries a fresh observation of the focus (up to 20 entities). Sensitive entities are counted, never named.
+  \item \textbf{Reason.} The orchestrator builds the messages (system prompt, the last 12 history messages, the user text) and calls the language model with the tools that the adapter's capabilities allow. It loops for at most 8 rounds. A transient LLM error is retried once after 1.5 s. If the model writes a tool call as prose, the Core tries to recover it. Plain text from the model is narrated, so models that skip the \code{narrate} tool still work.
+  \item \textbf{Narrate.} Speech is cut into segments of at most 300 characters. A segment can carry \emph{cues} (``at word 7, focus this node'') so that the board follows the voice. If the user interrupts, unplayed segments are kept and can be resumed.
+  \item \textbf{Board.} \code{show\_entities} does not let the model write nodes. The Core \emph{projects} the observed entities the model selected, and the provenance validator downgrades any \pobs{} node without a matching ref in this session's observations. The Panel receives a patch.
+  \item \textbf{Guide or do.} \code{propose\_action} validates the parameters against the action's JSON Schema. In guide mode the Core installs a watch with the action's postconditions, highlights the target in the application and waits for the user. In do mode the Core asks the permission gate, shows a dry-run preview and, if approved, executes.
+  \item \textbf{Verify.} The Core observes again, evaluates the postconditions and produces \emph{evidence}. If the postconditions fail after a Wysp action, the Core undoes it and reports the failure.
 \end{enumerate}
 
-\subsection{Le contrat d'adaptateur}
+\begin{wherebox}
+\file{core/src/wysp\_core/app.py} (endpoints, Origin allowlist), \file{gateway/server.py} (handshake, heartbeat), \file{orchestrator/turn.py} (turn loop), \file{orchestrator/context.py} (prompt), \file{orchestrator/pipeline.py} (guide, do, verify, undo). Specs: \file{.kiro/specs/core-orchestrator/}.
+\end{wherebox}
 
-\subsubsection{Transport et session}
 
-Les adaptateurs sont \textbf{clients} et le cœur est \textbf{serveur}. Le Python embarqué de Blender et le service worker d'une extension Chrome savent ouvrir une connexion WebSocket sortante, alors qu'héberger un serveur y serait difficile. Les messages sont du JSON-RPC 2.0 dans les deux sens sur la même connexion.
 
-\begin{enumerate}[leftmargin=1.2em]
-  \item L'adaptateur envoie \code{wysp.hello \{manifest, token\}}. Le cœur vérifie le jeton (fichier \file{~/.wysp/token}), la version majeure du contrat et le manifeste.
-  \item L'adaptateur envoie \code{wysp.heartbeat} au moins toutes les 20\,s. Cette fréquence maintient aussi en vie le service worker Chrome (Chrome 116 et suivants). Le cœur déclare l'adaptateur déconnecté après 45\,s de silence.
-  \item Le cœur appelle les méthodes \code{adapter.*}. L'adaptateur envoie des notifications \code{event.*}.
-\end{enumerate}
-
-{\small\setlength{\tabcolsep}{4pt}
-\begin{xltabular}{\textwidth}{@{}L{3.7cm}L{3.0cm}L{2.0cm}L{0.9cm}Y@{}}
-\toprule
-\textbf{Méthode} & \textbf{Résultat} & \textbf{Capacité} & \textbf{Budget} & \textbf{Correspondance avec la note de concept} \\
-\midrule
-\code{adapter.observe} & Observation (graphe d'entités) & \code{observe} & 1\,s & \code{observe()} \\
-\code{adapter.get\_context} & Contexte compact ($\leq$ 8\,Ko) & \code{context} & 0,5\,s & \code{get\_context()} \\
-\code{adapter.get\_actions} & Catalogue d'actions & \code{actions} & 0,5\,s & \code{get\_actions()} \\
-\code{adapter.execute} & Résultat, jeton d'annulation & \code{execute} & 5\,s & \code{execute(action)} \\
-\code{adapter.undo} & Résultat & \code{undo} & 5\,s & ajouté : réversibilité \\
-\code{adapter.highlight} & accusé & \code{highlight} & 0,5\,s & ajouté : montrer dans l'application \\
-\code{adapter.verify} & Preuves & \code{verify.native} & 2\,s & \code{verify(goal)}, optionnel \\
-\code{event.state\_changed} & notification & \code{events.state} & -- & événements \\
-\code{event.selection\_changed}\newline \code{event.user\_action}\newline \code{event.navigation} & notifications & \code{events.*} & -- & événements \\
-\bottomrule
-\end{xltabular}}
-
-\code{verify(goal)} et \code{evaluate(exercise)} de la note de concept sont surtout réalisés \textbf{par le cœur} : il évalue des prédicats sur une observation fraîche. Un adaptateur peut fournir \code{adapter.verify} quand une vérification native est plus fiable (par exemple un calcul de géométrie dans Blender). Ce choix évite de réécrire la logique de vérification dans chaque adaptateur.
-
-\subsubsection{Le modèle d'observation : un graphe d'entités}
-
-Une observation contient des \textbf{entités} identifiées par une référence stable de type URI, avec un \code{kind} déclaré dans le manifeste, un parent, des propriétés JSON et une confiance entre 0 et 1. Elle contient aussi des \textbf{liens} typés et un \textbf{focus} (sélection ou élément actif).
-
-\begin{lstlisting}[language={}]
-{"observation_id": "o-118", "state_version": 42, "scope": {"level": "focus"},
- "entities": [
-  {"ref": "blender://object/Pumpkin", "kind": "object", "label": "Pumpkin",
-   "props": {"type": "MESH", "modifiers_count": 2}},
-  {"ref": "blender://object/Pumpkin/modifier/Subdivision", "kind": "modifier",
-   "label": "Subdivision", "parent": "blender://object/Pumpkin",
-   "props": {"type": "SUBSURF", "index": 0, "levels": 2, "show_viewport": true}},
-  {"ref": "blender://object/Pumpkin/modifier/Solidify", "kind": "modifier",
-   "label": "Solidify", "parent": "blender://object/Pumpkin",
-   "props": {"type": "SOLIDIFY", "index": 1, "thickness": 0.02}}],
- "links": [], "focus": ["blender://object/Pumpkin"], "truncated": false}
-\end{lstlisting}
-
-La même structure décrit une page web : \code{web://…/region\textasciitilde{}filters/combobox\textasciitilde{}region} de type \code{control}, avec \code{role}, \code{name}, \code{value} et \code{states}. Le cœur ne connaît ni les objets 3D ni les champs de formulaire : il manipule des entités. Les limites sont 500 entités et 256\,Ko par observation, avec un indicateur \code{truncated} et des comptes par type.
-
-\subsubsection{Actions, risques et post-conditions}
-
-Chaque adaptateur publie un catalogue \textbf{fermé} d'actions. Une action déclare un identifiant, une description destinée au LLM, un schéma JSON de paramètres, un niveau de risque, des post-conditions et, si l'utilisateur peut la faire lui-même, un chemin d'interface (\code{guide.ui\_path}) utilisé en mode guidé. Aucune action ne peut évaluer du code arbitraire.
-
-\begin{xltabular}{\textwidth}{@{}L{2.3cm}Y L{4.3cm}@{}}
-\toprule
-\textbf{Risque} & \textbf{Politique par défaut} & \textbf{Exemples} \\
-\midrule
-\code{read\_only} & Exécution automatique, journalisée & lecture de propriétés \\
-\code{ui\_state} & Exécution automatique, journalisée & sélectionner un objet, changer d'onglet, faire défiler \\
-\code{reversible} & Approbation : clic, « oui » vocal ou autorisation limitée à la leçon. Jeton d'annulation obligatoire & ajouter un modificateur, remplir un champ, choisir un filtre \\
-\code{irreversible} & Clic explicite avec aperçu, jamais par la voix, interdit au niveau visuel & appliquer un modificateur, cliquer un bouton quelconque \\
-\bottomrule
-\end{xltabular}
-
-\subsubsection{Langage de prédicats}
-
-Les post-conditions, les critères de réussite des exercices et les objectifs de vérification utilisent un seul langage, évalué par le cœur : des comparaisons sur une expression JMESPath, combinées par \code{all}, \code{any} et \code{not}.
-
-\begin{lstlisting}[language={}]
-{"all": [
-  {"path": "entities[?kind=='modifier' && parent=='${bindings.target}' && props.type=='BEVEL'] | length(@)",
-   "op": "gte", "value": 1},
-  {"path": "entities[?kind=='modifier' && parent=='${bindings.target}' && props.type=='BEVEL'].props.segments | [0]",
-   "op": "eq", "value": 3}]}
-\end{lstlisting}
-
-Les paramètres ne sont substitués que dans des positions autorisées, avec échappement, pour empêcher une valeur d'injecter de la syntaxe JMESPath (propriété CON-P11). L'évaluateur renvoie la valeur réelle et la valeur attendue : ce sont les éléments de la \textbf{preuve} affichée à l'utilisateur.
-
-\subsubsection{Empreinte d'état, erreurs et versions}
-
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Empreinte d'état} : SHA-256 d'un JSON canonique des entités (sans propriétés volatiles, flottants arrondis) et des liens triés. Elle définit « l'état est restauré » pour l'annulation et « rien n'a changé » pour les appels invalides.
-  \item \textbf{Erreurs} : codes JSON-RPC standard et codes Wysp de \code{-32010} à \code{-32019} (non supporté, action inconnue, cible introuvable, précondition, échec, annulation impossible, délai, occupé, version incompatible, non autorisé).
-  \item \textbf{Versions} : \code{contract\_version} commence à 1.0.0 au jalon J0. Ajout optionnel : version mineure. Changement cassant : version majeure, accord des trois personnes.
-\end{itemize}
-
-\subsubsection{Kit de tests de contrat}
-
-Le kit (\code{wysp-contract --tutor <nom>}) joue le rôle du cœur : il démarre un serveur de test, lance l'adaptateur selon \file{apps/<tuteur>/contract.fixture.yaml}, puis vérifie la poignée de main, le manifeste, les invariants des observations, le catalogue, les appels sûrs (exécution, post-conditions, annulation, empreinte), les appels invalides, l'étiquetage d'origine des événements et les budgets de temps. Il enregistre les échanges. En mode \code{--offline}, il revalide ces enregistrements contre les schémas courants : chacun sait ainsi quel tuteur casserait un changement de contrat, sans lancer Blender ni Chrome.
-
-\input{sections/02b-core}
-\input{sections/02c-adapters}

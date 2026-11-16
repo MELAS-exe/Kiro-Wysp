@@ -1,122 +1,136 @@
-\subsection{Adaptateur Blender (intégration native)}
+﻿\section{The adapter contract and the three tutors}\label{sec:adapters}
 
-L'adaptateur est une extension Blender 5.2 LTS (Python 3.13, \file{blender_manifest.toml}, permissions \code{network} et \code{files} justifiées, dépendances pures Python embarquées en wheels). Licence GPL-3.0-or-later pour ce dossier, comme l'exige l'écosystème des extensions Blender ; le reste du dépôt est sous MIT.
+\subsection{Transport and session}
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[font=\sffamily\scriptsize,
-  t/.style={draw=#1, fill=#1!6, rounded corners=3pt, minimum width=5.6cm, minimum height=2.5cm},
-  s/.style={draw=#1, fill=white, rounded corners=2pt, align=center, minimum height=0.55cm, minimum width=2.2cm},
-  arr/.style={-{Stealth[length=2mm]}, thick, color=surface}]
-  \node[t=muted] at (0,0) {}; \node[font=\sffamily\bfseries\scriptsize] at (0,1.0) {Fil réseau (websocket-client)};
-  \node[t=pc] at (7.2,0) {}; \node[font=\sffamily\bfseries\scriptsize, text=pc] at (7.2,1.0) {Fil principal de Blender};
-  \node[s=muted] (rx) at (-1.3,0.25) {réception\\\tiny requête JSON-RPC};
-  \node[s=muted] (tx) at (-1.3,-0.65) {envoi\\\tiny réponse, événement};
-  \node[s=muted] (hb) at (1.35,-0.2) {battement\\\tiny 15\,s, sans bpy};
-  \node[s=pc, minimum width=2.5cm] (pump) at (5.75,0.25) {pompe \texttt{\tiny bpy.app.timers}\\\tiny 50\,ms, budget 20\,ms};
-  \node[s=pc, minimum width=2.0cm] (h) at (8.75,0.25) {gestionnaire\\\tiny utilise bpy};
-  \node[s=pc, minimum width=2.6cm] (dg) at (7.2,-0.65) {\texttt{\tiny depsgraph\_update\_post}\\\tiny anti-rebond 250\,ms};
-  \draw[arr] (rx.east) -- node[above, font=\sffamily\tiny] {file d'entrée} (pump.west);
-  \draw[arr] (pump) -- (h);
-  \draw[arr] (dg.west) -- node[below, font=\sffamily\tiny] {file de sortie} (tx.east);
-\end{tikzpicture}
-\caption{Modèle de threads : \code{bpy} n'est jamais appelé hors du fil principal (BLD-P1).}
-\end{figure}
+The adapter is the WebSocket \emph{client} and the Core is the \emph{server} at \code{ws://127.0.0.1:8765/ws/adapter}. This suits hosts that can open outgoing connections but would struggle to listen (Blender's embedded Python, a Chrome service worker). Messages are JSON-RPC 2.0 in both directions on one connection.
 
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Observation} : entités \code{scene}, \code{collection}, \code{object}, \code{modifier}, \code{material}. Pour les modificateurs, extraction \emph{générique} des propriétés RNA modifiables de types simples (\code{mod.bl\_rna.properties}) : aucun code par type de modificateur, et tous les types de Blender 5.2 sont couverts (BLD-P3). Focus : objet actif et sélection.
-  \item \textbf{Actions} : neuf actions, une par fichier. API de données plutôt qu'opérateurs (\code{obj.modifiers.new}, \code{obj.modifiers.move}) ; \code{temp\_override} quand un opérateur est inévitable.
-  \item \textbf{Annulation} : enregistrement compensatoire (opération inverse) pour chaque action réversible, plus \code{bpy.ops.ed.undo\_push} pour que Ctrl+Z fonctionne aussi (BLD-P2).
-  \item \textbf{Événements} : gestionnaire \code{depsgraph\_update\_post} avec anti-rebond, comparaison d'empreintes par entité, événements dérivés (« modificateur ajouté »), \code{bpy.msgbus} pour l'objet actif, réabonnement au chargement d'un fichier. Une fenêtre d'étiquetage autour de chaque action Wysp donne \code{origin: wysp} (BLD-P4).
-  \item \textbf{Mise en évidence} : contour pulsé de la boîte englobante dans la vue 3D (module \code{gpu}), bascule de l'éditeur de propriétés sur l'onglet Modificateurs.
-  \item \textbf{Mode sans interface} : \file{demo/run_adapter.py} lance l'adaptateur avec \code{blender -b} et une pompe manuelle, pour le kit de contrat et la CI.
-\end{itemize}
+\begin{enumerate}[leftmargin=1.4em]
+  \item The adapter sends \code{wysp.hello \{manifest, token\}}. The Core checks the token, the manifest and the major contract version.
+  \item The adapter sends \code{wysp.heartbeat} at least every 20 s. The Core does not ping; it disconnects an adapter that has been silent for 45 s.
+  \item The Core sends \code{adapter.*} requests. The adapter sends \code{event.*} notifications.
+\end{enumerate}
 
 {\small
-\begin{xltabular}{\textwidth}{@{}L{5.0cm}L{1.9cm}Y@{}}
+\begin{xltabular}{\textwidth}{@{}L{4.9cm}L{3.4cm}L{3.0cm}Y@{}}
 \toprule
-\textbf{Action} & \textbf{Risque} & \textbf{Chemin d'interface (mode guidé)} \\
+\textbf{Method} & \textbf{Result} & \textbf{Capability} & \textbf{Budget} \\
 \midrule
-\code{select\_object}, \code{show\_properties\_tab} & ui\_state & clic dans l'Outliner ; icône d'onglet de l'éditeur de propriétés \\
-\code{add\_modifier} & reversible & Propriétés › Modificateurs (clé) › Add Modifier › catégorie › type \\
-\code{set\_modifier\_property} & reversible & panneau du modificateur › champ \\
-\code{remove\_modifier}, \code{move\_modifier} & reversible & menu de l'en-tête du modificateur \\
-\code{toggle\_modifier\_visibility} & reversible & icône écran de l'en-tête \\
-\code{assign\_material} & reversible & Propriétés › Matériau › emplacement \\
-\code{apply\_modifier} & irreversible & menu › Apply (Ctrl+A), avec aperçu du nombre de sommets \\
+\code{adapter.observe} & Observation & \code{observe} & 1 s \\
+\code{adapter.get\_context} & Context ($\leq$ 8 KB) & \code{context} & 0.5 s \\
+\code{adapter.get\_actions} & ActionSpec list & \code{actions} & 0.5 s \\
+\code{adapter.execute} & ActionResult, undo token & \code{execute} & 5 s \\
+\code{adapter.undo} & ActionResult & \code{undo} & 5 s \\
+\code{adapter.highlight} & ok & \code{highlight} & 0.5 s \\
+\code{adapter.clear\_highlight} (1.1) & \code{\{cleared\}} & \code{highlight} & 0.5 s \\
+\code{adapter.verify} & Evidence list & \code{verify.native} & 2 s \\
+\midrule
+\code{event.state\_changed} & \multicolumn{3}{>{\raggedright\arraybackslash}X}{\code{\{state\_version, changed[], origin\}}; capability \code{events.state}} \\
+\code{event.selection\_changed} & \multicolumn{3}{>{\raggedright\arraybackslash}X}{\code{\{focus[]\}}; capability \code{events.selection}} \\
+\code{event.user\_action} & \multicolumn{3}{>{\raggedright\arraybackslash}X}{\code{\{kind, target, details, origin\}}; capability \code{events.user\_action}} \\
+\code{event.navigation} & \multicolumn{3}{>{\raggedright\arraybackslash}X}{\code{\{url, title\}}; capability \code{events.navigation}} \\
+\code{event.highlight\_dismissed} (1.1) & \multicolumn{3}{>{\raggedright\arraybackslash}X}{\code{\{ref, reason\}}: the user touched the highlighted thing} \\
 \bottomrule
 \end{xltabular}}
 
-\subsection{Adaptateur web (intégration par l'interface)}
+Parameters: \code{observe \{scope\}} with a level (summary, focus, full), an optional root ref and a depth; \code{execute \{call\}} with action id, params, request id and \code{dry\_run}; \code{undo \{token\}}; \code{highlight \{ref, style, duration\_ms\}}.
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[font=\sffamily\scriptsize,
-  s/.style={draw=#1, fill=#1!8, rounded corners=2pt, align=center, minimum height=0.9cm, minimum width=2.6cm},
-  arr/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}, thick, color=surface}]
-  \node[s=pa] (core) at (0,0) {Wysp Core\\\tiny /ws/adapter};
-  \node[s=pc] (sw) at (4.2,0) {Service worker\\\tiny client SDK, battement 20\,s};
-  \node[s=pc] (cs) at (8.4,0) {Script de contenu\\\tiny instantané, actions, overlay};
-  \node[s=muted] (dom) at (12.4,0) {Page autorisée\\\tiny DOM, accessibilité};
-  \draw[arr] (core) -- node[above, font=\sffamily\tiny] {JSON-RPC} (sw);
-  \draw[arr] (sw) -- node[above, font=\sffamily\tiny] {runtime.Port} (cs);
-  \draw[arr] (cs) -- (dom);
-\end{tikzpicture}
-\caption{Extension Chrome MV3 : le service worker tient la connexion, le script de contenu fait tout le travail sur le DOM.}
-\end{figure}
+Capabilities are promises: the Core calls only what the manifest declares. \code{observe}, \code{context} and \code{actions} are required. The core of the contract is deliberately small. Most adapters implement \code{observe}, \code{get\_context}, \code{get\_actions}, \code{execute}, \code{undo} and \code{highlight}, and verification is done by the Core on fresh observations, so no adapter re-implements verification logic. \code{adapter.verify} exists for cases where a native check is more reliable.
 
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Instantané orienté accessibilité} : rôles ARIA et HTML, noms et descriptions accessibles calculés avec \code{dom-accessibility-api}. Types d'entités : \code{page}, \code{region}, \code{heading}, \code{form}, \code{control}, \code{dialog}, \code{table}, \code{list}, \code{chart}, \code{status}. Options des listes (20 au plus), en-têtes et 10 premières lignes des tableaux, libellé des graphiques.
-  \item \textbf{Localisateurs et références} : rôle + nom accessible dans la région nommée la plus proche, puis index, puis \code{data-testid}, puis chemin CSS. La référence encode le localisateur, donc elle reste stable tant que l'élément garde son rôle, son nom et sa région (WEB-P2, WEB-P3). Une cible ambiguë renvoie \code{TARGET\_NOT\_FOUND} avec des candidats.
-  \item \textbf{Actions} : \code{scroll\_into\_view}, \code{focus\_element}, \code{follow\_link} (ui\_state, même origine seulement), \code{fill\_field}, \code{select\_option}, \code{set\_checked} (réversibles, l'annulation restaure la valeur précédente), \code{click\_element} (irréversible, aperçu de la cible). Les valeurs sont posées avec le \emph{setter} natif suivi des événements \code{input} et \code{change}, ce qui fonctionne avec React.
-  \item \textbf{Origine des événements} : les événements synthétiques de Wysp ont \code{isTrusted === false}, ceux de l'utilisateur \code{true}. Les mutations du DOM sont attribuées à Wysp pendant la fenêtre d'exécution d'une action (WEB-P5).
-  \item \textbf{Overlay} : racine Shadow DOM fermée, \code{pointer-events: none}, ignorée par l'instantané et l'observateur de mutations (WEB-P4).
-  \item \textbf{Cible de démonstration} : « Haunted Shop Analytics » (\PB), tableau de bord accessible avec KPI, graphique, filtres (dates, région, catégories), tableau des commandes, dialogue « Create report » et liste des rapports, données déterministes et bouton de réinitialisation.
-\end{itemize}
+\subsection{The observation model}
 
-\subsection{Pile technique et structure du dépôt}
-
-\begin{xltabular}{\textwidth}{@{}L{3.0cm}Y@{}}
-\toprule
-\textbf{Domaine} & \textbf{Choix} \\
-\midrule
-Cœur & Python 3.13, uv (espace de travail), FastAPI + uvicorn, Pydantic v2, jmespath, PyYAML, httpx ; pytest, Hypothesis, ruff \\
-Panneau & React 19, Vite, \code{@xyflow/react} (React Flow 12), elkjs, Zustand ; Vitest, Testing Library, fast-check ; eslint, prettier \\
-Blender & Blender 5.2 LTS, extension, websocket-client en wheel ; \code{bpy} de PyPI et fake-bpy-module pour les tests et l'éditeur \\
-Navigateur & Chrome 116+, Manifest V3, dom-accessibility-api, Vite ; Playwright \\
-Services & LLM avec appels d'outils (fournisseur compatible OpenAI par défaut, Bedrock en option), Web Speech API pour la transcription, synthèse vocale par proxy \\
-CI & GitHub Actions : tests Python et TypeScript, export des schémas sans différence, contrôle de frontière, kit de contrat sur l'adaptateur factice \\
-\bottomrule
-\end{xltabular}
+An observation is an \emph{entity graph}: \code{entities[]} (\code{ref}, \code{kind}, \code{label}, \code{parent}, \code{props}, \code{confidence}), \code{links[]}, \code{focus[]}, \code{truncated} and \code{counts}. The Core knows no kinds in advance. Each adapter declares its kinds in the manifest, and the contract kit checks that every kind used is declared.
 
 \begin{lstlisting}[language={}]
-.kiro/            steering, specs, hooks, agents (commun, versionne)
-core/             Wysp Core, paquet wysp_core                          (A)
-schemas/          JSON Schemas generes                                 (A)
-contract-tests/   kit de contrat, adaptateur factice Kanban, fixtures  (A)
-sdk/python/       SDK adaptateur Python                                (C)
-sdk/ts/           SDK TypeScript + types generes                       (C, types : A)
-panel/            panneau React                                        (B)
-apps/blender-tutor/   adapter/ (extension), profile/, demo/            (C)
-apps/web-tutor/       extension/ (C), demo-dashboard/ (B), profile/ (B)
-docs/             ce document, guide d'adaptateur, journal Kiro
-scripts/kiro/     hook.py : controles appeles par les hooks Kiro et la CI
+{"observation_id": "o-118", "state_version": 42, "scope": {"level": "focus"},
+ "entities": [
+  {"ref": "blender://object/Pumpkin", "kind": "object", "label": "Pumpkin",
+   "props": {"type": "MESH", "modifiers_count": 2}},
+  {"ref": "blender://object/Pumpkin/modifier/Solidify", "kind": "modifier",
+   "label": "Solidify", "parent": "blender://object/Pumpkin",
+   "props": {"type": "SOLIDIFY", "index": 1, "thickness": 0.02}}],
+ "links": [], "focus": ["blender://object/Pumpkin"], "truncated": false}
 \end{lstlisting}
 
-\subsection{Décisions d'architecture}
+Limits: 500 entities and 256 KB per observation, 8 KB for the context, refs matching \code{scheme://...} up to 512 characters. When an adapter cuts an observation it sets \code{truncated} and reports true totals in \code{counts}, and the tutor is told so it does not claim a list is complete. Entities whose \code{props.sensitive} is true are counted but never named.
 
-\begin{xltabular}{\textwidth}{@{}L{3.2cm}L{3.6cm}Y@{}}
+The \textbf{state digest} (SHA-256 of canonical JSON over entities and links, without volatile properties, floats rounded to 6 significant digits) defines ``the state is unchanged'': an invalid call must leave it equal, and undo must restore it. Each adapter lists its own volatile properties in the manifest.
+
+\subsection{Actions, risk levels and postconditions}
+
+An adapter publishes a \emph{closed, declarative} catalog. An action declares an id (\code{verb\_object}), a description written for the model, a JSON Schema for its parameters (\code{additionalProperties: false}), a risk level, a \code{reversible} flag consistent with the risk, optional preconditions, \emph{postconditions} (predicates with \code{\$\{params.*\}} placeholders), and optionally \code{guide.ui\_path}, the steps the user would follow in the interface. Risk levels and their policy are in \cref{sec:gate}. An action that evaluates arbitrary code (Python \code{exec}, JavaScript injection, a shell command, an arbitrary IDE action id) is forbidden, and the kit rejects ids that look like it.
+
+Execution rules every adapter follows: validate parameters before touching anything; support \code{dry\_run} (return a preview, change nothing, return no undo token); return an \code{undo\_token} for reversible actions and make \code{adapter.undo} restore the same digest; tag changes caused by Wysp with \code{origin: wysp} so the Core never credits them to the learner. Errors use the standard JSON-RPC codes plus \code{-32010} to \code{-32019} (not supported, action not found, target not found, precondition failed, execution failed, undo unavailable, timeout, busy, incompatible version, unauthorized).
+
+\subsection{Persistent highlights (contract 1.1)}
+
+\code{adapter.highlight} points at an entity or at an interface element the adapter documents (for example \code{intellij://ui/label/Commit}). Version 1.1 added \code{duration\_ms: 0}, meaning ``until cleared'', the request \code{adapter.clear\_highlight} and the notification \code{event.highlight\_dismissed}. An adapter keeps at most one highlight, removes it when the user interacts with the target (ignoring caret moves and scrolls its own highlight caused) and when the connection drops. The Core ends a persistent highlight when the tutor clears it, replaces it, a guided step is verified, the adapter disconnects, or after 10 minutes. With an adapter that declares 1.0, the Core falls back to a timed highlight.
+
+\subsection{Versioning and generated artefacts}
+
+\code{contract\_version} is 1.1.0. Additive, optional changes bump the minor version; breaking changes bump the major version. The Core accepts any adapter with the same major version. The Pydantic models are the source of truth: \code{uv run python -m wysp\_core.contract.export} writes the JSON Schemas to \file{schemas/} (26 schemas and an index) and the TypeScript types to \file{sdk/ts/src/generated/}. CI fails if the committed files differ from a fresh export. Neither directory is edited by hand.
+
+\subsection{How to write an adapter}
+
+The guide \file{docs/\allowbreak adapter-guide.md} builds a complete adapter for a toy notes application (\file{sdk/python/\allowbreak examples/\allowbreak notes\_adapter.py}, tested against the Core's own models). In short:
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Manifest}: id, integration level, ref scheme, capabilities, entity kinds, volatile properties, profile id.
+  \item \textbf{Observation}: map the application state to entities with stable refs. The Python SDK (\code{AdapterRuntime}) gives you the client, the state version and the routing; you implement \code{observe} and \code{get\_context}. In TypeScript, \code{@wysp/adapter-sdk} provides the client and \code{defineAction}.
+  \item \textbf{Actions}: one file per action with schema, risk, postconditions and UI path.
+  \item \textbf{Profile}: skills, concepts, lessons and exercises in YAML.
+  \item \textbf{Check}: \code{uv run wysp-contract --tutor <name>} (\cref{sec:kit}).
+\end{enumerate}
+
+\subsection{What is application-specific}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[fig]
+  \node[zone=lilacdeep, minimum width=15.4cm, minimum height=1.2cm, align=center] (core) at (0,2.2) {\textbf{Shared, unchanged: Wysp Core, Panel, protocol, SDK contract}};
+  \foreach \x/\t in {-5.1/Blender, 0/IntelliJ IDEA, 5.1/Chrome} {
+    \node[mod, minimum width=4.6cm, minimum height=0.7cm] at (\x,0.8) {\textbf{\t}\\[-1pt]\tiny adapter (code)};
+    \node[mod, draw=okgreen, fill=okgreen!6, minimum width=4.6cm, minimum height=0.7cm] at (\x,-0.2) {\tiny profile (YAML data)};
+  }
+  \draw[arr] (-5.1,1.15) -- (-5.1,1.6); \draw[arr] (0,1.15) -- (0,1.6); \draw[arr] (5.1,1.15) -- (5.1,1.6);
+\end{tikzpicture}
+\caption{Adding a tutor changes only the two lower rows.}\label{fig:appspecific}
+\end{figure}
+
+\begin{xltabular}{\textwidth}{@{}L{2.4cm}Y Y Y@{}}
 \toprule
-\textbf{Décision} & \textbf{Alternatives écartées} & \textbf{Raison} \\
+ & \textbf{Blender} & \textbf{IntelliJ IDEA} & \textbf{Chrome (optional)} \\
 \midrule
-JSON-RPC 2.0 sur WebSocket, adaptateurs clients & HTTP REST ; gRPC ; MCP comme protocole d'adaptateur & Bidirectionnel (événements), simple dans Blender et dans un service worker, aucun serveur à héberger dans l'hôte. MCP reste utile côté développement (pont en lecture seule), mais ne porte ni événements ni permissions. \\
-Pydantic source unique, JSON Schema, types TS générés & Écrire les schémas à la main ; TypeScript source & Une seule définition, validation à l'exécution des deux côtés, contrôle de dérive en CI. \\
-Graphe d'entités générique & Un modèle par application & Le cœur, le tableau et les prédicats restent indépendants de l'application. \\
-Vérification par prédicats évalués dans le cœur & \code{verify()} écrit dans chaque adaptateur & Moins de code par adaptateur, preuves uniformes ; \code{adapter.verify} reste possible. \\
-Nœuds « observés » créés par projection & Laisser le LLM écrire le tableau & Garantit la règle de confiance de la note de concept. \\
-Voix en cascade, appui pour parler & Modèle vocal temps réel de bout en bout & Sous-titres et provenance exacts, interruption maîtrisée, coût et dépendance moindres, repli possible. \\
-Panneau web dans une fenêtre Chrome & Panneau natif dans Blender ; Electron & Une seule interface pour les deux tuteurs, c'est la preuve visuelle du cœur commun. \\
-Catalogue d'actions fermé & Laisser le LLM écrire du \code{bpy} ou du JavaScript & Sécurité, vérifiabilité, annulation possible. \\
-Stockage local en fichiers & Base de données & Suffisant pour un prototype, transparent pour l'utilisateur. \\
+Code & Python extension, \code{bpy}; Blender 5.2 LTS & Kotlin plugin on the IntelliJ Platform 2026.2; no third-party runtime dependency & TypeScript, Manifest V3, Chrome 116 or later \\
+Integration & \code{native} & \code{native} & \code{interface} \\
+Ref scheme & \code{blender://} & \code{intellij://} & \code{web://} \\
+Entity kinds & scene, collection, object, modifier, material & project, module, directory, file, symbol, problem, run configuration & page, region, heading, form, control, dialog, table, list, chart, status \\
+Threading rule & Never touch \code{bpy} off the main thread. The network thread queues requests, a \code{bpy.app.timers} pump (every 50 ms) runs them. & Read the model in non-blocking read actions on pooled threads. Change code only in write commands on the EDT. Swing only on the EDT. & The WebSocket lives in the service worker (heartbeat 20 s keeps it alive). DOM work happens in the content script. \\
+Undo & Blender's own undo history gets a step after each change, so Ctrl+Z also works. & Each change is one IDE command (``Wysp: ...''), read back after writing, restored if wrong. Wysp's undo never overwrites newer typing. & Undo tokens are stored in \code{storage.session}. \\
+Pointing & GPU overlays: pulsing box on objects, frame and callout on editors, regions and Properties tabs. & Editor markup, a glass-pane painter and balloons; label positions come from Swing. & A closed shadow-DOM overlay in lilac that respects reduced motion. \\
 \bottomrule
 \end{xltabular}
+
+\subsection{Blender}
+
+The adapter runs inside Blender as an extension (\file{blender\_manifest.toml}, id \code{wysp\_tutor}, Blender 5.2 or later, GPL-3.0-or-later as Blender add-ons require) with two bundled pure-Python wheels: the adapter SDK and \code{websocket-client}. A depsgraph handler only marks the scene dirty; the main-thread loop diffs per-entity hashes (at most every 250 ms) and emits one \code{event.state\_changed}. Around each action the adapter flushes the diff before and after, so what the action changed is tagged \code{wysp} and everything else \code{user}. Blender cannot capture audio, so its panel uses the Core's \code{/api/listen/*} and \code{/api/tts} and plays the audio with \code{aud}.
+
+Inside Blender the interface is native: a sidebar panel with the chat, an approval card and a viewport banner, and a node-tree view of the board (\code{.Wysp Board}, removed before the file is saved). It speaks the same \code{/ws/ui} protocol as the browser Panel, which is how a different UI technology still counts as the same Panel protocol. Actions (10): \code{select\_object}, \code{show\_properties\_tab} (\code{ui\_state}); \code{set\_object\_transform}, \code{add\_modifier}, \code{set\_modifier\_property}, \code{move\_modifier}, \code{toggle\_modifier\_visibility}, \code{assign\_material}, \code{remove\_modifier} (\code{reversible}); \code{apply\_modifier} (\code{irreversible}). Profile: 3 lessons, 4 skills, 12 concepts.
+
+\subsection{IntelliJ IDEA}
+
+The plugin connects with \code{java.net.http.WebSocket} and a small JSON codec, and embeds the Core's Panel in a tool window through JCEF (when JCEF is missing, the tool window links to the browser). The pairing token travels in the URL fragment, so no server ever sees it. Symbols come from the IDE's structure view, and imports (Java, Kotlin, Python) give the dependency edges used by exploration. While the IDE indexes, symbols are marked pending and the adapter sends \code{event.state\_changed} when indexing ends.
+
+Actions (13): \code{open\_file}, \code{go\_to\_symbol}, \code{show\_tool\_window} (\code{ui\_state}); \code{read\_code}, \code{search\_code}, \code{find\_usages}, \code{list\_files} (\code{read\_only}, with caps such as 150 lines or 50 matches per call); \code{rename\_symbol}, \code{replace\_lines}, \code{insert\_lines}, \code{create\_file}, \code{reformat\_code}, \code{optimize\_imports} (\code{reversible}). Nothing runs code, run configurations or arbitrary IDE action ids. Sensitive files (\code{.env*}, keys, certificates, files named like credentials or secrets) are never read or written, by file name. Code text reaches the Core only for the selection (1500 characters), the code at the caret (3000) and read-tool results (8000 per call). Profile: 2 lessons, 6 skills, 22 concepts and an \code{explore} section.
+
+\subsection{Chrome}
+
+The extension is optional and sits outside the main demo path. It is active only on allowlisted origins (default \code{http://localhost:5180}, matched exactly), requested as optional host permissions per origin. The user pastes the pairing token into the options page. The content script builds an accessibility-oriented snapshot (roles and accessible names through \code{dom-accessibility-api}) and refs of the form \code{web://host/region\textasciitilde{}name/role\textasciitilde{}name}, rebuilt from the live DOM at execution time; an ambiguous target fails with up to five candidates.
+
+\textbf{Redaction.} Values of password, hidden, card, one-time-code and \code{data-wysp-sensitive} fields are replaced with \code{[redacted]}; texts are cut at 200 characters; page URLs are sent without query or fragment; cookies, storage and request headers are never sent. Actions (7): \code{scroll\_into\_view}, \code{focus\_element}, \code{follow\_link} (\code{ui\_state}, same allowlisted site only); \code{fill\_field}, \code{select\_option}, \code{set\_checked} (\code{reversible}); \code{click\_element} (\code{irreversible}, with a dry-run preview). Profile: 3 lessons, 3 skills, 13 concepts.
+
+\begin{wherebox}
+\file{docs/adapter-guide.md}, \file{.kiro/specs/adapter-contract/}, \file{core/src/wysp\_core/contract/}, \file{schemas/}, \file{sdk/python/}, \file{sdk/ts/}. Tutors: \file{apps/blender-tutor/} (\file{adapter/runtime.py}, \file{adapter/actions/}), \file{apps/intellij-tutor/plugin/src/main/kotlin/dev/wysp/intellij/}, \file{apps/web-tutor/extension/src/}. Each has a \file{README.md} with its action table and privacy notes.
+\end{wherebox}
+
+
+

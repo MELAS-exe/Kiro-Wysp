@@ -1,0 +1,39 @@
+﻿\section{Limits and roadmap}\label{sec:limits}
+
+Wysp is a working prototype built in a few weeks. This chapter lists what it does not do, or does only partly, so that nobody has to discover it by accident.
+
+\subsection{Known limits}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Windows first.} Offline speech output uses Windows SAPI or Kokoro, and label finding in screenshots uses Windows text recognition. The Core, the contract and the Panel are not Windows-specific, but the voice and recognition paths have been exercised only on Windows. The dev scripts are PowerShell.
+  \item \textbf{Local trust, not a sandbox.} The Core trusts processes on the same machine to the degree the pairing token and the Origin allowlist allow. \code{/ws/ui}, \code{/api/tts} and \code{/api/ocr} need no token (a client without an Origin header is accepted, as native clients must be), so any local process can drive the Panel protocol. The \code{via} field of a permission answer (click or voice) is reported by the Panel and is not independently verified by the Core. Adapters run inside the application with that application's privileges.
+  \item \textbf{Model quality and latency.} The Core does not stream model output. Free hosted tiers are rate limited, and the keyless fallback (Pollinations) is slow and sometimes stalls. Quality depends on the model's tool calling. The scripted provider exists so that demos and tests do not depend on this.
+  \item \textbf{One active application at a time.} Several adapters can be connected, but the tutor works with the active one.
+  \item \textbf{Small boards.} The board holds at most 60 nodes, and observations at most 500 entities and 256 KB. Larger applications rely on \code{truncated}, \code{counts} and subtree observations.
+  \item \textbf{Exploration depends on who thinks.} The study phase starts by itself only in external-agent mode. With the Core's own model, the code map is available and the tutor reads files on request.
+  \item \textbf{Thin lesson content.} The profiles hold 3 lessons (Blender), 2 (IntelliJ) and 3 (Chrome). They prove the mechanism; they are not a curriculum.
+  \item \textbf{Evidence types.} \code{answered} evidence (quiz answers) is defined in the contract and weighted by the learner model, but no part of the Core produces it yet.
+  \item \textbf{The \code{visual} integration level is specified, not shipped.} The contract defines confidence below 1 and forbids irreversible actions there, but no tutor uses it as its integration level. The Blender tutor uses screenshots only to find the position of a label, locally.
+  \item \textbf{Not everything runs in CI.} CI covers the Core, the contract kit on the mock adapter (with fault injection), the Panel and the TypeScript SDK. Blender, Chrome and IntelliJ runs need the applications and are run by hand (\code{pytest -m live}, the IDE harness).
+  \item \textbf{Two licences.} The repository is MIT. The Blender extension is GPL-3.0-or-later, as Blender add-ons require.
+  \item \textbf{Two Panel implementations of one protocol.} Browser, IntelliJ and Chrome show the React Panel. Blender shows a native interface that speaks the same \code{/ws/ui} protocol, so Blender-side UI changes are made twice.
+\end{itemize}
+
+\subsection{Roadmap}
+
+These are directions that follow from the limits, not commitments.
+
+\begin{itemize}[leftmargin=1.2em]
+  \item More tutors through the SDK and the kit. A tutor for a document or spreadsheet application would test the \code{interface} level further. A visual-level adapter would exercise the confidence model.
+  \item Produce \code{answered} evidence from short in-Panel questions.
+  \item A token for \code{/ws/ui}, and verification of the approval channel, to tighten the local trust model.
+  \item Streaming model output, so captions and speech start earlier.
+  \item Cross-platform voice and text recognition.
+  \item Run the online contract kit against Blender and Chrome in CI on a runner that has them.
+  \item More lessons per profile, and a documented authoring workflow for profiles.
+\end{itemize}
+
+\begin{wherebox}
+\file{README.md} (status), \file{docs/agent-mode.md} (limits of external mode), \file{.kiro/specs/*/tasks.md} (what is done and what is open), \file{docs/kiro-journal.md}.
+\end{wherebox}
+

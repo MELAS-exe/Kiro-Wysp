@@ -1,131 +1,166 @@
-% Wysp : architecture technique, workflows et plan d'implementation
-% Compilation : tectonic -X compile docs/architecture/wysp-architecture.tex
+﻿% Wysp: architecture (English edition)
+% Build: cd docs/architecture && xelatex wysp-architecture.tex && xelatex wysp-architecture.tex
+% The French pre-implementation design document is kept in fr/.
 \documentclass[11pt,a4paper]{article}
 
 \usepackage{fontspec}
-\usepackage[french]{babel}
+\usepackage[english]{babel}
 \setmainfont{texgyrepagella}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
 \setsansfont{texgyreheros}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+\setmonofont{texgyrecursor}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic, Scale=0.88]
 
-\usepackage[margin=2.1cm,headheight=14pt]{geometry}
+\usepackage[margin=2.0cm,headheight=14pt]{geometry}
 \usepackage{xcolor}
+\usepackage{graphicx}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.multipart,fit,backgrounds,calc,babel}
-\usepackage{pgfgantt}
-\usepackage{pgf-umlsd}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds,calc}
 \usepackage{booktabs,array,multirow,xltabular}
 \usepackage{enumitem}
 \usepackage{listings}
 \usepackage[most]{tcolorbox}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
-\usepackage{amssymb}
+\usepackage{url}
+\usepackage{multicol}
+\usepackage{float}
 \usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
 
-% ---------------------------------------------------------------- couleurs
-\definecolor{night}{HTML}{0F172A}
-\definecolor{surface}{HTML}{1E293B}
-\definecolor{wisp}{HTML}{0F9E8E}
-\definecolor{wisplight}{HTML}{CCFBF1}
-\definecolor{pumpkin}{HTML}{EA580C}
-\definecolor{pumpkinlight}{HTML}{FFEDD5}
-\definecolor{muted}{HTML}{64748B}
-\definecolor{okgreen}{HTML}{16A34A}
-\definecolor{danger}{HTML}{DC2626}
-\definecolor{pa}{HTML}{2563EB}   % personne A
-\definecolor{pb}{HTML}{9333EA}   % personne B
-\definecolor{pc}{HTML}{EA580C}   % personne C
-\definecolor{codebg}{HTML}{F8FAFC}
+% ------------------------------------------------------------------ brand colours
+\definecolor{night}{HTML}{120532}
+\definecolor{surface}{HTML}{1D0E4A}
+\definecolor{lilac}{HTML}{CA84FC}
+\definecolor{pink}{HTML}{FE7C9C}
+\definecolor{lavender}{HTML}{F4E5FD}
+\definecolor{violet}{HTML}{6503FC}
+% print-friendly variants
+\definecolor{inkpurple}{HTML}{3B2A80}
+\definecolor{lilacdeep}{HTML}{8A3FD1}
+\definecolor{pinkdeep}{HTML}{D6385F}
+\definecolor{muted}{HTML}{6B5B95}
+\definecolor{okgreen}{HTML}{15803D}
+\definecolor{codebg}{HTML}{FAF6FE}
 
-% ---------------------------------------------------------------- mise en page
+% ------------------------------------------------------------------ layout
 \titleformat{\section}{\Large\sffamily\bfseries\color{night}}{\thesection}{0.8em}{}
-\titleformat{\subsection}{\large\sffamily\bfseries\color{night}}{\thesubsection}{0.7em}{}
-\titleformat{\subsubsection}{\normalsize\sffamily\bfseries\color{surface}}{\thesubsubsection}{0.6em}{}
+\titleformat{\subsection}{\large\sffamily\bfseries\color{inkpurple}}{\thesubsection}{0.7em}{}
+\titleformat{\subsubsection}{\normalsize\sffamily\bfseries\color{inkpurple}}{\thesubsubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{14pt}{6pt}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\sffamily\small\color{muted} Wysp \textbullet{} Architecture, workflows et plan}
-\fancyhead[R]{\sffamily\small\color{muted} Brouillon 0.1 \textbullet{} 9 novembre 2026}
+\fancyhead[L]{\sffamily\small\color{muted} Wysp \textbullet{} Architecture}
+\fancyhead[R]{\sffamily\small\color{muted} Contract 1.1.0 \textbullet{} November 2026}
 \fancyfoot[C]{\sffamily\small\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
 \setlist{itemsep=2pt,topsep=4pt}
 \setlength{\parskip}{4pt}
 \setlength{\parindent}{0pt}
 \setlength{\emergencystretch}{3em}
-\renewcommand{\arraystretch}{1.18}
+\renewcommand{\arraystretch}{1.15}
+\hypersetup{colorlinks=true,linkcolor=lilacdeep,urlcolor=lilacdeep,citecolor=lilacdeep}
 
-% ---------------------------------------------------------------- code
+% ------------------------------------------------------------------ code
 \lstdefinestyle{wysp}{
-  basicstyle=\ttfamily\footnotesize, backgroundcolor=\color{codebg}, frame=single, rulecolor=\color{muted!40},
+  basicstyle=\ttfamily\footnotesize, backgroundcolor=\color{codebg}, frame=single, rulecolor=\color{lilac!60},
   breaklines=true, columns=fullflexible, keepspaces=true, showstringspaces=false,
-  keywordstyle=\color{pa}\bfseries, commentstyle=\color{muted}\itshape, stringstyle=\color{okgreen!70!black},
   xleftmargin=2pt, xrightmargin=2pt, aboveskip=6pt, belowskip=6pt}
 \lstset{style=wysp}
 
-% ---------------------------------------------------------------- boites
-\newtcolorbox{keybox}[1][]{enhanced, colback=wisplight!45, colframe=wisp, boxrule=0.6pt, arc=2mm,
+% ------------------------------------------------------------------ boxes
+\newtcolorbox{keybox}[1][]{enhanced, colback=lilac!14, colframe=lilacdeep, boxrule=0.6pt, arc=2mm,
   left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\sffamily\bfseries, title={#1}}
-\newtcolorbox{warnbox}[1][]{enhanced, colback=pumpkinlight!60, colframe=pumpkin, boxrule=0.6pt, arc=2mm,
-  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\sffamily\bfseries, title={#1}}
-\newtcolorbox{notebox}{enhanced, colback=codebg, colframe=muted!50, boxrule=0.4pt, arc=2mm,
+\newtcolorbox{wherebox}{enhanced, colback=codebg, colframe=lilac!70, boxrule=0.5pt, arc=2mm,
+  left=6pt, right=6pt, top=3pt, bottom=3pt, before skip=10pt, after skip=6pt, before upper={\raggedright\small}, before upper={\raggedright\small},
+  fonttitle=\sffamily\bfseries\small, title={Where to look in the repository}}
+\newtcolorbox{notebox}{enhanced, colback=pink!10, colframe=pinkdeep!70, boxrule=0.5pt, arc=2mm,
   left=6pt, right=6pt, top=3pt, bottom=3pt}
 
-% ---------------------------------------------------------------- macros
-\newcommand{\code}[1]{\texttt{\small #1}}
-\newcommand{\file}[1]{{\small\path{#1}}}
-\renewcommand{\UrlFont}{\ttfamily}
-\newcommand{\PA}{\textcolor{pa}{\textbf{A}}}
-\newcommand{\PB}{\textcolor{pb}{\textbf{B}}}
-\newcommand{\PC}{\textcolor{pc}{\textbf{C}}}
+% ------------------------------------------------------------------ macros
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\file}[1]{\texttt{\small #1}}
 \newcommand{\pobs}{\textsf{observed}}
 \newcommand{\pinf}{\textsf{inferred}}
 \newcommand{\pill}{\textsf{illustrative}}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\renewcommand{\UrlFont}{\ttfamily\small}
+
+% ------------------------------------------------------------------ TikZ styles
+\tikzset{
+  fig/.style={font=\sffamily\scriptsize, align=center},
+  node distance=6mm,
+  mod/.style={draw=lilacdeep, fill=white, rounded corners=1.5pt, align=center, minimum height=0.6cm, inner sep=2.5pt},
+  zone/.style={draw=#1, fill=#1!6, rounded corners=3pt, inner sep=6pt},
+  arr/.style={-{Stealth[length=2mm]}, thick, color=inkpurple},
+  biarr/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}, thick, color=inkpurple},
+  linkdash/.style={dashed, thick, color=muted},
+  lab/.style={font=\sffamily\tiny\itshape, text=muted, inner sep=1pt},
+}
+
+% Sequence diagrams: \actor{name}{x}{label}, \msg{from}{to}{y}{text}, \note{actor}{y}{text}
+\newcommand{\seqlife}{5.0}
+\newcommand{\actor}[3]{%
+  \node[draw=lilacdeep, fill=lilac!20, rounded corners=2pt, minimum width=1.7cm, minimum height=0.55cm, inner sep=2pt, align=center, font=\sffamily\scriptsize\bfseries] (#1) at (#2,0) {#3};
+  \draw[color=muted, dashed] (#1.south) -- ++(0,-\seqlife);}
+\newcommand{\msg}[4]{%
+  \draw[-{Stealth[length=2mm]}, thick, color=inkpurple] ($(#1.south)+(0,-#3)$) -- node[above, fill=white, font=\sffamily\tiny, text=night, inner sep=1pt, align=center] {#4} ($(#2.south)+(0,-#3)$);}
+\newcommand{\ret}[4]{%
+  \draw[-{Stealth[length=2mm]}, thick, dashed, color=inkpurple] ($(#1.south)+(0,-#3)$) -- node[above, fill=white, font=\sffamily\tiny, text=night, inner sep=1pt, align=center] {#4} ($(#2.south)+(0,-#3)$);}
+\newcommand{\note}[3]{%
+  \node[draw=pinkdeep!70, fill=pink!15, font=\sffamily\tiny, inner sep=2pt, align=center, rounded corners=1pt] at ($(#1.south)+(0,-#2)$) {#3};}
 
 \begin{document}
+\fontsize{10.2}{12.6}\selectfont
 
-% ---------------------------------------------------------------- titre
+% ------------------------------------------------------------------ title page
 \begin{titlepage}
 \begin{tikzpicture}[remember picture,overlay]
-  \fill[night] (current page.north west) rectangle ([yshift=-9.5cm]current page.north east);
-  \foreach \x/\y/\r/\o in {3.2/-2.6/0.55/0.9, 4.1/-3.4/0.25/0.6, 2.5/-3.7/0.15/0.5, 15.5/-6.8/0.35/0.5, 16.4/-7.6/0.18/0.4}
-    \shade[inner color=wisp!80!white, outer color=night, opacity=\o] ([xshift=\x cm, yshift=\y cm]current page.north west) circle (\r cm);
-  \node[anchor=west, text=white, font=\sffamily\bfseries\fontsize{54}{60}\selectfont] at ([xshift=2.2cm,yshift=-5.0cm]current page.north west) {Wysp};
-  \node[anchor=west, text=wisplight, font=\sffamily\Large] at ([xshift=2.25cm,yshift=-6.4cm]current page.north west) {Un framework pour créer des tuteurs IA adaptés aux logiciels};
-  \node[anchor=west, text=white!75, font=\sffamily\normalsize] at ([xshift=2.25cm,yshift=-7.3cm]current page.north west) {Kiroween 2026 \textbullet{} Catégorie Skeleton Crew};
+  \fill[night] (current page.north west) rectangle ([yshift=-11cm]current page.north east);
+  \foreach \x/\y/\r/\o in {16.5/-2.0/0.45/0.5, 17.6/-3.1/0.2/0.4, 15.4/-3.4/0.12/0.4}
+    \shade[inner color=lilac!80!white, outer color=night, opacity=\o] ([xshift=\x cm, yshift=\y cm]current page.north west) circle (\r cm);
+  \node[anchor=west] at ([xshift=2.0cm,yshift=-4.6cm]current page.north west) {\includegraphics[height=3.4cm]{../brand/mark-color-256.png}};
+  \node[anchor=west, text=lavender, font=\sffamily\bfseries\fontsize{50}{56}\selectfont] at ([xshift=6.2cm,yshift=-3.9cm]current page.north west) {Wysp};
+  \node[anchor=west, text=lilac, font=\sffamily\Large] at ([xshift=6.25cm,yshift=-5.3cm]current page.north west) {A skeleton for AI tutors of software applications};
+  \node[anchor=west, text=lavender!80, font=\sffamily\normalsize] at ([xshift=2.05cm,yshift=-8.4cm]current page.north west) {Kiroween 2026 \textbullet{} Skeleton Crew};
 \end{tikzpicture}
 
-\vspace*{9.2cm}
-{\sffamily\huge\bfseries\color{night} Architecture technique, workflows\\[2pt] et plan d'implémentation\par}
-\vspace{0.6cm}
-{\sffamily\large\color{muted} Brouillon de travail pour l'équipe (trois personnes)\par}
-\vspace{1.0cm}
+\vspace*{10.6cm}
+{\sffamily\huge\bfseries\color{night} Architecture\par}
+\vspace{0.2cm}
+{\sffamily\large\color{inkpurple} How one Core, one Panel and one protocol serve many applications\par}
+\vspace{0.9cm}
 
+{\small
 \begin{tabularx}{\textwidth}{@{}L{3.4cm}Y@{}}
-\textbf{Version} & 0.1 (brouillon), 9 novembre 2026 \\
-\textbf{Base} & Note de concept « Project K », renommé \textbf{Wysp} \\
-\textbf{Référence étudiée} & Kiro InteractionKit, Grand Prize Kiroween 2025 \\
-\textbf{Échéance} & Vendredi 4 décembre 2026, 14\,h heure du Pacifique (22\,h GMT, heure de Dakar) \\
-\textbf{Dépôt} & \file{github.com/MELAS-exe/Kiro-Wysp} \\
-\textbf{Mise en place Kiro} & 10 fichiers de steering, 6 specs, 10 hooks, 3 agents, configuration MCP proposée \\
-\end{tabularx}
+\textbf{Edition} & English, November 2026. The French design document written before the implementation is kept in \file{docs/architecture/fr/}. \\
+\textbf{Describes} & Wysp Core, adapter contract 1.1.0, the Blender, IntelliJ IDEA and Chrome tutors \\
+\textbf{Source code} & \url{https://github.com/MELAS-exe/Kiro-Wysp} \\
+\textbf{Reading time} & 15 to 20 minutes. Chapters 1 and 2 are enough to understand the idea. \\
+\end{tabularx}}
 
 \vfill
 \begin{notebox}
-\small Ce document rassemble l'analyse du projet de référence, l'architecture proposée pour Wysp, les workflows principaux, la configuration Kiro mise en place dans le dépôt et le plan d'implémentation réparti entre trois personnes. Les choix techniques sont des propositions à valider pendant la première semaine. Les specs Kiro (\file{.kiro/specs/}) restent la référence détaillée, en anglais pour le jury.
+\small Every technical statement in this document was checked against the repository at the time of writing. Each chapter ends with a box that names the files to open. The normative specifications are in \file{.kiro/specs/}. The contract itself is the Pydantic models in \file{core/src/wysp\_core/contract/} and the JSON Schemas generated from them in \file{schemas/}.
 \end{notebox}
 \end{titlepage}
 
-\tableofcontents
+{\small\setlength{\columnsep}{1.2cm}\begin{multicols}{2}\tableofcontents\end{multicols}}
 \clearpage
 
-\input{sections/00-resume}
-\input{sections/01-reference}
+\input{sections/00-summary}
+\input{sections/01-concepts}
 \input{sections/02-architecture}
+\input{sections/02b-core}
+\input{sections/02c-adapters}
 \input{sections/03-workflows}
 \input{sections/04-kiro}
-\input{sections/05-plan}
-\input{sections/06-demo-risques}
-\input{sections/07-annexes}
+\input{sections/05-testing-and-trust}
+\input{sections/06-limits-and-roadmap}
+\input{sections/07-appendices}
 
 \end{document}
+
+
+
+
+

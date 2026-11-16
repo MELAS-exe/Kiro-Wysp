@@ -1,166 +1,128 @@
-\section{Workflows}
+﻿\section{Key workflows}\label{sec:workflows}
 
-Les quatre premiers workflows décrivent l'expérience de l'utilisateur ; ils sont identiques pour Blender et pour le web, seuls les contenus des observations et des actions changent. Les trois derniers décrivent notre façon de travailler.
+Five sequences show how the pieces cooperate. Dashed arrows are replies. ``Core'' stands for the orchestrator, session, board and trust modules of \cref{sec:core}.
 
-% Notes pgf-umlsd : un libellé de \mess contenant des parenthèses doit être entre doubles accolades ;
-% un tiret bas dans un libellé de \mess doit passer par \detokenize{...} ; pas de caractères actifs
-% de babel français (: ; ! ? et guillemets) dans les libellés.
+\subsection{Explain what is on screen}
 
-\subsection{Expliquer ce que l'utilisateur regarde}
+The user asks a question. The Core takes a fresh observation, the model answers with one \code{narrate} call that carries the segments, cues and the refs to show, and the Core projects them onto the board.
 
-Exemple : dans Blender, l'utilisateur sélectionne la citrouille et demande « Explique-moi ces modificateurs ».
-
-\begin{center}
-\resizebox{0.97\textwidth}{!}{%
-\begin{sequencediagram}
-\newthread{u}{Utilisateur}
-\newinst[1.2]{p}{Panneau}
-\newinst[1.6]{c}{Cœur}
-\newinst[1.8]{l}{LLM}
-\newinst[1.8]{a}{Adaptateur}
-\mess{u}{{question (voix ou texte)}}{p}
-\mess{p}{user.message}{c}
-\begin{call}{c}{get\_context, observe(focus)}{a}{contexte, observation}
-\end{call}
-\begin{call}{c}{contexte + outils}{l}{show\_entities(refs, stack)}
-\end{call}
-\begin{callself}{c}{projection, validateur}{}
-\end{callself}
-\mess{c}{{board.patch (nœuds observed)}}{p}
-\begin{call}{c}{résultat de l'outil}{l}{narrate(segments, repères)}
-\end{call}
-\mess{c}{narration.segment}{p}
-\mess{c}{{adapter.highlight(ref)}}{a}
-\mess{p}{voix, sous-titres, focus}{u}
-\end{sequencediagram}}
-\end{center}
-
-Points clés : le LLM choisit \emph{quelles} entités montrer, la projection fabrique les nœuds à partir de l'observation réelle. Un concept général (par exemple « ordre d'évaluation ») est ajouté avec \code{add\_concept} en provenance \pinf{} ou \pill. Les repères des segments synchronisent la surbrillance sur le tableau et dans Blender avec la phrase prononcée.
-
-\subsection{Action proposée, permission, exécution et vérification}
-
-Exemple : « Arrondis les arêtes de la bougie. » Le LLM propose \code{add\_modifier(Candle, BEVEL)} en mode \code{do}.
-
-\begin{center}
-\resizebox{0.97\textwidth}{!}{%
-\begin{sequencediagram}
-\newthread{u}{Utilisateur}
-\newinst[1.2]{p}{Panneau}
-\newinst[1.6]{c}{Cœur et porte}
-\newinst[1.8]{l}{LLM}
-\newinst[1.8]{a}{Adaptateur}
-\mess{l}{{\detokenize{propose_action(add_modifier, mode do)}}}{c}
-\begin{callself}{c}{valider paramètres, politique}{risque reversible}
-\end{callself}
-\mess{c}{permission.request}{p}
-\mess{p}{dialogue Approuver ou Refuser}{u}
-\mess{u}{clic ou oui vocal}{p}
-\mess{p}{permission.respond}{c}
-\begin{call}{c}{adapter.execute}{a}{ok, undo\_token}
-\end{call}
-\mess{a}{{\detokenize{event.state_changed (origin wysp)}}}{c}
-\begin{call}{c}{adapter.observe}{a}{observation fraîche}
-\end{call}
-\begin{callself}{c}{post-conditions}{preuve}
-\end{callself}
-\mess{c}{board.patch, evidence.added}{p}
-\mess{c}{résultat vérifié}{l}
-\end{sequencediagram}}
-\end{center}
-
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Échec de vérification} : le cœur appelle \code{adapter.undo} avec le jeton, puis explique l'échec avec la valeur attendue et la valeur constatée.
-  \item \textbf{Mode guidé} (préféré pour apprendre) : aucun \code{execute}. Le cœur publie les étapes de \code{guide.ui\_path} (« Propriétés › Modificateurs › Add Modifier › Bevel »), met en évidence chaque cible, et vérifie les post-conditions dès que l'adaptateur signale un changement d'origine utilisateur.
-  \item \textbf{Annuler} : « annule ça » rejoue le dernier jeton de la pile d'annulation.
-\end{itemize}
-
-\subsection{Interruption et reprise}
-
-\begin{enumerate}[leftmargin=1.2em]
-  \item Pendant la narration, l'utilisateur parle (détection d'énergie) ou appuie sur Échap. Le panneau coupe l'audio et envoie \code{user.interrupt} (moins de 150\,ms).
-  \item Le cœur annule le tour (jeton d'annulation vérifié entre chaque étape et pendant le flux du LLM), publie \code{narration.cancel} et garde le curseur : dernier segment entendu. Une action déjà commencée chez l'adaptateur n'est jamais coupée en deux ; sa vérification est enregistrée.
-  \item Si l'utilisateur pose une question (« Pourquoi Solidify après Subdivision ? »), un nouveau tour démarre avec le nœud concerné dans le contexte. S'il dit « continue », le cœur republie exactement les segments non entendus, sans nouvel appel au LLM.
-  \item Le bouton « Pourquoi ? » d'un nœud produit le même effet qu'une question sur ce nœud.
-\end{enumerate}
-
-\subsection{Exercice et preuve}
-
-\begin{center}
-\resizebox{0.97\textwidth}{!}{%
-\begin{sequencediagram}
-\newthread{u}{Utilisateur}
-\newinst[1.2]{p}{Panneau}
-\newinst[1.6]{e}{Moteur pédagogique}
-\newinst[1.6]{v}{Vérification}
-\newinst[1.6]{a}{Adaptateur}
-\begin{callself}{e}{liaisons résolues, critère encore faux}{offre}
-\end{callself}
-\mess{e}{{exercise.update (consigne)}}{p}
-\mess{u}{modifie la scène lui-même}{a}
-\mess{a}{{\detokenize{event.state_changed (origin user)}}}{e}
-\begin{call}{e}{vérifier les prédicats}{v}{preuve}
-\begin{call}{v}{adapter.observe}{a}{observation}
-\end{call}
-\end{call}
-\begin{callself}{e}{mise à jour de la maîtrise}{}
-\end{callself}
-\mess{e}{{evidence.added (verified), learner.update}}{p}
-\mess{p}{vérifié dans l'application}{u}
-\end{sequencediagram}}
-\end{center}
-
-Sans succès, l'utilisateur peut demander un indice (révélés dans l'ordre). Après \code{max\_attempts} échecs, Wysp propose la solution en mode guidé ou \code{do}. Si l'application ne permet pas de vérifier, la déclaration de l'utilisateur est enregistrée comme preuve \code{declared}, affichée comme non vérifiée.
-
-\subsection{Développer avec Kiro}
-
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
-\begin{tikzpicture}[font=\sffamily\scriptsize, node distance=0.35cm and 0.45cm,
-  st/.style={draw=#1, fill=#1!8, rounded corners=2pt, align=center, minimum height=0.95cm, text width=2.15cm},
-  arr/.style={-{Stealth[length=2mm]}, thick, color=surface}]
-  \node[st=pa] (spec) {Spec\\\tiny exigences, design, propriétés};
-  \node[st=pa, right=of spec] (task) {Tâche\\\tiny « Start task »};
-  \node[st=pumpkin, right=of task] (pre) {Hook\\\tiny task-preflight};
-  \node[st=pb, right=of pre] (impl) {Implémentation\\\tiny agent + humain};
-  \node[st=pumpkin, right=of impl] (save) {Hooks à la sauvegarde\\\tiny format, frontière, schémas, contrat};
-  \node[st=pumpkin, below=0.9cm of save] (post) {Hook\\\tiny task-tests};
-  \node[st=pc, left=of post] (guard) {Agent\\\tiny contract-guardian};
-  \node[st=pb, left=of guard] (pr) {Pull request\\\tiny revue du responsable};
-  \node[st=okgreen, left=of pr] (ci) {CI verte\\\tiny tests, kit, frontière};
-  \node[st=okgreen, left=of ci] (merge) {Fusion\\\tiny au moins 1 fois par jour};
-  \draw[arr] (spec) -- (task); \draw[arr] (task) -- (pre); \draw[arr] (pre) -- (impl); \draw[arr] (impl) -- (save);
-  \draw[arr] (save) -- (post); \draw[arr] (post) -- (guard); \draw[arr] (guard) -- (pr); \draw[arr] (pr) -- (ci); \draw[arr] (ci) -- (merge);
-  \draw[arr, dashed, color=muted] (save.north) |- ++(0,0.45) -| node[pos=0.25, above, text=muted] {échec : correction immédiate} (impl.north);
+\begin{tikzpicture}[fig]
+  \renewcommand{\seqlife}{5.9}
+  \actor{U}{0}{User}\actor{P}{3.4}{Panel}\actor{C}{7.0}{Core}\actor{L}{10.4}{LLM}\actor{A}{13.8}{Adapter}
+  \msg{U}{P}{0.6}{types, or holds Space}
+  \msg{P}{C}{1.1}{user.message}
+  \msg{C}{A}{1.6}{adapter.observe (focus)}
+  \ret{A}{C}{2.1}{entities, focus}
+  \msg{C}{L}{2.6}{prompt + tools}
+  \ret{L}{C}{3.1}{narrate(segments, cues, show refs)}
+  \note{C}{3.65}{projection, then provenance validator}
+  \msg{C}{P}{4.2}{board.patch, narration.segment}
+  \msg{P}{U}{4.7}{captions, speech, nodes appear}
+  \msg{C}{A}{5.2}{adapter.highlight (ref)}
+  \msg{P}{C}{5.6}{narration.progress, cue}
 \end{tikzpicture}
-\caption{Boucle de développement d'une tâche de spec.}
+\caption{Explain. The model never touches the board directly, and each cue moves the board focus while the speech plays.}\label{fig:wf-explain}
 \end{figure}
 
-\begin{enumerate}[leftmargin=1.2em]
-  \item Chaque personne ouvre la spec de son périmètre dans Kiro et lance les tâches dans l'ordre (« Start task »). Le hook \code{task-preflight} rappelle les exigences, le responsable et le processus de changement de contrat.
-  \item Pendant l'implémentation, les hooks de sauvegarde formatent le code et lancent les contrôles déterministes. Ils ne coûtent rien quand rien n'est concerné.
-  \item À la fin de la tâche, \code{task-tests} exécute les tests des paquets modifiés. Les tâches de propriétés sont obligatoires.
-  \item Avant la pull request, l'agent \code{contract-guardian} (lecture seule) produit un tableau de conformité. Le responsable du périmètre touché relit. La CI doit être verte.
-  \item Le journal \file{docs/kiro-journal.md} note ce que Kiro a produit et ce qui a été corrigé à la main : c'est la matière de la section « How we used Kiro » de la soumission.
-\end{enumerate}
+\subsection{A guided step, verified}
 
-\subsection{Changer le contrat}
+In guide mode the user does the work. Wysp watches the application and verifies the postconditions when the user changes it.
 
-\begin{enumerate}[leftmargin=1.2em]
-  \item Écrire le besoin dans la spec concernée, puis modifier \file{.kiro/specs/adapter-contract/} (exigence et design).
-  \item Modifier les modèles Pydantic dans \file{core/src/wysp_core/contract/} et augmenter \code{contract\_version} (mineure si ajout optionnel).
-  \item Le hook \code{contract-schema-sync} régénère \file{schemas/} et les types TypeScript.
-  \item Lancer \code{wysp-contract --offline} pour les deux tuteurs : les enregistrements montrent qui serait cassé.
-  \item Obtenir l'accord de \PA{} et du responsable de chaque adaptateur touché. Après J0, pas de changement majeur sans accord des trois.
-\end{enumerate}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[fig]
+  \renewcommand{\seqlife}{6.4}
+  \actor{U}{0}{User}\actor{A}{4.6}{Adapter\\\tiny (in the app)}\actor{C}{9.2}{Core}\actor{P}{13.8}{Panel}
+  \msg{U}{P}{0.6}{``how do I add a bevel?''}
+  \msg{P}{C}{1.1}{user.message}
+  \note{C}{1.6}{propose\_action(add\_modifier, guide): validate params}
+  \msg{C}{A}{2.15}{observe: already satisfied?}
+  \msg{C}{P}{2.7}{board steps, narration}
+  \msg{C}{A}{3.2}{adapter.highlight (duration 0, persistent)}
+  \msg{U}{A}{3.75}{the user performs the steps}
+  \msg{A}{C}{4.25}{event.state\_changed (origin: user)}
+  \msg{C}{A}{4.75}{observe(full), evaluate postconditions}
+  \msg{C}{A}{5.2}{adapter.clear\_highlight}
+  \msg{C}{P}{5.7}{evidence.added (verified), ``you did that yourself''}
+\end{tikzpicture}
+\caption{Guide. The step turns green only after the predicates hold on a fresh observation. Events with origin \code{wysp} never close a guided step as the user's achievement.}\label{fig:wf-guide}
+\end{figure}
 
-\subsection{Créer un nouveau tuteur avec Wysp}
+\subsection{An approved action, with undo}
 
-C'est le parcours que le jury doit voir comme valeur du squelette, et que le README présentera en quatre étapes.
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[fig]
+  \renewcommand{\seqlife}{7.4}
+  \actor{U}{0}{User}\actor{P}{4.6}{Panel}\actor{C}{9.2}{Core}\actor{A}{13.8}{Adapter}
+  \msg{C}{A}{0.6}{execute (dry\_run: true)}
+  \ret{A}{C}{1.05}{preview, no change}
+  \msg{C}{P}{1.55}{permission.request (preview)}
+  \msg{P}{U}{2.0}{dialog: Approve, Deny, Allow for this lesson}
+  \msg{U}{P}{2.45}{click}
+  \msg{P}{C}{2.9}{permission.respond}
+  \note{C}{3.4}{audit: proposal, approval (by, via)}
+  \msg{C}{A}{3.95}{adapter.execute}
+  \ret{A}{C}{4.4}{ok, undo\_token}
+  \msg{C}{A}{4.9}{observe(full), evaluate postconditions}
+  \note{C}{5.4}{if they fail: adapter.undo(token), report failed\_and\_undone}
+  \msg{C}{P}{5.9}{evidence.added (verified)}
+  \msg{P}{C}{6.4}{undo.last (later, if the user asks)}
+  \msg{C}{A}{6.85}{adapter.undo(token)}
+\end{tikzpicture}
+\caption{Do. A voice ``yes'' may approve a reversible action; an irreversible action needs a click and the Core refuses any other channel.}\label{fig:wf-do}
+\end{figure}
 
-\begin{enumerate}[leftmargin=1.2em]
-  \item \textbf{Manifeste} : identifiant, niveau d'intégration, capacités, types d'entités, schéma de références.
-  \item \textbf{Observation} : traduire l'état de l'application en entités (le SDK fournit client, empreinte et validation).
-  \item \textbf{Actions} : un fichier par action avec schéma, risque, post-conditions et chemin d'interface ; le hook \code{new-action-integration} câble le reste.
-  \item \textbf{Profil} : compétences, concepts, leçons et exercices en YAML, validés par \code{wysp validate-profile}.
-\end{enumerate}
-Puis \code{wysp-contract --tutor <nom>} indique si l'adaptateur est conforme. Aucun changement du cœur ni du panneau n'est nécessaire.
+\subsection{An exercise with evidence}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[fig]
+  \renewcommand{\seqlife}{6.0}
+  \actor{U}{0}{User}\actor{A}{4.6}{Adapter}\actor{C}{9.2}{Core}\actor{P}{13.8}{Panel}
+  \note{C}{0.55}{start\_exercise: bindings resolve? already true?}
+  \msg{C}{P}{1.1}{exercise.update (offered), prompt}
+  \msg{U}{A}{1.65}{changes something in the app}
+  \msg{A}{C}{2.15}{event.state\_changed (origin: user)}
+  \msg{C}{A}{2.65}{observe(full)}
+  \note{C}{3.2}{success predicate true; no Wysp change since the offer}
+  \note{C}{3.75}{Evidence(verified) + BKT update, saved to disk}
+  \msg{C}{P}{4.3}{evidence.added, exercise.update (passed)}
+  \msg{C}{P}{4.8}{lesson.update (next step)}
+  \msg{U}{P}{5.35}{hint button: next authored hint, lower weight}
+\end{tikzpicture}
+\caption{Exercise. The success criteria are authored predicates. The model phrases the prompt but never judges the result.}\label{fig:wf-exercise}
+\end{figure}
+
+If the learner says ``I'm done'' before the predicate holds, the Core verifies right then and counts it as an attempt. If the application cannot verify the exercise, \code{declare\_done} records \code{declared} evidence at weight 0.3, and the Panel labels it as declared rather than verified.
+
+\subsection{Exploration and study of a project}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[fig]
+  \renewcommand{\seqlife}{7.3}
+  \actor{P}{0}{Panel}\actor{C}{4.6}{Core}\actor{A}{9.2}{Adapter}\actor{G}{13.8}{External agent}
+  \msg{A}{C}{0.55}{wysp.hello (adapter becomes active)}
+  \msg{C}{A}{1.0}{survey: get\_actions, get\_context, observe(full)}
+  \msg{C}{P}{1.5}{explore.state (offer)}
+  \msg{P}{C}{2.0}{explore.start (the user agrees)}
+  \msg{C}{A}{2.5}{observe(full, root=project), subtree by subtree}
+  \note{C}{3.0}{code map: names, signatures, dependencies; no model}
+  \msg{C}{P}{3.5}{explore.state (mapping, then studying)}
+  \msg{C}{G}{4.0}{inbox: study task, plan of about 30 files}
+  \msg{G}{C}{4.5}{study\_read (offset)}
+  \msg{C}{A}{4.95}{read\_code (read\_only, audited)}
+  \msg{G}{C}{5.45}{record\_understanding}
+  \msg{G}{C}{5.9}{finish\_study: refused below 80\% read}
+  \msg{C}{P}{6.4}{explore.state (ready): brief saved to disk}
+\end{tikzpicture}
+\caption{Exploration. Nothing is read before the user agrees. The study loop is shown with an external agent; with the Core's own model the map is available through \code{code\_map} and the tutor reads files on request.}\label{fig:wf-explore}
+\end{figure}
+
+\begin{wherebox}
+\file{core/src/wysp\_core/orchestrator/pipeline.py} (guide, do, verify, undo), \file{pedagogy/exercises.py}, \file{session/survey.py}, \file{session/explore.py}. End-to-end tests of these flows run against the mock adapter: \file{contract-tests/tests/test\_core\_with\_mock.py}, \file{test\_explore.py}, \file{test\_survey.py}.
+\end{wherebox}
+

@@ -93,4 +93,4 @@ Python, FastAPI, Pydantic, React, TypeScript, Vite, React Flow, ELK, Kotlin, the
 
 - Repository: https://github.com/MELAS-exe/Kiro-Wysp (MIT licence)
 - Demo video: [...]
-- Architecture document: `docs/architecture/wysp-architecture.pdf` (French)
+- Architecture document: `docs/architecture/wysp-architecture.pdf` (English; the French pre-implementation design is in `docs/architecture/fr/`)

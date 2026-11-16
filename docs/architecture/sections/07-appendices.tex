@@ -1,0 +1,117 @@
+﻿\section{Appendices}\label{sec:appendices}
+
+\subsection{Repository map}
+
+\begin{xltabular}{\textwidth}{@{}L{4.6cm}Y@{}}
+\toprule
+\textbf{Path} & \textbf{Content} \\
+\midrule
+\file{core/src/wysp\_core/} & The Core. \file{contract/} (models, export), \file{gateway/}, \file{ui\_api/}, \file{mcp\_server/}, \file{session/}, \file{orchestrator/}, \file{llm/}, \file{board/}, \file{narration/}, \file{pedagogy/}, \file{verification/}, \file{trust/}, \file{store/}, \file{telemetry/}, \file{cli.py} \\
+\file{schemas/} & Generated JSON Schemas (never edited by hand) \\
+\file{contract-tests/} & Contract Test Kit (\file{wysp\_contract/}), mock Kanban adapter (\file{wysp\_mock/}), fixtures \\
+\file{sdk/python/}, \file{sdk/ts/} & Adapter SDKs; the TypeScript types in \file{sdk/ts/src/generated/} are generated \\
+\file{panel/} & The React Panel \\
+\file{apps/blender-tutor/} & \file{adapter/}, \file{profile/}, \file{demo/}, \file{contract.fixture.yaml} \\
+\file{apps/intellij-tutor/} & \file{plugin/} (Kotlin, Gradle), \file{profile/}, \file{demo/sample-project/} \\
+\file{apps/web-tutor/} & \file{extension/}, \file{profile/}, \file{demo-dashboard/} (optional third tutor) \\
+\file{.kiro/} & Specs, steering, hooks, agents, MCP settings \\
+\file{docs/} & \file{adapter-guide.md}, \file{agent-mode.md}, \file{kiro-journal.md}, \file{brand/}, this document in \file{architecture/} (French original in \file{architecture/fr/}) \\
+\file{scripts/} & Dev scripts, brand asset generation, the Kiro hook dispatcher \file{kiro/hook.py} \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Commands}
+
+Python 3.13 with uv and Node 24 are required. On Windows, use \code{npm.cmd} if PowerShell blocks \code{npm}.
+
+\begin{xltabular}{\textwidth}{@{}L{5.0cm}Y@{}}
+\toprule
+\textbf{Goal} & \textbf{Command} \\
+\midrule
+Install & \code{uv sync}; \code{npm install}; \code{npm run build -w panel} \\
+Two-minute demo (no application, no key) & \code{uv run wysp serve --llm scripted --scenario contract-tests/wysp\_mock/scenario.yaml}, then in a second terminal \code{uv run wysp-mock-adapter}, then open \url{http://127.0.0.1:8765} \\
+Core with a hosted model & \code{uv run wysp serve} (keys in \file{.env}, see \file{.env.example}) \\
+Core for your own agent & \code{uv run wysp serve --llm external}; \code{uv run wysp mcp-config} \\
+Core and headless Blender & \code{scripts\textbackslash dev\_up.ps1 [-Llm scripted -Scenario file.yaml]}; \code{scripts\textbackslash dev\_down.ps1} \\
+Build and install the Blender extension & \code{uv run python scripts\textbackslash build\_blender\_extension.py --install} \\
+Build the IntelliJ plugin & \code{apps\textbackslash intellij-tutor\textbackslash plugin\textbackslash gradlew.bat buildPlugin} \\
+Python tests & \code{uv run pytest}; live: \code{uv run pytest -m live -o addopts="" apps\textbackslash blender-tutor\textbackslash tests} \\
+TypeScript tests & \code{npm test -w panel}; \code{npm test --workspaces --if-present} \\
+Contract kit & \code{uv run wysp-contract --tutor blender-tutor [--offline]}; \code{--mock}; \code{--fixture contract-tests/fixtures/mock/contract.fixture.yaml [--fault NAME]} \\
+Boundary check & \code{uv run --no-project python scripts/kiro/hook.py boundaries} \\
+Regenerate schemas and types & \code{uv run python -m wysp\_core.contract.export} \\
+Validate a profile & \code{uv run wysp validate-profile apps/blender-tutor/profile} \\
+Logs & \code{uv run wysp logs list\textbar summary\textbar timeline} \\
+Voice & \code{uv sync --all-packages --extra voice}; \code{uv run wysp install-voice}; \code{WYSP\_TTS\_PROVIDER=kokoro} \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Reference tables}
+
+\subsubsection{Configuration (environment variables)}
+
+\begin{xltabular}{\textwidth}{@{}L{5.0cm}Y@{}}
+\toprule
+\textbf{Variable} & \textbf{Effect} \\
+\midrule
+\code{WYSP\_LLM\_PROVIDER}, \code{WYSP\_LLM\_MODEL}, \code{WYSP\_LLM\_BASE\_URL}, \code{WYSP\_LLM\_API\_KEY} & Model provider (\code{groq}, \code{cerebras}, \code{openrouter}, \code{pollinations}, \code{openai}, \code{ollama}, or a custom URL). Preset keys: \code{GROQ\_API\_KEY}, \code{CEREBRAS\_API\_KEY}, \code{OPENROUTER\_API\_KEY}, \code{OPENAI\_API\_KEY}. \\
+\code{WYSP\_TTS\_PROVIDER}, \code{WYSP\_TTS\_VOICE} & \code{auto}, \code{sapi}, \code{kokoro}, \code{none}; voice name \\
+\code{WYSP\_STT\_PROVIDER}, \code{WYSP\_STT\_API\_KEY}, \code{WYSP\_STT\_MODEL} & \code{auto}, \code{groq}, \code{none}; Whisper model (default \code{whisper-large-v3-turbo}) \\
+\code{WYSP\_OCR\_PROVIDER} & \code{auto} or \code{none} \\
+\code{WYSP\_ALLOWED\_ORIGINS} & Extra allowed Origins, comma separated \\
+\code{WYSP\_LOG} & \code{off}, \code{basic}, \code{full} (default) \\
+\code{WYSP\_SURVEY} & \code{off} disables the survey \\
+\code{WYSP\_HOME} & Replaces \file{\textasciitilde/.wysp} \\
+\bottomrule
+\end{xltabular}
+
+\subsubsection{Action catalogs}
+
+\begin{xltabular}{\textwidth}{@{}L{2.4cm}L{2.6cm}Y@{}}
+\toprule
+\textbf{Tutor} & \textbf{Risk} & \textbf{Actions} \\
+\midrule
+Mock Kanban & \code{read\_only} & \code{describe\_card} \\
+ & \code{ui\_state} & \code{select\_card} \\
+ & \code{reversible} & \code{create\_card}, \code{move\_card}, \code{rename\_card} \\
+ & \code{irreversible} & \code{archive\_card} \\
+\midrule
+Blender & \code{ui\_state} & \code{select\_object}, \code{show\_properties\_tab} \\
+ & \code{reversible} & \code{set\_object\_transform}, \code{add\_modifier}, \code{set\_modifier\_property}, \code{move\_modifier}, \code{toggle\_modifier\_visibility}, \code{assign\_material}, \code{remove\_modifier} \\
+ & \code{irreversible} & \code{apply\_modifier} \\
+\midrule
+IntelliJ IDEA & \code{read\_only} & \code{read\_code}, \code{search\_code}, \code{find\_usages}, \code{list\_files} \\
+ & \code{ui\_state} & \code{open\_file}, \code{go\_to\_symbol}, \code{show\_tool\_window} \\
+ & \code{reversible} & \code{rename\_symbol}, \code{replace\_lines}, \code{insert\_lines}, \code{create\_file}, \code{reformat\_code}, \code{optimize\_imports} \\
+\midrule
+Chrome & \code{ui\_state} & \code{scroll\_into\_view}, \code{focus\_element}, \code{follow\_link} \\
+ & \code{reversible} & \code{fill\_field}, \code{select\_option}, \code{set\_checked} \\
+ & \code{irreversible} & \code{click\_element} \\
+\bottomrule
+\end{xltabular}
+
+\subsubsection{Entity kinds and refs}
+
+\begin{xltabular}{\textwidth}{@{}L{2.4cm}L{5.0cm}Y@{}}
+\toprule
+\textbf{Tutor} & \textbf{Kinds} & \textbf{Ref examples} \\
+\midrule
+Mock Kanban & board, column, card & \code{mock://...} \\
+Blender & scene, collection, object, modifier, material & \code{blender://object/Candle}, \code{blender://object/Pumpkin/modifier/Solidify}, UI: \code{blender://ui/area/PROPERTIES} \\
+IntelliJ & project, module, directory, file, symbol, problem, run\_config & \code{intellij://file/src/Main.java}, \code{intellij://file/path\#Class.member}, UI: \code{intellij://ui/toolwindow/Project}, \code{intellij://lines/path:12-20} \\
+Chrome & page, region, heading, form, control, dialog, table, list, chart, status & \code{web://localhost:5180/\allowbreak region\textasciitilde{}filters/\allowbreak combobox\textasciitilde{}region} \\
+\bottomrule
+\end{xltabular}
+
+\subsubsection{Panel protocol (\code{/ws/ui})}
+
+\raggedright\textbf{Panel to Core} (14): \code{user.message}, \code{user.interrupt}, \code{user.continue}, \code{permission.respond}, \code{board.select}, \code{board.ask\_why}, \code{narration.progress}, \code{narration.cue}, \code{adapter.activate}, \code{board.snapshot\_request}, \code{undo.last}, \code{settings.update}, \code{explore.start}, \code{explore.stop}.
+
+\par\raggedright\textbf{Core to Panel}: \code{session.state}, \code{adapters.list}, \code{status}, \code{activity}, \code{chat.user}, \code{board.snapshot}, \code{board.patch}, \code{narration.segment}, \code{narration.cancel}, \code{clarification}, \code{permission.request}, \code{permission.resolved}, \code{evidence.added}, \code{lesson.update}, \code{exercise.update}, \code{explore.state}, \code{error}.
+
+\subsubsection{Brand palette used in the figures}
+
+Night \code{\#120532} and Surface \code{\#1D0E4A} (backgrounds), Lilac \code{\#CA84FC} and Pink \code{\#FE7C9C} (accents), Lavender \code{\#F4E5FD} (text on dark), Violet \code{\#6503FC} (fills only, never text on dark). The figures in this document use deeper print variants of lilac and pink on a white page. The mascot files are in \file{docs/brand/}.
+
+
+

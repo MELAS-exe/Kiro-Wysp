@@ -1,0 +1,100 @@
+\section{Mise en place Kiro dans le dépôt}
+
+Tout ce qui suit est déjà créé dans le dépôt, en anglais pour le jury. Le dossier \file{.kiro/} est à la racine et doit rester versionné.
+
+\subsection{Steering : les règles que l'agent applique}
+
+{\small\setlength{\tabcolsep}{4pt}
+\begin{xltabular}{\textwidth}{@{}L{3.5cm}L{2.6cm}Y@{}}
+\toprule
+\textbf{Fichier} & \textbf{Inclusion} & \textbf{Contenu} \\
+\midrule
+\file{product.md} & toujours & Vision, vocabulaire (cœur, adaptateur, profil, tuteur, provenance\dots), promesse produit, règles non négociables, cible de la démo \\
+\file{tech.md} & toujours & Pile technique, variables d'environnement, commandes (marquées « prévues » tant que la tâche qui les crée n'est pas faite), notes Windows \\
+\file{structure.md} & toujours & Arborescence, responsables par dossier, règles de frontière, nommage, processus de changement de contrat, branches et messages de commit \\
+\file{trust-and-safety.md} & toujours & Provenance, niveaux de risque, permissions, annulation, sécurité locale, vie privée, audit \\
+\file{testing.md} & toujours & Couches de tests, identifiants des propriétés (\code{CON-P}, \code{CORE-P}\dots), règles (pas de vrai LLM en test, pas de contrat simulé) \\
+\file{adapter-contract.md} & fichiers \file{apps/}, \file{sdk/}, contrat, passerelle & Guide court du contrat pour écrire un adaptateur, règles propres à Blender et à Chrome \\
+\file{pedagogy.md} & profils, pédagogie, vérification, orchestrateur & Stratégie de tutorat, format des profils, exercices, preuves, maîtrise \\
+\file{panel-ui.md} & \file{panel/}, tableau de bord & Modes d'affichage, identité visuelle, langage de provenance, règles d'interaction, accessibilité \\
+\file{demo-check.md} & manuelle (\code{/demo-check}) & Liste de contrôle avant tournage ; remplace les hooks manuels absents de Kiro IDE 1.x \\
+\file{release-checklist.md} & manuelle & Liste de soumission Kiroween 2026 \\
+\bottomrule
+\end{xltabular}}
+
+\subsection{Specs : six périmètres, une traçabilité complète}
+
+Chaque spec suit le format du lauréat 2025 : exigences en EARS, design avec propriétés de correction reliées aux exigences, tâches reliées aux exigences. Nous ajoutons pour chaque tâche un \textbf{responsable} et un \textbf{jalon}, et les tâches de propriétés sont obligatoires.
+
+{\small\setlength{\tabcolsep}{4pt}
+\begin{xltabular}{\textwidth}{@{}L{4.3cm}L{1.3cm}r r r r@{}}
+\toprule
+\textbf{Spec} & \textbf{Pilote} & \textbf{Exig.} & \textbf{Critères} & \textbf{Propr.} & \textbf{Tâches (sous-t.)} \\
+\midrule
+\file{adapter-contract} & \PA & 12 & 53 & 11 & 13 (7) \\
+\file{core-orchestrator} & \PA & 11 & 47 & 12 & 14 (6) \\
+\file{pedagogy-verification} & \PA & 6 & 26 & 9 & 9 (4) \\
+\file{tutor-panel} & \PB & 6 & 28 & 6 & 11 (4) \\
+\file{blender-tutor} & \PC & 8 & 31 & 5 & 12 (4) \\
+\file{web-tutor} & \PC{} (\PB) & 9 & 32 & 6 & 12 (4) \\
+\midrule
+\textbf{Total} & & \textbf{52} & \textbf{217} & \textbf{49} & \textbf{71 (29)} \\
+\bottomrule
+\end{xltabular}}
+
+Trois tâches seulement sont optionnelles (marquées \code{*}) : un adaptateur de niveau visuel, un fournisseur Bedrock et le pont MCP de développement. Elles ne sont commencées que si le planning le permet.
+
+\subsection{Hooks : contrôles automatiques}
+
+Les hooks sont au format actuel \file{.kiro/hooks/*.json} (version v1), lu par Kiro IDE 1.x et Kiro CLI. Les contrôles fréquents sont des \textbf{commandes} déterministes qui appellent \file{scripts/kiro/hook.py} (Python standard, testé) : elles ne consomment pas de crédits et ne font rien tant que la tâche qui crée leur cible n'est pas terminée. Les prompts d'agent sont réservés à la revue de sécurité et à l'intégration d'une nouvelle action.
+
+{\small\setlength{\tabcolsep}{4pt}
+\begin{xltabular}{\textwidth}{@{}L{4.2cm}L{2.4cm}L{1.4cm}Y@{}}
+\toprule
+\textbf{Hook} & \textbf{Déclencheur} & \textbf{Type} & \textbf{Effet} \\
+\midrule
+\code{core-boundary-guard} & sauvegarde \file{core/*.py} & commande & Refuse les imports d'hôte ou d'adaptateur et le vocabulaire d'application dans le cœur \\
+\code{trust-review} & sauvegarde \file{trust/}, \file{actions/}, manifestes & agent & Revue contre les règles de confiance : risque, annulation, pas d'évaluation de code, pas de fuite de secret, permissions minimales \\
+\code{task-preflight} & avant une tâche & agent & Rappelle exigences, responsable, dépendances et processus de contrat \\
+\code{contract-schema-sync} & sauvegarde du contrat & commande & Régénère JSON Schema et types TypeScript \\
+\code{adapter-contract-offline} & sauvegarde d'un adaptateur & commande & Kit de contrat hors ligne pour le tuteur touché \\
+\code{new-action-integration} & création d'un fichier d'action & agent & Câble la nouvelle action : registre, annulation, fixture du kit, README (équivalent de leurs hooks de gestes) \\
+\code{format-python}, \code{format-typescript} & sauvegarde & commande & ruff et prettier sur les fichiers concernés \\
+\code{profile-validate} & sauvegarde d'un profil & commande & \code{wysp validate-profile} \\
+\code{task-tests} & après une tâche & commande & Tests des paquets modifiés (pytest, Vitest) \\
+\bottomrule
+\end{xltabular}}
+
+\begin{notebox}
+\small Les hooks de fichiers ne se déclenchent que pour les modifications faites par l'agent, pas pour une sauvegarde manuelle dans l'éditeur. La CI exécute donc les mêmes contrôles (\code{python scripts/kiro/hook.py boundaries}, tests, export des schémas) pour couvrir le travail fait à la main.
+\end{notebox}
+
+\subsection{Agents spécialisés et MCP}
+
+{\small\setlength{\tabcolsep}{4pt}
+\begin{xltabular}{\textwidth}{@{}L{3.4cm}Y L{3.6cm}@{}}
+\toprule
+\textbf{Agent} & \textbf{Rôle} & \textbf{Outils} \\
+\midrule
+\code{blender-adapter} & Implémente et teste l'adaptateur Blender et le SDK Python, avec les règles de fil principal, d'annulation et d'événements & lecture, écriture, shell, web, Context7 \\
+\code{browser-adapter} & Implémente et teste l'extension Chrome et le SDK TypeScript, avec les règles MV3, de localisateurs et de vie privée & lecture, écriture, shell, web, Context7, Playwright \\
+\code{contract-guardian} & Relecteur en lecture seule : frontière, contrat, actions, confiance, tests ; rend un tableau de conformité & lecture, shell limité (\code{git diff}, \code{uv run}) \\
+\bottomrule
+\end{xltabular}}
+
+Configuration MCP proposée dans \file{docs/kiro/mcp.example.json}, à copier dans \file{.kiro/settings/mcp.json} (l'agent n'a pas le droit d'écrire dans ce dossier) :
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Context7} : documentation à jour de \code{bpy}, React Flow, Chrome Extensions, FastAPI.
+  \item \textbf{Playwright MCP} : piloter Chrome avec l'extension et le tableau de bord pendant le développement.
+  \item \textbf{wysp-dev} (désactivé jusqu'à la tâche optionnelle 13 de \file{core-orchestrator}) : pont MCP en lecture seule vers un tuteur en cours d'exécution (adaptateurs, observation, tableau, audit). Kiro peut alors inspecter l'état réel de Blender pendant qu'on développe Blender.
+\end{itemize}
+
+\subsection{Utilisation au quotidien}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item Ouvrir la spec de son périmètre, lancer la prochaine tâche dont on est responsable, laisser les hooks tourner, relire le diff.
+  \item Référencer une spec dans le chat avec \code{\#spec:adapter-contract} ; inclure une règle manuelle avec \code{\#demo-check}.
+  \item Déléguer à un agent : « utilise l'agent \code{blender-adapter} pour la tâche 4 de \file{blender-tutor} ».
+  \item Avant chaque pull request : « lance \code{contract-guardian} sur ma branche ».
+  \item Noter dans \file{docs/kiro-journal.md} les moments où Kiro a été décisif (spec générée, bug trouvé par un hook, propriété qui a cassé) avec la date : c'est la matière du texte de soumission et de la vidéo.
+\end{itemize}

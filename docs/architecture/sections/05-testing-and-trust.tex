@@ -1,0 +1,79 @@
+﻿\section{Trust, safety, privacy and testing}\label{sec:trust}
+
+\subsection{The trust model}
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Provenance.} Every board element and factual claim is \pobs, \pinf{} or \pill. An \pobs{} node must reference an entity ref present in an observation recorded in the current session; otherwise the validator downgrades it to \pinf{} and logs it. Observed nodes are created by projection in Core code, never written by the model. At the \code{visual} integration level observations carry a confidence below 1, and the Panel shows it.
+  \item \textbf{Actions need permission.} The model has one way to act, \code{propose\_action}. Execution goes permission gate, then adapter, then post-condition verification (\cref{sec:gate}). A failed verification triggers an automatic undo.
+  \item \textbf{Closed action catalogs.} Each adapter declares its actions. No action runs arbitrary code, and the contract kit rejects action ids that look like \code{exec}, \code{eval}, \code{shell} or \code{script}.
+  \item \textbf{Achievements count only the user.} Events with \code{origin: wysp} never count as evidence of mastery.
+  \item \textbf{Page and scene content is data.} Text found in an application, a web page or a file never changes the tutor's rules. The permission gate is the last barrier against prompt injection, because even a fully fooled model can only propose.
+  \item \textbf{Audit.} Every proposal, decision, execution, verification and undo is appended to \file{\textasciitilde/.wysp/\allowbreak audit/*.jsonl}.
+\end{enumerate}
+
+\subsection{Local security and privacy}
+
+The Core binds to \code{127.0.0.1} (the CLI refuses another host without \code{--unsafe-bind}). Adapters authenticate with the pairing token, browser-origin WebSocket upgrades are checked against the Origin allowlist, there is no CORS wildcard, and no endpoint proxies arbitrary URLs. Tokens and API keys are redacted from audit records, error snippets and warnings, and are never logged. The Chrome extension is active only on allowlisted origins, and the IntelliJ plugin never reads sensitive files (\cref{sec:adapters}).
+
+\begin{xltabular}{\textwidth}{@{}L{4.3cm}L{4.4cm}Y@{}}
+\toprule
+\textbf{What} & \textbf{Where it goes} & \textbf{Control} \\
+\midrule
+Conversation text, observation excerpts, code snippets (IntelliJ), entity names & The configured LLM provider, which may be remote (Groq, Cerebras, OpenRouter, Pollinations, OpenAI) or local (Ollama) & Choose a provider; \code{--llm scripted} or \code{ollama} keep everything local; sensitive entities are counted but not named \\
+Microphone clip (push-to-talk, at most 30 s, never silence) & Groq Whisper, in memory only, nothing stored & \code{WYSP\_STT\_PROVIDER=none} \\
+Speech output & Local Windows voices or Kokoro, no network after the one-time model download & \code{WYSP\_TTS\_PROVIDER=none} \\
+Screenshot of an application's own interface (label finding) & Local Core, processed in memory by Windows text recognition, not stored & Local only \\
+Session logs & \file{\textasciitilde/.wysp/logs/} on disk & \code{WYSP\_LOG=off\textbar basic\textbar full} \\
+Page snapshots (Chrome) & Local Core; passwords, card, one-time-code and hidden fields are replaced by \code{[redacted]}, text cut at 200 characters, no cookies, storage or headers & Allowlisted origins only \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Testing strategy}\label{sec:testing}
+
+Every component is testable without the real application, using the mock adapter, a scripted LLM provider and recorded fixtures. Automated tests never call a real LLM, STT or TTS provider. A bug fix starts with a failing test. Anything that needs Blender, Chrome or the IDE is marked \code{live} and runs on demand.
+
+\begin{xltabular}{\textwidth}{@{}L{3.1cm}L{4.1cm}Y@{}}
+\toprule
+\textbf{Layer} & \textbf{Tooling} & \textbf{Scope} \\
+\midrule
+Unit & pytest, Vitest, JUnit & Per package. \\
+Property-based & Hypothesis, fast-check & Test names start with \code{test\_prop\_} or \code{prop:} and cite the property id. \\
+Contract kit & \code{wysp-contract} & The same checks run against the mock adapter and the real tutors. \\
+Golden fixtures & JSON in \file{contract-tests/\allowbreak fixtures/} & Valid and invalid protocol messages and board patches that Python and TypeScript must treat identically. \\
+Live & pytest \code{-m live}, Playwright, IDE harness & Real Blender, Chromium with the extension, a sandbox IDE. \\
+\bottomrule
+\end{xltabular}
+
+On the day of writing, \code{uv run pytest --collect-only} collects 371 Python tests by default (core 124, contract kit and mock 133, SDK 15, Blender tutor 99) and deselects 14 live tests. The TypeScript suites contain about 130 test cases in 21 files (Panel, SDK, Chrome extension), and the IntelliJ plugin has five Kotlin test files with about 50 tests, of which the platform tests need the IDE.
+
+\subsubsection{Correctness properties}
+
+Each spec lists numbered properties. All 58 ids appear in at least one test.
+
+\begin{xltabular}{\textwidth}{@{}L{1.2cm}Y@{}}
+\toprule
+\textbf{Family} & \textbf{Properties} \\
+\midrule
+CON (11) & P1 schema round trip; P2 observation referential integrity; P3 ref and digest stability; P4 digest invariance; P5 invalid calls leave state unchanged; P6 undo round trip; P7 postconditions hold; P8 monotonic state version; P9 origin tagging; P10 size limits; P11 safe placeholder substitution \\
+CORE (16) & P1 provenance soundness; P2 the model cannot create observed facts; P3 patch convergence; P4 gate policy; P5 audit completeness; P6 verify or undo; P7 interruption; P8 resume; P9 board size bound; P10 tools follow capabilities; P11 redaction; P12 projection determinism; P13 survey provenance; P14 survey bounded and non-blocking; P15 code map bounded and honest; P16 a study entry never claims an unread file \\
+PED (9) & P1 mastery bounded; P2 correct verified evidence never lowers mastery; P3 evidence strength ordered; P4 Wysp actions never count; P5 no stale success; P6 offers need resolved bindings; P7 profile validity; P8 hints in order; P9 recommendation respects prerequisites \\
+PAN (6) & P1 patch parity with the Core; P2 gap detection; P3 layout determinism; P4 narration order and cancellation; P5 no voice approval for irreversible actions; P6 provenance style total and distinct \\
+BLD (6) & P1 main-thread confinement; P2 compensating undo; P3 modifier projection total; P4 origin tagging; P5 debounce; P6 board mirror \\
+IJ (4+1) & P1 codec round trip; P2 refs round trip; P3 sensitive files never leak; P4 rename is undoable (a fifth, ``edits and undos round trip'', exists in the tests) \\
+WEB (6) & P1 redaction; P2 locator round trip; P3 ref stability; P4 overlay invisibility; P5 origin tagging; P6 allowlist enforcement \\
+\bottomrule
+\end{xltabular}
+
+\subsubsection{The Contract Test Kit}\label{sec:kit}
+
+\code{wysp-contract} plays the Core's part towards an adapter. It starts a throw-away WebSocket server on a free port with its own token (your Core and \file{\textasciitilde/.wysp} are not touched), starts the tutor as its \file{contract.fixture.yaml} says, and runs fifteen checks in order: \code{connect}, \code{manifest}, \code{context}, \code{observe\_integrity}, \code{ref\_stability}, \code{min\_entities}, \code{action\_catalog}, \code{postconditions}, \code{undo\_round\_trip}, \code{dry\_run}, \code{invalid\_calls}, \code{state\_version}, \code{events}, \code{highlight} and \code{latency}. It can write JUnit XML and a JSON recording of every message with tokens removed. \code{--offline} validates the fixture and the latest recording against the current models in seconds, which is what CI runs for the tutors.
+
+\textbf{Fault injection.} The mock adapter can be started with a deliberate bug, and the kit must then fail with exit code 1: \code{wrong\_origin}, \code{undo\_noop}, \code{undeclared\_kind}, \code{postcondition\_lie}, \code{state\_version\_regression}, \code{dirty\_invalid}, \code{dry\_run\_mutates} and \code{unstable\_digest}. This tests the tester: a kit that passes a broken adapter would be worse than none.
+
+\textbf{CI} (GitHub Actions, four jobs): the Python job (ruff, the Core boundary check, generated schemas up to date, profile validation, the kit offline for both main tutors, pytest); the contract-kit job (online on the mock adapter, a run with 300 ms of injected latency, and the fault-injection runs); the Panel job (typecheck, tests, build); and the TypeScript SDK job (generated types up to date, typecheck, tests). The Chrome extension tests run locally. The online runs against Blender, Chrome and IntelliJ are not in CI because they need the applications.
+
+\begin{wherebox}
+\file{.kiro/steering/trust-and-safety.md}, \file{.kiro/steering/testing.md}, \file{core/src/wysp\_core/trust/}, \file{board/provenance.py}, \file{store/redact.py}, \file{contract-tests/} (\file{wysp\_contract/online.py}, \file{wysp\_mock/faults.py}), \file{.github/workflows/ci.yml}, each tutor's README for its privacy notes.
+\end{wherebox}
+
+

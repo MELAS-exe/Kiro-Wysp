@@ -1,165 +1,126 @@
-\subsection{Wysp Core}
+﻿\section{Inside the Core}\label{sec:core}
 
-\subsubsection{Modules}
+The Core is the package \file{core/src/wysp\_core/}. This chapter follows its modules in the order a request meets them. Figure~\ref{fig:coremap} gives the map.
 
-\begin{xltabular}{\textwidth}{@{}L{2.7cm}Y@{}}
-\toprule
-\textbf{Module} & \textbf{Responsabilité} \\
-\midrule
-\file{contract/} & Modèles Pydantic du contrat et du protocole du panneau, export des schémas, prédicats, empreinte d'état. Seul module importé par les SDK et le kit. \\
-\file{gateway/} & Serveur JSON-RPC \code{/ws/adapter}, \code{AdapterProxy} typé avec budgets de temps, registre des adaptateurs, surveillance des battements, contrôle d'origine et de jeton. \\
-\file{session/} & Session de tutorat (adaptateur actif, profil, tableau, narration, propositions), bus d'événements asyncio, mémoire de conversation avec résumé glissant, constructeur de contexte. \\
-\file{orchestrator/} & Boucle de tour (\code{TurnRunner}), outils offerts au LLM, prompts génériques, annulation. \\
-\file{llm/} & Interface \code{LLMProvider}, \code{ScriptedLLM} (scénarios rejouables), fournisseur compatible OpenAI (OpenAI, Groq, Ollama local…), Bedrock en option. \\
-\file{board/} & Modèle visuel, opérations et correctifs versionnés, projection des entités, validateur de provenance, regroupement au-delà de 60 nœuds. \\
-\file{narration/} & Segments, repères de synchronisation, curseur de lecture, interruption et reprise. \\
-\file{trust/} & Politique de risque, porte de permission, autorisations de leçon, pile d'annulation, journal d'audit. \\
-\file{verification/} & Observation fraîche, évaluation des prédicats, preuves. \\
-\file{pedagogy/} & Profils, graphe de compétences, leçons, exercices, modèle de l'apprenant, recommandations. \\
-\file{ui_api/}, \file{store/} & Protocole du panneau, proxy de synthèse vocale, page d'appairage ; persistance JSON/JSONL dans \file{~/.wysp/} avec masquage des secrets. \\
-\bottomrule
-\end{xltabular}
-
-\subsubsection{La boucle de tour et les outils du LLM}
-
-Un \textbf{tour} traite un message de l'utilisateur. Le cœur construit un contexte d'au plus 6\,000 jetons : prompt système générique, manifeste (types d'entités, catalogue d'actions), amorce du profil, contexte de l'adaptateur et observation du focus entourés de balises \code{<app\_data>} (contenu traité comme des données, jamais comme des instructions), état de l'apprenant, leçon en cours et conversation récente. Le LLM répond uniquement par des appels d'outils, au plus 8 tours d'outils par message.
-
-\begin{xltabular}{\textwidth}{@{}L{3.0cm}Y L{2.3cm}@{}}
-\toprule
-\textbf{Outil} & \textbf{Effet} & \textbf{Capacité requise} \\
-\midrule
-\code{observe} & Résumé compact d'une observation & \code{observe} \\
-\code{show\_entities} & Projection d'entités réelles sur le tableau (nœuds \pobs) & \code{observe} \\
-\code{add\_concept}, \code{annotate} & Nœuds et annotations \pinf{} ou \pill, jamais \pobs & -- \\
-\code{narrate} & Segments de narration avec repères (focus, surbrillance, étape) & -- \\
-\code{highlight} & Mise en évidence dans l'application & \code{highlight} \\
-\code{propose\_action} & Proposition à la porte de permission, mode \code{guide} ou \code{do} & \code{actions}, \code{execute} \\
-\code{start\_exercise} & Démarrage d'un exercice du profil si ses liaisons se résolvent & \code{observe} \\
-\code{lookup\_concept} & Entrée du glossaire du profil & -- \\
-\code{ask\_clarification} & Question avec au plus 4 réponses proposées & -- \\
-\bottomrule
-\end{xltabular}
-
-Les outils dont la capacité manque au manifeste ne sont pas proposés (propriété CORE-P10). Il n'existe aucun outil « exécuter » : c'est la garantie centrale du modèle de confiance.
-
-\subsection{Modèle visuel et tableau}
-
-Le tableau est un \textbf{modèle structuré}, pas une image : nœuds (avec \code{ref}, \code{kind}, provenance, confiance, propriétés à afficher), arêtes, étapes, annotations, focus et disposition. Le cœur publie des correctifs versionnés (\code{board.patch \{base\_version, version, ops\}}) ; le panneau les applique dans l'ordre et demande un instantané en cas de trou. La même fonction d'application existe en Python et en TypeScript, vérifiée par des fixtures communes (CORE-P3, PAN-P1).
-
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Projection.} Une entité devient un nœud d'identifiant \code{n:<ref>} ; les relations parent deviennent des arêtes \code{contains} ; les liens d'observation deviennent des arêtes typées. Le profil choisit les propriétés affichées par type (\code{board.props}). La projection est déterministe (CORE-P12), ce qui stabilise la disposition.
-  \item \textbf{Validateur de provenance.} Tout nœud marqué \pobs{} dont la référence n'apparaît dans aucune observation de la session est rétrogradé en \pinf{} et journalisé (CORE-P1).
-  \item \textbf{Dispositions.} Quatre suffisent pour les deux tuteurs et couvrent les exemples de la note de concept.
-\end{itemize}
-
-\begin{xltabular}{\textwidth}{@{}L{2.0cm}Y Y@{}}
-\toprule
-\textbf{Disposition} & \textbf{Blender} & \textbf{Web} \\
-\midrule
-\code{stack} & pile de modificateurs, ordre d'évaluation & ordre des filtres appliqués \\
-\code{tree} & hiérarchie de la scène (collections, objets) & régions de la page, contrôles d'un formulaire \\
-\code{graph} & objets, matériaux et références & dépendances entre filtres, KPI et tableau \\
-\code{sequence} & étapes guidées d'une leçon & étapes de création d'un rapport \\
-\bottomrule
-\end{xltabular}
-
-\begin{xltabular}{\textwidth}{@{}L{2.4cm}Y L{4.4cm}@{}}
-\toprule
-\textbf{Provenance} & \textbf{Style du nœud} & \textbf{Marqueur dans les sous-titres} \\
-\midrule
-\pobs & bordure pleine 2\,px, opacité complète, icône « œil » & aucun \\
-\pinf & bordure pointillée, opacité 85\,\%, badge de confiance & « probablement » \\
-\pill & fond hachuré, bordure grise, étiquette « exemple » & « par exemple » \\
-\bottomrule
-\end{xltabular}
-
-\subsection{Voix et narration}
-
-Nous retenons une chaîne en cascade plutôt qu'un modèle vocal de bout en bout : transcription dans le navigateur, raisonnement en texte dans le cœur, synthèse vocale par segments. Le texte reste ainsi la source de vérité : sous-titres, provenance et repères de synchronisation sont exacts, et la voix peut tomber en panne sans casser le tutorat.
-
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
-\begin{tikzpicture}[font=\sffamily\scriptsize, node distance=0.55cm,
-  st/.style={draw=#1, fill=#1!8, rounded corners=2pt, align=center, minimum height=0.8cm, minimum width=1.9cm},
-  arr/.style={-{Stealth[length=2mm]}, thick, color=surface}]
-  \node[st=pb] (mic) {Micro\\\tiny appui pour parler};
-  \node[st=pb, right=of mic] (stt) {Transcription\\\tiny Web Speech API};
-  \node[st=pa, right=of stt] (core) {Cœur : tour\\\tiny LLM + outils};
-  \node[st=pa, right=of core] (seg) {Segments\\\tiny $\leq$ 300 car. + repères};
-  \node[st=pb, right=of seg] (tts) {Synthèse\\\tiny /api/tts ou navigateur};
-  \node[st=pb, right=of tts] (spk) {Audio et\\sous-titres};
-  \draw[arr] (mic) -- (stt); \draw[arr] (stt) -- (core); \draw[arr] (core) -- (seg); \draw[arr] (seg) -- (tts); \draw[arr] (tts) -- (spk);
-  \draw[arr, color=danger, dashed] (spk.south) -- ++(0,-0.55) -| node[pos=0.25, below, text=danger] {interruption : parole détectée ou Échap $\rightarrow$ \code{user.interrupt}, arrêt en moins de 150\,ms} (mic.south);
+\begin{tikzpicture}[fig]
+  \node[mod, minimum width=3.4cm] (gw) at (-4.7,2.9) {\textbf{gateway}\\\tiny adapter WebSocket, registry};
+  \node[mod, minimum width=3.4cm] (ui) at (0,2.9) {\textbf{ui\_api, mcp\_server}\\\tiny Panel and agent endpoints};
+  \node[mod, minimum width=3.4cm] (voice) at (4.7,2.9) {\textbf{tts, listen, ocr}\\\tiny voice, text recognition};
+  \node[mod, minimum width=3.6cm] (sess) at (-3.0,1.2) {\textbf{session}\\\tiny state, event bus, inbox,\\\tiny survey, explore, tutoring};
+  \node[mod, minimum width=3.6cm] (orch) at (1.9,1.2) {\textbf{orchestrator}\\\tiny turn loop, context,\\\tiny tools, action pipeline};
+  \node[mod, minimum width=3.0cm] (llm) at (6.5,1.2) {\textbf{llm}\\\tiny OpenAI-compatible,\\\tiny scripted, external};
+  \node[mod, minimum width=2.9cm] (ped) at (-6.4,-1.3) {\textbf{pedagogy}\\\tiny profile, lessons,\\\tiny exercises, learner};
+  \node[mod, minimum width=2.9cm] (board) at (-3.2,-1.3) {\textbf{board}\\\tiny model, ops, projection,\\\tiny provenance};
+  \node[mod, minimum width=2.9cm] (nar) at (0,-1.3) {\textbf{narration}\\\tiny segments, cues,\\\tiny interrupt, resume};
+  \node[mod, minimum width=2.9cm] (trust) at (3.2,-1.3) {\textbf{trust}\\\tiny policy, gate,\\\tiny undo, audit};
+  \node[mod, minimum width=2.9cm] (ver) at (6.4,-1.3) {\textbf{verification}\\\tiny predicates,\\\tiny evidence};
+  \draw[arr] (gw) -- (sess); \draw[arr] (ui) -- (sess); \draw[arr] (sess) -- (orch); \draw[arr] (orch) -- (llm);
+  \draw[thick, color=inkpurple] (orch.south) -- ++(0,-0.45);
+  \foreach \c in {board, nar, trust, ver} \draw[arr] ($(orch.south)+(0,-0.45)$) -| (\c.north);
+  \draw[arr] (sess.south) -- ++(0,-0.3) -| (ped.north);
 \end{tikzpicture}
-\caption{Chaîne vocale. En violet le panneau, en bleu le cœur.}
+\caption{Core modules. Arrows show the main direction of calls; verification results feed the learner model in \code{pedagogy}. \code{contract/} (the models) is imported by all of them, and \code{store/} and \code{telemetry/} hold local files and logs.}\label{fig:coremap}
 \end{figure}
 
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Appui pour parler} (barre d'espace ou bouton) par défaut : fiable en démonstration, pas de déclenchement intempestif.
-  \item \textbf{Interruption} : pendant la narration, une détection d'énergie vocale (WebAudio, seuil calibré, annulation d'écho) ou la touche Échap arrête l'audio et envoie \code{user.interrupt}. Le cœur annule le tour et mémorise le dernier segment joué. « Continue » rejoue exactement les segments non entendus (CORE-P7, CORE-P8).
-  \item \textbf{Clés} : la synthèse passe par \code{/api/tts} pour que la clé reste côté serveur ; la synthèse du navigateur sert de repli.
-  \item \textbf{Latence visée} : premier son moins de 2,5\,s après la fin de la question, grâce au découpage en segments et à la prélecture du segment suivant.
-\end{itemize}
+\subsection{Session and gateway}
 
-\subsection{Pédagogie et vérification}
+\textbf{Gateway.} \code{wysp.hello} must arrive within 10 s. The Core checks the token, validates the manifest, and compares only the \emph{major} contract version (a mismatch is error \code{-32018}). It answers with the heartbeat interval (20 s) and drops an adapter that is silent for 45 s. A new connection with the same adapter id replaces the old one. Requests to an adapter use the contract's time budgets plus a 1 s slack.
 
-Le moteur pédagogique lit le \textbf{profil} de l'application : compétences avec prérequis, glossaire de concepts reliés à la documentation officielle, leçons en étapes (\code{explain}, \code{show}, \code{guide}, \code{do}, \code{check}) et exercices.
+\textbf{Session.} One session object holds the active adapter, the board, the narration state, the permission gate, the undo stack, the conversation history and the learner model. Adapter events go onto an event bus. Events that arrive during a Wysp action, or within 1.5 s after it, are forced to \code{origin: wysp}, so that a Wysp change is never credited to the learner. Several adapters can be connected; the Panel chooses the active one (\code{adapter.activate}).
+
+\subsection{Orchestrator and tools}
+
+The language model sees 21 tools. Tools that need an adapter capability are offered only when the manifest declares it (property CORE-P10), and the call is refused again at run time.
+
+\begin{xltabular}{\textwidth}{@{}L{3.2cm}Y@{}}
+\toprule
+\textbf{Group} & \textbf{Tools} \\
+\midrule
+Look & \code{observe} (levels summary, focus, full; optional root ref), \code{lookup\_concept} (glossary from the profile) \\
+Show & \code{show\_entities}, \code{add\_concept} (\pinf{} or \pill{} nodes only), \code{annotate}, \code{narrate} (segments, cues, and a board update in one call), \code{highlight}, \code{clear\_highlight} \\
+Act & \code{propose\_action} (mode \code{guide} or \code{do}; never runs anything by itself) \\
+Teach & \code{learner\_status}, \code{lesson} (start, next, skip, repeat, stop), \code{start\_exercise}, \code{exercise\_hint}, \code{check\_exercise}, \code{declare\_done} \\
+Explore & \code{code\_map}, \code{get\_study\_plan}, \code{study\_read}, \code{record\_understanding}, \code{finish\_study} \\
+Ask & \code{ask\_clarification} (one short question with up to four options; ends the turn) \\
+\bottomrule
+\end{xltabular}
+
+The system prompt is generic (\file{orchestrator/prompts/system.md}). App knowledge enters through the manifest (name, entity kinds, ref scheme), the profile's primer, the action catalog with risk levels, the current context fenced as \code{<app\_data>}, the survey, and the board labels with their provenance. Text found in an application is data, not instructions.
+
+\subsection{Board and provenance}
+
+The board model has nodes (id, ref, kind, label, provenance, confidence, a few properties to display), edges, ordered steps with a status (pending, active, done, failed) and annotations. A \emph{board op} changes it; there are twelve (add or remove node, edge or annotation, set layout, set focus, set or update steps, mark stale, clear). Ops apply atomically: a batch that would exceed 60 nodes or reference a missing node leaves the board untouched.
+
+\textbf{Projection} turns an observation into nodes and edges deterministically (property CORE-P12). The node id is \code{n:<ref>}, the displayed properties come from the profile's \code{board.props} for that kind, and the board is re-projected when the application changes, dropping nodes that disappeared.
+
+\textbf{Provenance validator.} Applied to every patch the model can influence. An \pobs{} node whose ref was not seen in an observation of this session is downgraded to \pinf{} and its ref is removed. An \pobs{} annotation is always downgraded. \code{add\_concept} forces non-observed provenance on its own, so the model has no path to create an observed fact.
+
+\subsection{Narration}
+
+Text is stripped of markdown and packed into segments of at most 300 characters. Each segment has a provenance, which the Panel shows as a marker (``likely'' for \pinf, ``for example'' for \pill). Only the Panel that was elected as the speaker drives the timeline, so two open Panels do not read every sentence twice. Text that looks like a tool call is never spoken.
+
+\subsection{Permission gate, undo and audit}\label{sec:gate}
+
+\begin{xltabular}{\textwidth}{@{}L{2.8cm}L{4.6cm}Y@{}}
+\toprule
+\textbf{Risk} & \textbf{Policy} & \textbf{Approval} \\
+\midrule
+\code{read\_only}, \code{ui\_state} & Run automatically, logged & none \\
+\code{reversible} & Ask, unless a grant covers this action & Click, voice (``yes''), or ``allow for this lesson'' (a session grant for that action id) \\
+\code{irreversible} & Ask with a preview; denied at integration level \code{visual} & Explicit click only. A voice answer is refused. \\
+\bottomrule
+\end{xltabular}
+
+A pending request times out after 60 s and counts as denied. A new user message cancels pending requests. For reversible and irreversible actions the Core first runs the action with \code{dry\_run: true} so that the dialog can show a preview (for a text edit, a diff).
+
+\textbf{Undo.} Every reversible action returns an undo token. The Core keeps a per-adapter stack of 50 records. The user can undo the last one (\code{undo.last}). If post-conditions fail after execution, the Core undoes the action by itself and tells the model the action was \code{failed\_and\_undone}.
+
+\textbf{Audit.} Every proposal, decision (with who and how: click, voice, grant, policy or timeout), execution, verification, undo and guided step is appended to \file{\textasciitilde/.wysp/audit/YYYY-MM-DD.jsonl}. Records pass through a redactor that removes the pairing token, configured API keys and key-shaped strings, and long strings are truncated.
+
+\subsection{Verification and the predicate language}
+
+All verification uses one language, evaluated by the Core and never by the model. A \emph{comparison} is \code{\{ref?, path, op, value\}}, where \code{path} is a JMESPath expression run on the observation (or on one entity when \code{ref} is given) and \code{op} is one of \code{eq, ne, gt, gte, lt, lte, in, contains, exists, not\_exists, matches, len\_eq, len\_gte}. Comparisons combine with \code{all}, \code{any} and \code{not}.
 
 \begin{lstlisting}[language={}]
-exercises:
-  - id: bevel_segments
-    prompt: {en: "Give the bevel 3 segments so the edge looks round."}
-    skills: [bevel_modifier]
-    bindings: {target: "$focus.object"}
-    success: {all: [ ...predicates on the observation... ]}
-    hints: [{en: "Look at the Modifier Properties tab (blue wrench)."},
-            {en: "Find the Segments field in the Bevel panel."}]
-    max_attempts: 3
+{"all": [
+  {"path": "entities[?kind=='modifier' && parent=='${params.target}' && props.type=='BEVEL'] | length(@)",
+   "op": "gte", "value": 1}]}
 \end{lstlisting}
 
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Exercices contextualisés} : un exercice n'est proposé que si ses liaisons se résolvent sur la scène ou la page réelle et si son critère n'est pas déjà satisfait (PED-P5, PED-P6).
-  \item \textbf{Vérification} : à chaque changement d'origine utilisateur, le moteur évalue les prédicats sur une observation fraîche et enregistre une preuve (prédicat, valeur réelle, valeur attendue, identifiant d'observation, horodatage).
-  \item \textbf{Trois niveaux de preuve} : \code{verified} (constaté dans l'application, poids 1,0), \code{answered} (réponse à un quiz, 0,6), \code{declared} (« c'est fait » non vérifiable, 0,3). Le panneau affiche toujours la différence. Les actions faites par Wysp ne comptent jamais (PED-P4).
-  \item \textbf{Modèle de l'apprenant} : traçage bayésien des connaissances simplifié (glissement 0,1, chance 0,2, apprentissage 0,15), pondéré par le type de preuve et le nombre d'indices. Une compétence est acquise à 0,85. La profondeur des explications suit la maîtrise : bases sous 0,4, pratique guidée jusqu'à 0,85, défi au-delà.
-\end{itemize}
+Placeholders (\code{\$\{params.x\}}, \code{\$\{bindings.x\}}) are substituted only in allowed positions. Inside a JMESPath string literal the value is escaped, and values containing a backslash or a control character are rejected, which prevents a parameter from injecting expression syntax (CON-P11). \code{matches} uses a full match with a pattern limit of 200 characters. To verify, the Core always takes a \emph{fresh} full observation, evaluates the predicates and builds an \code{Evidence} record from the outcomes (actual and expected value per comparison, observation id, state version, timestamp).
 
-\subsection{Confiance et sécurité}
+\subsection{Pedagogy}
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[font=\sffamily\scriptsize,
-  s/.style={draw=#1, fill=#1!8, rounded corners=2pt, align=center, minimum height=0.66cm, minimum width=1.75cm},
-  arr/.style={-{Stealth[length=2mm]}, thick, color=surface},
-  lbl/.style={font=\sffamily\tiny, text=muted, fill=white, inner sep=1pt}]
-  \node[s=pa] (p) at (0,0) {proposée\\\tiny paramètres validés};
-  \node[s=pa] (pol) at (2.4,0) {politique\\\tiny selon le risque};
-  \node[s=okgreen] (auto) at (5.0,0.95) {approuvée\\\tiny auto ou autorisation};
-  \node[s=pumpkin] (wait) at (5.0,-0.95) {en attente\\\tiny délai 60\,s};
-  \node[s=muted] (deny) at (5.0,-2.35) {refusée\\\tiny ou expirée};
-  \node[s=okgreen] (ex) at (7.7,0) {exécution\\\tiny adaptateur};
-  \node[s=pa] (ver) at (10.1,0) {vérification\\\tiny post-conditions};
-  \node[s=okgreen] (done) at (12.6,0.95) {réussie\\\tiny preuve enregistrée};
-  \node[s=danger] (undo) at (12.6,-0.95) {échec\\\tiny annulation auto};
-  \draw[arr] (p) -- (pol);
-  \draw[arr] (pol) -- (auto);
-  \draw[arr] (pol) -- (wait);
-  \draw[arr] (auto) -- (ex);
-  \draw[arr] (wait) -- node[lbl, pos=0.45, below right=-1pt] {clic ou « oui »} (ex);
-  \draw[arr] (wait) -- node[lbl, right] {refus} (deny);
-  \draw[arr] (ex) -- (ver);
-  \draw[arr] (ver) -- (done);
-  \draw[arr] (ver) -- (undo);
-\end{tikzpicture}
-\caption{Cycle de vie d'une proposition d'action.}
-\end{figure}
+\textbf{Profile.} \file{profile.yaml} (id, application name, languages, a primer for the model, skills with prerequisites and optional BKT parameters, speech hints and an optional \code{explore} section), \file{concepts.yaml} (the glossary) and \file{lessons/*.yaml}. \code{wysp validate-profile} checks required keys, duplicate ids, prerequisite cycles and lesson validity.
 
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Provenance} : seule la projection d'observations crée des nœuds \pobs ; le validateur rattrape le reste. Au niveau d'intégration visuel, la confiance des entités est inférieure à 1 et affichée.
-  \item \textbf{Porte de permission} : politique de la table des risques, autorisations limitées à une leçon pour les actions réversibles, clic obligatoire et aperçu pour les actions irréversibles, expiration à 60\,s. Une surcharge de politique par profil ne peut être que plus stricte (CORE-P4).
-  \item \textbf{Vérifier ou annuler} : après exécution, nouvelle observation et évaluation des post-conditions ; en cas d'échec, annulation automatique et rapport avec preuve (CORE-P6). Chaque action Blender pousse aussi une étape d'annulation native, donc Ctrl+Z fonctionne.
-  \item \textbf{Sécurité locale} : écoute sur \code{127.0.0.1} uniquement, contrôle de l'en-tête \code{Origin}, jeton d'appairage, aucune clé dans le navigateur, journaux masqués (CORE-P11).
-  \item \textbf{Vie privée (web)} : extension active seulement sur les origines autorisées ; jamais de mot de passe, carte bancaire, code à usage unique, champ caché, cookie ou stockage dans les observations (WEB-P1, WEB-P6).
-  \item \textbf{Injection de prompt} : le texte d'une page ou d'une scène est une donnée. Une page piégée peut au pire faire \emph{proposer} une action ; la porte et le catalogue fermé empêchent qu'elle s'exécute sans l'utilisateur.
-  \item \textbf{Audit} : propositions, décisions (qui, par quel canal), exécutions, vérifications et annulations dans \file{~/.wysp/audit/*.jsonl} (CORE-P5).
-\end{itemize}
+\textbf{Lessons and exercises.} A lesson has steps (\code{explain}, \code{show}, \code{guide}, \code{do}, \code{check}) and exercises. An exercise has a prompt, bindings (variables resolved from the context, for example the selected object), success predicates, ordered hints and a maximum number of attempts. The Core \emph{offers} an exercise only if its bindings resolve and its success predicate is not already true. The model may phrase the prompt but never invents success criteria. The Core evaluates the exercise when the application changes.
+
+\textbf{Evidence and mastery.} Evidence is \code{verified} (predicate true on a fresh observation after a user action, weight 1.0), \code{answered} (weight 0.6, reserved in the contract) or \code{declared} (the learner says it is done and the application cannot verify it, weight 0.3, refused for verifiable exercises). Each hint lowers the weight by 15\%, down to 40\% of it. The learner model is a simplified Bayesian Knowledge Tracing per skill (defaults: slip 0.1, guess 0.2, transit 0.15, prior 0.2), written atomically to \file{\textasciitilde/.wysp/learners/<profile>.json}. A correct answer never lowers mastery. The tutor adapts depth: below 0.4 basics, below 0.85 guided practice, from 0.85 a challenge. \emph{An event whose origin is} \code{wysp} \emph{never counts}: four separate checks enforce it (PED-P4).
+
+\subsection{Survey and exploration}
+
+The \emph{survey} runs when an adapter becomes active. It stays in memory, goes stale on any state change, refreshes after 2 s, and retries with backoff when the application is busy (for example an IDE that is indexing). If a full observation takes too long it falls back to a summary.
+
+\emph{Exploration} is for large structured applications such as a codebase. It exists only if the profile has an \code{explore} section, and nothing is read until the user presses Start in the Panel (consent). The Core then builds a \emph{code map} without any model, by walking subtree observations: names, signatures, sizes and dependencies, not code bodies. Limits: 4000 adapter calls, 300 s, 60\,000 entries. It also ranks about 30 files to read first. The study phase (\code{study\_read}, \code{record\_understanding}, \code{finish\_study}) records what was actually read; \code{finish\_study} is refused below 80\% read coverage, and files not read are marked unread so the tutor does not claim to know them. The study is started automatically only in external-agent mode; with the Core's own model, the map is available through \code{code\_map} and the tutor reads files on request. Notes are saved per project under \file{\textasciitilde/.wysp/projects/}.
+
+\subsection{LLM providers and external mode}\label{sec:core-llm}
+
+The Core talks to any OpenAI-compatible endpoint with tool calling, without streaming. Presets: Groq, Cerebras, OpenRouter, Pollinations (keyless fallback), OpenAI and Ollama, or any URL through \code{WYSP\_LLM\_BASE\_URL}. With \code{--llm auto}, the first of Groq, Cerebras and OpenRouter whose key is set is used, otherwise Pollinations. The provider retries on 429 (honouring \code{Retry-After}, capped at 20 s), 5xx and timeouts. \code{--llm scripted} replays a YAML scenario and is what the automated tests and the offline demo use.
+
+\textbf{External mode} (\code{wysp serve --llm external}) removes the model from the Core. The Core serves an authenticated MCP endpoint at \code{/mcp} with the same 21 tools plus \code{get\_tutor\_context} (the rules and the application description) and \code{wait\_for\_user} (messages and interruptions from the Panel, up to 55 s). The user's own agent, such as Kiro, Claude Code or any MCP client, does the thinking. Board, voice, permission gate and verification stay in Wysp, and every tool call goes through the same \code{ToolBox}, so an agent can never create an observed node or approve its own action. For clients that only speak stdio, \code{wysp mcp-bridge} forwards to the running Core; by default it is read-only (\code{observe}, \code{lookup\_concept}, \code{get\_tutor\_context}, \code{wait\_for\_user}, \code{code\_map}, \code{get\_study\_plan}, \code{study\_read}, \code{learner\_status}) and refuses any URL that is not loopback.
+
+\subsection{Voice}
+
+Speech output is offline: Windows voices through SAPI, or Kokoro (an 82M-parameter neural voice, Apache-2.0, installed with \code{wysp install-voice}). Output text is capped at 600 characters per request. Speech input is push-to-talk: hold Space in the Panel (Web Speech API when the browser has it), or Alt+Space in Blender. When the browser cannot listen, the Core records the microphone between \code{/api/listen/start} and \code{/stop} (at most 30 s, kept in memory, silence is never sent) and transcribes with Whisper on Groq. That clip leaves the machine; \code{WYSP\_STT\_PROVIDER=none} turns it off. Windows text recognition (\code{/api/ocr}) is local and is used to find a label in a screenshot of an application's own interface.
+
+\subsection{Logs}
+
+Each Core session writes a JSONL log to \file{\textasciitilde/.wysp/logs/} at level \code{off}, \code{basic} (timings, counts, errors) or \code{full} (default, adds conversation text and tool arguments). \code{wysp logs list|summary|timeline} reads them. The level can change from the Panel.
+
+\begin{wherebox}
+\file{core/src/wysp\_core/}: \file{session/}, \file{orchestrator/}, \file{board/}, \file{narration/}, \file{trust/}, \file{verification/}, \file{pedagogy/}, \file{llm/}, \file{mcp\_server/}, \file{tts.py}, \file{listen.py}. Specs: \file{.kiro/specs/core-orchestrator/}, \file{.kiro/specs/pedagogy-verification/}. Agent mode: \file{docs/agent-mode.md}.
+\end{wherebox}
+
+

@@ -1,0 +1,50 @@
+﻿\section{Concepts and vocabulary}\label{sec:concepts}
+
+The same eleven terms are used in the code, the specs and this document.
+
+\begin{xltabular}{\textwidth}{@{}L{2.6cm}Y@{}}
+\toprule
+\textbf{Term} & \textbf{Meaning} \\
+\midrule
+\textbf{Core} & The shared Python engine (package \code{wysp\_core}). It orchestrates the conversation with the language model, builds the board, narrates, enforces permissions, verifies results and tracks what the learner has mastered. It knows no application. \\
+\textbf{Adapter} & The application-specific component that implements the adapter contract: \code{observe}, \code{get\_context}, \code{get\_actions}, \code{execute}, \code{undo}, \code{highlight} and events. It lives inside the application (an extension or plugin) and connects to the Core as a WebSocket client. \\
+\textbf{Profile} & Application-specific \emph{data} in YAML: skills, a glossary of concepts, lessons and exercises, and a short description of the application for the language model. \\
+\textbf{Tutor} & One adapter plus one profile, plugged into the Core. There is one folder per tutor under \file{apps/}. \\
+\textbf{Panel} & The single React user interface, shared by all tutors. It shows a chat or a diagram, plays captions and speech, and asks for permissions. It contains no tutoring logic. \\
+\textbf{Board} & The visual model of the explanation: nodes, edges, numbered steps and annotations, with a layout (stack, tree, graph or sequence). The Core owns it and sends patches to the Panel. At most 60 nodes. \\
+\textbf{Provenance} & The epistemic status of every displayed or spoken fact. \pobs: it comes from an adapter observation of this session. \pinf: the model deduced it. \pill: a teaching example, not the user's state. \\
+\textbf{Integration level} & How the adapter sees the application. \code{native}: through its own API. \code{interface}: through the DOM or the accessibility tree. \code{visual}: through screenshots (observations then carry a confidence below 1, and irreversible actions are forbidden). \\
+\textbf{Permission gate} & The Core component that decides whether a proposed action may run, and asks the user when policy requires it. The language model cannot bypass it: it has no tool that executes anything. \\
+\textbf{Evidence} & The record that proves a verification: the predicate, the actual value, the expected value, the observation id and a timestamp. Its type is \code{verified}, \code{answered} or \code{declared}. \\
+\textbf{Mastery} & The learner model's estimate, between 0 and 1, that the learner has acquired a skill. It is updated from evidence with a simplified Bayesian Knowledge Tracing model, and a skill counts as acquired at 0.85. \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Other words you will meet}
+
+\begin{xltabular}{\textwidth}{@{}L{2.6cm}Y@{}}
+\toprule
+\textbf{Term} & \textbf{Meaning} \\
+\midrule
+Observation & A snapshot of the application as a graph of \emph{entities} (each with a stable \code{ref}, a \code{kind}, a label and properties) and \emph{links}. \\
+Ref & A stable URI-like identifier of an entity, with one scheme per adapter: \code{blender://object/Candle}, \code{intellij://file/src/Main.java}, \code{web://localhost:5180/page}. \\
+Action & A named operation the adapter can perform, declared in a closed catalog with a parameter schema, a risk level and postconditions. \\
+Guide and do & Two modes of a proposed action. \emph{Guide}: the user performs it, Wysp watches and verifies. \emph{Do}: Wysp performs it after approval and then verifies. \\
+Predicate & A small declarative test (JMESPath comparisons combined with \code{all}, \code{any}, \code{not}) evaluated by the Core on a fresh observation. \\
+Survey & The summary of the application the Core collects when an adapter becomes active, so that the first answer is grounded. \\
+External mode & The Core runs without a model of its own and the user's own AI agent does the thinking through MCP (\cref{sec:core-llm}). \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Three principles that shape everything}
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{The Core knows no application.} No host import (\code{bpy}, browser APIs, IDE APIs) and no application word in \file{core/}. Application knowledge is data (a profile) or code in an adapter. The Core prompts are generic and receive the application description from the manifest and the profile.
+  \item \textbf{The model decides what to say and show. The Core decides what is true and what is allowed.} The model chooses which real entities to put on the board but never writes an \pobs{} node itself. It can propose actions but never run them.
+  \item \textbf{Local first.} The Core listens on \code{127.0.0.1}, adapters authenticate with a pairing token, browsers are checked against an Origin allowlist, and secrets stay in environment variables.
+\end{enumerate}
+
+\begin{wherebox}
+\file{.kiro/steering/product.md} (vocabulary and product promise), \file{.kiro/steering/structure.md} (boundary rules), \file{scripts/kiro/hook.py} (the boundary check, run with \code{uv run --no-project python scripts/kiro/hook.py boundaries}).
+\end{wherebox}
+

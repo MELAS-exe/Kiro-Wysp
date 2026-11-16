@@ -27,7 +27,7 @@ IntelliJ plugin ───┘   (adapter contract)    └─ LLM with tool callin
 - **Trust rules**: every fact is labelled `observed`, `inferred` or `illustrative`; the LLM can only *propose* actions; a permission gate decides; every action is verified afterwards and undone if verification fails.
 - **Contract Test Kit**: the same contract fixtures run against the mock adapter, the Blender tutor and the IntelliJ tutor.
 
-To build your own tutor, start with the [adapter guide](docs/adapter-guide.md) (its example adapter is tested). The full design (in French) is in [`docs/architecture/wysp-architecture.pdf`](docs/architecture/wysp-architecture.pdf). The normative specs (in English) are in [`.kiro/specs/`](.kiro/specs/).
+To build your own tutor, start with the [adapter guide](docs/adapter-guide.md) (its example adapter is tested). The architecture document (English, 25 pages) is [`docs/architecture/wysp-architecture.pdf`](docs/architecture/wysp-architecture.pdf); the French design document written before the implementation is kept in [`docs/architecture/fr/`](docs/architecture/fr/). The normative specs (in English) are in [`.kiro/specs/`](.kiro/specs/).
 
 ## Try it in two minutes (no application, no account, no key)
 

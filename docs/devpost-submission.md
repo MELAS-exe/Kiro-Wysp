@@ -64,3 +64,14 @@ The shot-by-shot script with timings and the window layout are in `docs/demo-set
 - IntelliJ and Chrome were verified mostly through unit, platform and Chromium tests plus live sessions; the Blender tutor has the most live coverage.
 - Speech listening uses Whisper on Groq (the only audio that leaves the machine; `WYSP_STT_PROVIDER=none` turns it off). The female voice (Kokoro) and the Windows voices are offline.
 - Unpacked Chrome extension only (no store release); one Windows machine tested.
+## Testing instructions for judges (private field)
+
+No credentials, accounts or API keys are needed. Requirements: Python 3.13 with [uv](https://docs.astral.sh/uv/) and Node 24.
+
+1. `uv sync`, then `npm install` and `npm run build -w panel` (use `npm.cmd` if PowerShell blocks `npm`).
+2. `uv run wysp serve --llm scripted --scenario contract-tests/wysp_mock/scenario.yaml`, then in a second terminal `uv run wysp-mock-adapter`.
+3. Open http://127.0.0.1:8765 and type "explain this board", then "help me move the card" and "do it for me". You should see the board built from the mock application's real entities, a persistent highlight, the permission prompt, the verification evidence and the undo. Everything is local and deterministic (a scripted model replays a scenario).
+4. Automated checks: `uv run pytest` (about 370 tests), `uv run wysp-contract --fixture contract-tests/fixtures/mock/contract.fixture.yaml` (Contract Test Kit against the mock adapter), `uv run --no-project python scripts/kiro/hook.py boundaries` (the Core must stay application-agnostic), `npm test -w panel`.
+5. Optional, with the real applications (Windows): Blender 5.2 LTS (`uv run python scripts\build_blender_extension.py --install`) and IntelliJ IDEA 2026.2 (`apps\intellij-tutor\plugin\gradlew.bat buildPlugin`, install the ZIP). See the README. A free Groq key in `.env` (`GROQ_API_KEY`) gives a real model; without it the keyless Pollinations fallback is used, which can be slow. The Chrome extension is an optional extra.
+6. To use your own AI agent instead of a hosted model: `uv run wysp serve --llm external` and see `docs/agent-mode.md`.
+7. Read next: the architecture document `docs/architecture/wysp-architecture.pdf` (English, 15 to 20 minutes).

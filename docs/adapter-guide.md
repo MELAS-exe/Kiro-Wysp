@@ -159,7 +159,7 @@ Application knowledge goes into data, never into the Core's prompts:
 - `concepts.yaml`: glossary entries (`id`, `term`, `short`, `detail`, `level`, `links`, `related`).
 - `lessons/L<NN>_<slug>.yaml`: steps (`explain`, `show`, `guide`, `do`, `check`) and exercises whose success criteria are authored predicates.
 
-The IntelliJ and Blender profiles in `apps/*/profile/` show the format for `profile.yaml` and `concepts.yaml`. Lessons and exercises are specified (`.kiro/specs/pedagogy-verification/`) but not written yet; the tutors work without them, because guided actions are verified through their postconditions.
+The IntelliJ and Blender profiles in `apps/*/profile/` show the format for `profile.yaml` and `concepts.yaml`. Lessons and exercises are built (`.kiro/specs/pedagogy-verification/`): each tutor ships a few, and a tutor without lessons still works, because guided actions are verified through their postconditions.
 
 ## Checklist
 

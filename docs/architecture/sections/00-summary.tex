@@ -1,0 +1,95 @@
+﻿\section{Summary}\label{sec:summary}
+
+\textbf{Wysp is an open-source skeleton for building AI tutors for software applications.} A Wysp tutor reads the real state of an application, explains what it sees, shows the explanation on an interactive board, guides the user through actions with their permission, and checks in the application that the user did what was asked. It speaks, it listens, and it needs one adapter per application.
+
+
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[fig, x=1cm, y=1cm]
+  % applications and adapters
+  \node[zone=lilacdeep, minimum width=3.6cm, minimum height=7.4cm] (apps) at (-6.2,0) {};
+  \node[font=\sffamily\bfseries\scriptsize, text=lilacdeep] at (-6.2,3.35) {Applications};
+  \foreach \y/\app/\ad in {2.0/Blender/{Python extension\\bpy, main-thread pump}, 0.0/IntelliJ IDEA/{Kotlin plugin\\read actions, EDT}, -2.0/Chrome/{MV3 extension\\content script, redaction}} {
+    \node[mod, minimum width=3.0cm, minimum height=1.3cm, align=center] at (-6.2,\y) {\textbf{\app}\\[-1pt]\tiny adapter: \ad};
+  }
+  % core
+  \node[zone=inkpurple, minimum width=6.4cm, minimum height=7.4cm] (core) at (0,0) {};
+  \node[font=\sffamily\bfseries\scriptsize, text=inkpurple] at (0,3.35) {Wysp Core (Python, FastAPI)};
+  \node[mod, minimum width=5.8cm] (gw) at (0,2.65) {gateway \textbullet{} contract models \textbullet{} registry};
+  \node[mod, minimum width=2.7cm] at (-1.5,1.65) {session\\\tiny event bus, survey, explore};
+  \node[mod, minimum width=2.7cm] at (1.5,1.65) {orchestrator\\\tiny turn loop, 21 tools};
+  \node[mod, minimum width=2.7cm] at (-1.5,0.55) {board\\\tiny projection, provenance};
+  \node[mod, minimum width=2.7cm] at (1.5,0.55) {narration\\\tiny segments, cues};
+  \node[mod, minimum width=2.7cm] at (-1.5,-0.55) {trust\\\tiny gate, undo, audit};
+  \node[mod, minimum width=2.7cm] at (1.5,-0.55) {verification\\\tiny predicates, evidence};
+  \node[mod, minimum width=2.7cm] at (-1.5,-1.65) {pedagogy\\\tiny lessons, exercises, BKT};
+  \node[mod, minimum width=2.7cm] at (1.5,-1.65) {llm\\\tiny providers, external};
+  \node[mod, minimum width=5.8cm] (uiapi) at (0,-2.75) {ui\_api \textbullet{} voice (TTS, STT) \textbullet{} MCP endpoint};
+  % panel
+  \node[zone=pinkdeep, minimum width=3.2cm, minimum height=3.6cm] (panel) at (6.2,1.4) {};
+  \node[font=\sffamily\bfseries\scriptsize, text=pinkdeep] at (6.2,2.95) {Panel (React)};
+  \node[mod, minimum width=2.6cm] at (6.2,2.2) {Chat or diagram\\\tiny board, captions};
+  \node[mod, minimum width=2.6cm] at (6.2,1.2) {Voice\\\tiny push-to-talk, speech};
+  \node[mod, minimum width=2.6cm] at (6.2,0.2) {Approvals\\\tiny lessons, exercises};
+  % outside
+  \node[mod, minimum width=3.2cm, draw=muted] (llm) at (6.2,-1.6) {LLM provider\\\tiny tool calling, or your\\\tiny own agent through MCP};
+  \node[mod, minimum width=3.2cm, draw=okgreen, fill=okgreen!6] (prof) at (-1.5,-4.6) {Profile (YAML)\\\tiny skills, lessons, exercises};
+  \node[mod, minimum width=3.2cm, draw=muted] (vox) at (6.2,-3.3) {Voice engines\\\tiny SAPI or Kokoro offline;\\\tiny Whisper on Groq (optional)};
+  % arrows
+  \draw[biarr] (-4.4,2.0) -- node[lab, above, pos=0.55] {JSON-RPC} (-3.2,2.0);
+  \draw[biarr] (-4.4,0.0) -- (-3.2,0.0);
+  \draw[biarr] (-4.4,-2.0) -- (-3.2,-2.0);
+  \node[lab, align=center] at (-3.8,-0.55) {WebSocket\\{/ws/adapter}};
+  \draw[biarr] (3.2,1.4) -- node[lab, above] {/ws/ui} (4.6,1.4);
+  \draw[arr] (3.2,-1.65) -- (4.6,-1.6);
+  \draw[arr] (3.2,-2.75) -- (4.6,-3.3);
+  \draw[arr] (prof.north) -- (-1.5,-3.7);
+\end{tikzpicture}
+\caption{The whole system. Solid frames are code that is shared by every tutor (Core, Panel). The application, its adapter and its profile are the only parts that change from one tutor to the next. Everything runs on the user's machine; only the LLM provider and the optional cloud speech recognition are remote.}\label{fig:system}
+\end{figure}
+
+\subsection*{The skeleton claim}
+
+Everything that is not specific to one application is written once:
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{One Core} (Python). It runs the conversation, the board, the voice, the permission gate, the verification and the learner model. It contains no application vocabulary. A script checks this on every change.
+  \item \textbf{One Panel} (React). The same user interface serves every tutor.
+  \item \textbf{One protocol} (the adapter contract, version 1.1.0): JSON-RPC 2.0 over WebSocket, defined once as Pydantic models and exported as JSON Schema and TypeScript types.
+\end{itemize}
+
+Teaching a new application takes two things and no change to the Core or the Panel: an \textbf{adapter} (code that lets the Core see the application and run a closed list of actions) and a \textbf{profile} (YAML with skills, concepts, lessons and exercises). The repository proves the claim with three tutors:
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}L{2.9cm}L{2.5cm}Y@{}}
+\toprule
+\textbf{Tutor} & \textbf{Integration} & \textbf{What it teaches, and how it connects} \\
+\midrule
+Blender (5.2 LTS) & native & The scene, objects and the modifier stack. A Python extension that runs inside Blender (\code{bpy}). \\
+IntelliJ IDEA (2026.2) & native & The student's own project: structure, symbols, problems, refactorings. A Kotlin plugin built on the IntelliJ Platform. \\
+Chrome (optional extra) & interface & Web applications, shown through an accessibility-style snapshot of the page. A Manifest V3 extension. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection*{The product promise}
+
+\begin{keybox}[See the context, understand the concept, try the action, verify the result.]
+Wysp starts from what is really on the screen (an \emph{observation}), explains one concept in short spoken segments tied to something visible, lets the user try (preferably the user acts, Wysp watches; Wysp acts only when asked and permitted), and verifies the outcome with a predicate evaluated on a fresh observation. The user's autonomy is the goal: the default mode is \emph{guide}, not \emph{do}.
+\end{keybox}
+
+Two rules make this trustworthy. Every fact carries a \emph{provenance} (\pobs, \pinf{} or \pill), and nothing is shown as observed unless it came from an adapter. The language model can only \emph{propose} actions: a permission gate decides, the adapter executes, and the Core verifies and undoes the action if the result is wrong.
+
+\subsection*{What a session looks like}
+
+The user opens the Panel next to the application. Wysp surveys the application (counts, structure, available actions) before the first answer. The user asks a question, by typing or by holding Space. Wysp looks at the application, says two or three short sentences, builds the board from real entities, and points at the relevant control inside the application. If a change is useful, Wysp either walks the user through it (guide) or asks for approval and does it (do), then shows the evidence that the change took effect.
+
+\begin{wherebox}
+\file{README.md} (run it in two minutes with a mock application, no account needed), \file{core/} (the Core), \file{panel/}, \file{apps/blender-tutor/}, \file{apps/intellij-tutor/}, \file{apps/web-tutor/}, \file{.kiro/specs/} (normative specs).
+\end{wherebox}
+
+
+
+
